@@ -103,6 +103,7 @@ def quant_apply_mlp(
     use_bf16: bool = True,
     swiglu_limit: int = 0,
     use_w4a8_per_channel_gmm_swiglu: bool = False,
+    activation: str = "silu",
 ) -> torch.Tensor:
     input_hidden_dtype = hidden_states.dtype
     use_gmm_swiglu_quant_fusion = use_mxfp_quant or (fusion and not dynamic_eplb)
@@ -137,6 +138,102 @@ def quant_apply_mlp(
 
     bias1, bias2 = None, None
     _output_dtype = w2_scale[0].dtype if isinstance(w2_scale, list) else w2_scale.dtype
+
+    # ===== GELU activation path =====
+    # No fused SwiGLU+quant NPU operator exists for GELU, so use
+    # separate GMM → dequant → chunk → GELU → mul → quant → GMM2.
+    act_name = getattr(activation, "value", activation)
+    if act_name == "gelu":
+        if w1_offset is not None:
+            # W4A16: float input, antiquant GMM for both projections
+            hidden_states = torch_npu.npu_grouped_matmul(
+                x=[unquantized_hidden_states],
+                weight=[w1],
+                antiquant_scale=[w1_scale],
+                antiquant_offset=[w1_offset],
+                split_item=2,
+                group_list_type=group_list_type,
+                group_type=0,
+                group_list=group_list,
+                output_dtype=_output_dtype,
+            )[0]
+            dispose_tensor(unquantized_hidden_states)
+            gate, up = hidden_states.chunk(2, dim=-1)
+            hidden_states = torch.nn.functional.gelu(gate, approximate="tanh") * up
+            before_gmm2_evt = torch.npu.current_stream().record_event()
+            hidden_states = torch_npu.npu_grouped_matmul(
+                x=[hidden_states],
+                weight=[w2],
+                antiquant_scale=[w2_scale],
+                antiquant_offset=[w2_offset],
+                split_item=2,
+                group_list_type=group_list_type,
+                group_type=0,
+                group_list=group_list,
+                output_dtype=_output_dtype,
+            )[0]
+            return hidden_states, before_gmm2_evt
+
+        # W8A8 / W4A8: int8 input → GMM (scale + per_token_scale → float)
+        # → chunk → GELU → mul → GMM2
+        if w1_scale_bias is not None:
+            if group_list_type == 0:
+                group_list = torch.cat([group_list[:1], torch.diff(group_list, dim=0)])
+                group_list_type = 1
+            bias1 = w1_scale_bias
+            bias2 = w2_scale_bias
+            _output_dtype = torch.bfloat16
+        if pertoken_scale is not None and pertoken_scale.dtype != torch.float32:
+            pertoken_scale = pertoken_scale.to(torch.bfloat32)
+
+        w1_scale_gmm = w1_scale if isinstance(w1_scale, list) else [w1_scale]
+        if w1_scale_gmm[0].dtype != _output_dtype:
+            w1_scale_gmm = [s.to(_output_dtype) for s in w1_scale_gmm]
+
+        hidden_states = torch_npu.npu_grouped_matmul(
+            x=[hidden_states],
+            weight=w1,
+            scale=w1_scale_gmm,
+            bias=bias1,
+            per_token_scale=[pertoken_scale],
+            split_item=2,
+            group_list_type=group_list_type,
+            group_type=0,
+            group_list=group_list,
+            output_dtype=_output_dtype,
+        )[0]
+        if quantized_hidden_states is not None:
+            dispose_tensor(quantized_hidden_states)
+
+        gate, up = hidden_states.chunk(2, dim=-1)
+        hidden_states = torch.nn.functional.gelu(gate, approximate="tanh") * up
+
+        before_gmm2_evt = torch.npu.current_stream().record_event()
+
+        # W8A8 / W4A8: requantize before GMM2.
+        # npu_grouped_matmul with int8 weight requires both scale
+        # (per-channel weight scale) and per_token_scale (per-token
+        # activation scale); the operator rejects float input when
+        # scale is provided.
+        hidden_states, swiglu_out_scale = torch_npu.npu_dynamic_quant(hidden_states)
+        hidden_states = DeviceOperator.npu_grouped_matmul_gmm2(
+            hidden_states=hidden_states,
+            weight=w2,
+            weight_scale=w2_scale,
+            per_token_scale=swiglu_out_scale,
+            group_list=group_list,
+            group_list_type=group_list_type,
+            input_dtype=input_hidden_dtype,
+            act_quant_type=act_quant_type,
+            weight_quant_type=weight_quant_type,
+            scale_type=scale_type,
+            per_token_scale_type=per_token_scale_type,
+            use_bf16=use_bf16,
+            use_mxfp_quant=False,
+            bias=bias2,
+            fallback_output_dtype=w2_scale[0].dtype if isinstance(w2_scale, list) else w2_scale.dtype,
+        )
+        return hidden_states, before_gmm2_evt
 
     weight_prefetch_method = get_weight_prefetch_method()
     if weight_prefetch_method:
@@ -373,6 +470,9 @@ def unquant_apply_mlp(
     if act_name == "swigluoai":
         num_experts, _, hidden_size = w1.shape
         gate_up_out = AscendSwigluOAIAndMul.swiglu_oai_forward(gate_up_out.view(-1, hidden_size), limit=swiglu_limit)
+    elif act_name == "gelu":
+        gate, up = gate_up_out.chunk(2, dim=-1)
+        gate_up_out = torch.nn.functional.gelu(gate, approximate="tanh") * up
     else:
         if swiglu_limit > 0:
             gate, up = gate_up_out.chunk(2, dim=-1)
@@ -420,6 +520,8 @@ def unified_apply_mlp(*, mlp_compute_input: MoEMlpComputeInput) -> torch.Tensor:
     dynamic_eplb = mlp_compute_input.dynamic_eplb
     fusion = mlp_compute_input.fusion
     swiglu_limit = mlp_compute_input.swiglu_limit
+
+    act_name = getattr(activation, "value", activation)
 
     if not mlp_compute_input.quant.is_quant:
         return unquant_apply_mlp(
@@ -476,4 +578,5 @@ def unified_apply_mlp(*, mlp_compute_input: MoEMlpComputeInput) -> torch.Tensor:
         use_bf16=use_bf16,
         swiglu_limit=swiglu_limit,
         use_w4a8_per_channel_gmm_swiglu=mlp_compute_input.quant.use_w4a8_per_channel_gmm_swiglu,
+        activation=activation,
     )
