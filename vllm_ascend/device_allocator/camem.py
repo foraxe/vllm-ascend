@@ -176,7 +176,7 @@ class CaMemAllocator:
                                          str]] = None) -> None:
         """
         Put the allocator in sleep mode.
-        All data in the memory allocation with the specified tag will be 
+        All data in the memory allocation with the specified tag will be
         offloaded to CPU memory, and others will be discarded.
         :param offload_tags: The tags of the memory allocation that will be
             offloaded. The rest of the memory allocation will be discarded.
@@ -209,7 +209,7 @@ class CaMemAllocator:
     def wake_up(self, tags: Optional[list[str]] = None) -> None:
         """
         Wake up the allocator from sleep mode.
-        All data that is previously offloaded will be loaded back to GPU 
+        All data that is previously offloaded will be loaded back to GPU
         memory, and the rest of the data will have empty memory."""
         for ptr, data in self.pointer_to_data.items():
             if tags is None or data.tag in tags:
@@ -231,7 +231,7 @@ class CaMemAllocator:
     def use_memory_pool(self, tag: Optional[str] = None):
         """
         A context manager to use the memory pool.
-        All memory allocation created inside the context will be allocated 
+        All memory allocation created inside the context will be allocated
         in the memory pool, and has the specified tag.
         :param tag: The tag of the memory allocation. If None, the default tag
             will be used.
@@ -258,18 +258,5 @@ class CaMemAllocator:
             # if we have some memory allocated and then freed,
             # the memory will not be released.
             # right now it is fine, because we only use this allocator
-            # during weight loading and kv cache creation, where we only
-            # allocate memory.
-            # TODO: we need to find a way to release the memory,
-            # i.e. calling torch.cuda.empty_cache()
-            self.current_tag = old_tag
-
-    def get_current_usage(self) -> int:
-        """
-        Get the total number of bytes allocated in the memory pool.
-        """
-        sum_bytes: int = 0
-        for ptr, data in self.pointer_to_data.items():
-            handle = data.handle
-            sum_bytes += handle[1]
-        return sum_bytes
+            # during weight loading and kv cache initialization.
+        self.current_tag = old_tag

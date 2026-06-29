@@ -63,7 +63,12 @@ def _get_dsv4_host_kv_budget() -> tuple[str, int] | None:
 
 
 def _is_host_backed_spec(spec: KVCacheSpec, family: str) -> bool:
-    return family == "c128" and getattr(spec, "compress_ratio", None) == 128
+    compress_ratio = getattr(spec, "compress_ratio", None)
+    if family == "c128":
+        return compress_ratio == 128
+    if family == "c4":
+        return compress_ratio == 4
+    return False
 
 
 def _blocks_for_budget(budget_bytes: int, bytes_per_block: int) -> float:

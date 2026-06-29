@@ -2863,7 +2863,7 @@ class NPUModelRunner(GPUModelRunner):
         host_kv_family = envs.VLLM_ASCEND_DSV4_HOST_KV_FAMILY
         host_kv_budget = envs.VLLM_ASCEND_DSV4_HOST_KV_BYTES
         host_kv_enabled = (
-            host_kv_family == "c128"
+            host_kv_family in ("c128", "c4")
             and host_kv_budget is not None
             and host_kv_budget > 0
             and self.vllm_config.kv_transfer_config is None
@@ -2921,7 +2921,14 @@ class NPUModelRunner(GPUModelRunner):
                     num_blocks = kv_cache_config.num_blocks
 
                     if isinstance(layer_spec, Compress4AttentionSpec):
-                        if self.vllm_config.kv_transfer_config is None:
+                        if host_kv_enabled and host_kv_family == "c4":
+                            c4_kv_tensor = _get_host_mapped_int8_tensor(
+                                num_blocks * layer_spec.compress_kv_size_bytes)
+                            indexer_k_tensor = _get_host_mapped_int8_tensor(
+                                num_blocks * layer_spec.indexer_k_size_bytes)
+                            indexer_scale_tensor = _get_host_mapped_int8_tensor(
+                                num_blocks * layer_spec.indexer_scale_size_bytes)
+                        elif self.vllm_config.kv_transfer_config is None:
                             c4_kv_tensor = torch.zeros(
                                 num_blocks * layer_spec.compress_kv_size_bytes,
                                 dtype=torch.int8,
