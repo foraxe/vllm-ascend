@@ -18,12 +18,13 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
+import tests.ut.distributed.ascend_store._mock_deps  # noqa: F401, E402
 from vllm.distributed.kv_events import KVCacheEvent
 
-import tests.ut.distributed.ascend_store._mock_deps  # noqa: F401, E402
 from vllm_ascend.distributed.kv_transfer.kv_pool.ascend_store.ascend_store_connector import (
     AscendStoreConnector,
     AscendStoreKVEvents,
+    LookupKeyServer,
 )
 
 
@@ -342,6 +343,86 @@ class TestAscendStoreConnector(unittest.TestCase):
         result = connector.get_kv_connector_kv_cache_events()
         self.assertIsNotNone(result)
         self.assertIsInstance(result, AscendStoreKVEvents)
+
+
+class _StopServerLoop(Exception):
+    pass
+
+
+class TestLookupKeyServer(unittest.TestCase):
+    @staticmethod
+    def _make_config():
+        config = MagicMock()
+        config.parallel_config.data_parallel_rank = 0
+        config.kv_transfer_config.kv_connector_extra_config = {}
+        return config
+
+    def _run_one_request(self, frames, decoded_values):
+        captured = {}
+
+        class CapturingThread:
+            def __init__(self, target, daemon):
+                captured["target"] = target
+                captured["daemon"] = daemon
+
+            def start(self):
+                pass
+
+        socket = MagicMock()
+        socket.recv_multipart.side_effect = [frames, _StopServerLoop()]
+        worker = MagicMock()
+        worker.lookup_scheduler.return_value = 48
+
+        with (
+            patch(
+                "vllm_ascend.distributed.kv_transfer.kv_pool.ascend_store.ascend_store_connector.make_zmq_socket",
+                return_value=socket,
+            ),
+            patch(
+                "vllm_ascend.distributed.kv_transfer.kv_pool.ascend_store.ascend_store_connector.threading.Thread",
+                CapturingThread,
+            ),
+        ):
+            server = LookupKeyServer(worker, self._make_config(), use_layerwise=False)
+
+        server.decoder.decode.side_effect = decoded_values
+        with self.assertRaises(_StopServerLoop):
+            captured["target"]()
+        socket.send.assert_called_once_with((48).to_bytes(4, "big"))
+        return worker
+
+    def test_new_rpc_frame_forwards_hbm_hit_tokens(self):
+        worker = self._run_one_request(
+            [
+                (64).to_bytes(4, "big"),
+                b"groups",
+                (16).to_bytes(4, "big"),
+                b"hashes",
+            ],
+            [[0, 1], ["h0", "h1"]],
+        )
+
+        worker.lookup_scheduler.assert_called_once_with(
+            64,
+            ["h0", "h1"],
+            [0, 1],
+            False,
+            hbm_hit_tokens=16,
+        )
+
+    def test_legacy_rpc_frame_defaults_hbm_hit_tokens_to_zero(self):
+        worker = self._run_one_request(
+            [(64).to_bytes(4, "big"), b"groups", b"hashes"],
+            [[0], ["h0"]],
+        )
+
+        worker.lookup_scheduler.assert_called_once_with(
+            64,
+            ["h0"],
+            [0],
+            False,
+            hbm_hit_tokens=0,
+        )
 
 
 if __name__ == "__main__":

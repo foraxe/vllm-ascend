@@ -15,6 +15,7 @@
 
 import math
 import os
+from types import SimpleNamespace
 from unittest import mock
 
 import pytest
@@ -235,6 +236,73 @@ class TestUtils(TestBase):
         utils.vllm_version_is("1.0.0")
         hits = utils.vllm_version_is.cache_info().hits
         self.assertEqual(hits, 1)
+
+    def test_get_dsv4_configured_block_size_prefers_saved_user_value(self):
+        self.assertEqual(utils.get_dsv4_configured_block_size(None), 32)
+        self.assertEqual(utils.get_dsv4_configured_block_size(SimpleNamespace(block_size=64)), 64)
+        self.assertEqual(utils.get_dsv4_configured_block_size(SimpleNamespace(block_size=16)), 32)
+
+        cache_config = SimpleNamespace(
+            block_size=2,
+            _ascend_dsv4_user_block_size=128,
+        )
+        self.assertEqual(utils.get_dsv4_configured_block_size(cache_config), 128)
+
+    def test_refresh_dsv4_block_size_valid_and_idempotent(self):
+        cache_config = SimpleNamespace(
+            block_size=64,
+            enable_prefix_caching=True,
+            cache_dtype="auto",
+        )
+        vllm_config = SimpleNamespace(
+            cache_config=cache_config,
+            scheduler_config=SimpleNamespace(enable_chunked_prefill=True),
+            model_config=SimpleNamespace(hf_config=SimpleNamespace(model_type="deepseek_v4")),
+        )
+
+        utils.refresh_block_size(vllm_config)
+        self.assertEqual(cache_config.block_size, 64)
+        self.assertEqual(cache_config._ascend_dsv4_user_block_size, 64)
+
+        # Simulate vLLM replacing runtime block_size with a smaller group size.
+        cache_config.block_size = 2
+        utils.refresh_block_size(vllm_config)
+        self.assertEqual(cache_config.block_size, 2)
+        self.assertEqual(utils.get_dsv4_configured_block_size(cache_config), 64)
+
+    def test_refresh_dsv4_block_size_defaults_and_rejects_unsupported_value(self):
+        for input_block_size in (None, 16):
+            with self.subTest(block_size=input_block_size):
+                cache_config = SimpleNamespace(
+                    block_size=input_block_size,
+                    enable_prefix_caching=False,
+                    cache_dtype="auto",
+                )
+                vllm_config = SimpleNamespace(
+                    cache_config=cache_config,
+                    scheduler_config=SimpleNamespace(enable_chunked_prefill=False),
+                    model_config=SimpleNamespace(hf_config=SimpleNamespace(model_type="deepseek_v4")),
+                )
+
+                utils.refresh_block_size(vllm_config)
+
+                self.assertEqual(cache_config.block_size, 32)
+                self.assertEqual(cache_config._ascend_dsv4_user_block_size, 32)
+
+    def test_refresh_non_dsv4_keeps_platform_default(self):
+        cache_config = SimpleNamespace(
+            block_size=None,
+            enable_prefix_caching=False,
+        )
+        vllm_config = SimpleNamespace(
+            cache_config=cache_config,
+            scheduler_config=None,
+            model_config=SimpleNamespace(hf_config=SimpleNamespace(model_type="llama")),
+        )
+
+        utils.refresh_block_size(vllm_config)
+
+        self.assertEqual(cache_config.block_size, 128)
 
     def test_get_max_hidden_layers(self):
         from transformers import PretrainedConfig

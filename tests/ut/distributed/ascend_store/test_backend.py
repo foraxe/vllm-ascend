@@ -295,6 +295,36 @@ class TestMooncakeBackendMethods(unittest.TestCase):
         b.store.batch_get_into_multi_buffers.return_value = [-1]
         b.get(["k1"], [[100]], [[10]])
 
+    def test_get_multiple_errors_logs_one_bounded_summary(self):
+        b = self._make_backend()
+        b.store.batch_get_into_multi_buffers.return_value = [-1, 0, -2, -3]
+        keys = ["k1", "k2", "k3", "k4"]
+
+        with patch(
+            "vllm_ascend.distributed.kv_transfer.kv_pool.ascend_store.backend.mooncake_backend.logger"
+        ) as logger:
+            b.get(keys, [[100]] * 4, [[10]] * 4)
+
+        logger.error.assert_called_once()
+        self.assertEqual(logger.error.call_args.args[1], 4)
+        self.assertEqual(logger.error.call_args.args[2], keys[:3])
+        self.assertEqual(logger.error.call_args.args[4], 3)
+
+    def test_get_before_lazy_init_logs_key_count_without_backend_call(self):
+        b = self._make_backend()
+        b._lazy_init = True
+        b._store_initialized = False
+        keys = ["k1", "k2", "k3", "k4"]
+
+        with patch(
+            "vllm_ascend.distributed.kv_transfer.kv_pool.ascend_store.backend.mooncake_backend.logger"
+        ) as logger:
+            b.get(keys, [[100]] * 4, [[10]] * 4)
+
+        b.store.batch_get_into_multi_buffers.assert_not_called()
+        logger.error.assert_called_once()
+        self.assertEqual(logger.error.call_args.args[1:], (4, keys[:3]))
+
     def test_get_exception(self):
         b = self._make_backend()
         b.store.batch_get_into_multi_buffers.side_effect = Exception("fail")

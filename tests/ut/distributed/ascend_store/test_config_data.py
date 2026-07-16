@@ -30,7 +30,9 @@ from vllm_ascend.distributed.kv_transfer.kv_pool.ascend_store.config_data import
     PoolKey,
     ReqMeta,
     RequestTracker,
+    get_block_hash_at,
     get_block_hashes,
+    get_num_block_hashes,
 )
 
 _GROUPED_BLOCK_HASH_DOMAIN = b"vllm-ascend-grouped-block-hash-v1\0"
@@ -174,6 +176,56 @@ class TestChunkedTokenDatabase(unittest.TestCase):
 
         self.assertEqual(raw_keys, hex_keys)
 
+    def test_fast_key_string_path_matches_pool_key_path(self):
+        hashes = [bytes([idx]) * 32 for idx in range(1, 5)]
+
+        object_path = [
+            (start, end, key.to_string(), key.chunk_hash_bytes)
+            for start, end, key in self.db.process_tokens(64, hashes)
+        ]
+        string_path = list(self.db.process_token_key_strings(64, hashes))
+
+        self.assertEqual(string_path, object_path)
+
+    def test_fast_key_string_path_honors_max_num_and_filter(self):
+        result = list(
+            self.db.process_token_key_strings(
+                64,
+                [b"a", b"b", b"c", b"d"],
+                max_num=48,
+                chunk_filter=lambda start: start != 16,
+            )
+        )
+
+        self.assertEqual([(start, end) for start, end, _, _ in result], [(0, 16), (32, 48)])
+
+    def test_key_prefix_cache_is_scoped_and_cleared_on_layout_change(self):
+        default_prefix = self.db._get_key_prefix(0)
+        self.assertIs(default_prefix, self.db._get_key_prefix(0))
+
+        self.db.set_group_buffers({}, {}, group_cache_families={0: "c4"})
+        compressed_prefix = self.db._get_key_prefix(0)
+
+        self.assertNotEqual(default_prefix, compressed_prefix)
+        self.assertIn("@cache_family:c4@", compressed_prefix)
+
+    def test_block_hash_helpers_are_lazy_and_bounds_checked(self):
+        hashes = [b"a", b"b", b"c", b"d"]
+
+        self.assertEqual(get_num_block_hashes(hashes, 32, 16), 2)
+        self.assertEqual(get_block_hash_at(hashes, 0, 32, 16), _expected_grouped_hash(b"a", b"b"))
+        self.assertEqual(get_block_hash_at(hashes, 1, 32, 16), _expected_grouped_hash(b"c", b"d"))
+        self.assertIsNone(get_block_hash_at(hashes, 2, 32, 16))
+
+    def test_grouped_hash_sequence_supports_index_slice_and_negative_index(self):
+        grouped = get_block_hashes([b"a", b"b", b"c", b"d"], 32, 16)
+
+        self.assertEqual(grouped[0], _expected_grouped_hash(b"a", b"b"))
+        self.assertEqual(grouped[-1], _expected_grouped_hash(b"c", b"d"))
+        self.assertEqual(grouped[:], list(grouped))
+        with self.assertRaises(IndexError):
+            _ = grouped[2]
+
     def test_get_block_hashes_rehashes_grouped_str_hashes(self):
         result = get_block_hashes(["a", "b", "c", "d"], group_block_size=32, hash_block_size=16)
         self.assertEqual(
@@ -217,6 +269,90 @@ class TestChunkedTokenDatabase(unittest.TestCase):
         addr, size, block_id = self.db.prepare_value(0, 8, [5])
         self.assertEqual(size[0], 80)  # 160/16*8
         self.assertEqual(size[1], 160)  # 320/16*8
+
+    def test_prepare_value_uses_precomputed_block_id(self):
+        addr, size, block_id = self.db.prepare_value(16, 32, [5, 6], block_id=9)
+
+        self.assertEqual(block_id, 9)
+        self.assertEqual(addr, [1000 + 9 * 160, 2000 + 9 * 320])
+        self.assertEqual(size, [160, 320])
+
+    def test_tail_block_ids_are_aligned_to_tail_hashes(self):
+        db = ChunkedTokenDatabase(self.meta, block_size=128, partitions=None)
+        result = list(
+            db.process_token_key_strings_with_block_ids(
+                128 * 128,
+                [bytes([idx % 251]) for idx in range(128)],
+                [1000, 1001, 1002, 1003],
+            )
+        )
+
+        self.assertEqual([start for start, _, _, _, _ in result], [128 * idx for idx in range(124, 128)])
+        self.assertEqual([block_id for _, _, _, _, block_id in result], [1000, 1001, 1002, 1003])
+
+    def test_sparse_key_build_eligibility(self):
+        hashes = [b"a", b"b", b"c", b"d"]
+
+        self.assertTrue(self.db.can_use_sparse_store_mask_key_build(64, hashes, [True] * 4))
+        self.assertFalse(self.db.can_use_sparse_store_mask_key_build(64, hashes, [True] * 3))
+
+        coordinator = MagicMock()
+        coordinator.group_effective_block_sizes = [32]
+        self.db.set_cache_coordinator(coordinator)
+        self.assertFalse(self.db.can_use_sparse_store_mask_key_build(64, hashes, [True] * 4))
+
+    def test_sparse_key_build_applies_mask_and_skips_null_blocks(self):
+        result = list(
+            self.db.process_token_key_strings_with_block_ids_sparse_store_mask(
+                64,
+                [b"a", b"b", b"c", b"d"],
+                [10, 0, 12, 13],
+                [True, True, False, True],
+                skip_null_blocks=True,
+            )
+        )
+
+        self.assertEqual([(start, block_id) for start, _, _, _, block_id in result], [(0, 10), (48, 13)])
+
+    def test_sparse_pre_shard_partitions_candidates_without_loss(self):
+        args = (
+            64,
+            [b"a", b"b", b"c", b"d"],
+            [10, 11, 12, 13],
+            [True, False, True, True],
+        )
+        unsharded = list(self.db.process_token_key_strings_with_block_ids_sparse_store_mask(*args))
+        rank0 = list(
+            self.db.process_token_key_strings_with_block_ids_sparse_store_mask(
+                *args, shard_rank=0, shard_size=2
+            )
+        )
+        rank1 = list(
+            self.db.process_token_key_strings_with_block_ids_sparse_store_mask(
+                *args, shard_rank=1, shard_size=2
+            )
+        )
+
+        self.assertEqual(rank0, [unsharded[0], unsharded[2]])
+        self.assertEqual(rank1, [unsharded[1]])
+
+    def test_store_load_masks_delegate_to_coordinator(self):
+        coordinator = MagicMock()
+        coordinator.store_mask.return_value = ([True, False],)
+        coordinator.load_mask.return_value = ([False, True],)
+        self.db.set_cache_coordinator(coordinator)
+
+        self.assertEqual(self.db.store_mask(32, 47), ([True, False],))
+        self.assertEqual(self.db.load_mask([b"a", b"b"], 32), ([False, True],))
+        coordinator.store_mask.assert_called_once_with(32, 47)
+        coordinator.load_mask.assert_called_once_with([b"a", b"b"], 32)
+
+    def test_mask_allows_chunk_uses_group_block_size(self):
+        masks = ([True, False, True],)
+
+        self.assertTrue(self.db.mask_allows_chunk(masks, 0, 0))
+        self.assertFalse(self.db.mask_allows_chunk(masks, 0, 16))
+        self.assertTrue(self.db.mask_allows_chunk(None, 0, 16))
 
     def test_prepare_value_layer(self):
         addr, size = self.db.prepare_value_layer(0, 16, [5, 6], layer_id=0)
@@ -273,6 +409,7 @@ class TestRequestTracker(unittest.TestCase):
         self.assertEqual(tracker.allocated_block_ids, [10, 20, 30])
         self.assertEqual(len(tracker.token_ids), 48)
         self.assertEqual(tracker.num_saved_tokens, 0)
+        self.assertEqual(tracker.num_prompt_tokens, 100)
 
     def test_from_new_request_nested_block_ids(self):
         new_req = MagicMock()
@@ -402,6 +539,25 @@ class TestReqMeta(unittest.TestCase):
         meta = ReqMeta.from_request_tracker(tracker, block_size=16, original_block_size=8)
         self.assertIsNotNone(meta)
         self.assertEqual(meta.original_block_size, 8)
+
+    def test_from_request_tracker_propagates_prompt_length_and_group_families(self):
+        tracker = RequestTracker(
+            req_id="r1",
+            token_len=32,
+            allocated_block_ids_by_group=[[0, 1], [2, 3]],
+            num_prompt_tokens=65,
+        )
+
+        meta = ReqMeta.from_request_tracker(
+            tracker,
+            block_size=16,
+            kv_cache_group_families=["c128", "c4"],
+        )
+
+        self.assertIsNotNone(meta)
+        self.assertEqual(meta.num_prompt_tokens, 65)
+        self.assertEqual(meta.kv_cache_group_ids, [0, 1])
+        self.assertEqual(meta.kv_cache_families_by_group, ["c128", "c4"])
 
 
 class TestAscendConnectorMetadata(unittest.TestCase):

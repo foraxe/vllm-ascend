@@ -63,6 +63,15 @@ class TestKVPoolScheduler(unittest.TestCase):
         config.cache_config.block_size = block_size
         return config
 
+    @staticmethod
+    def _make_request(prompt_len, request_id="r1"):
+        request = MagicMock()
+        request.prompt_token_ids = list(range(prompt_len))
+        request.num_tokens = prompt_len
+        request.request_id = request_id
+        request.block_hashes = [bytes([idx % 251]) for idx in range(max(prompt_len // 16, 1))]
+        return request
+
     @patch("vllm_ascend.distributed.kv_transfer.kv_pool.ascend_store.pool_scheduler.LookupKeyClient")
     def test_get_num_new_matched_tokens_consumer_no_load(self, mock_client_cls):
         config = self._make_config(kv_role="kv_consumer")
@@ -80,6 +89,83 @@ class TestKVPoolScheduler(unittest.TestCase):
         request.prompt_token_ids = list(range(32))
         result = scheduler.get_num_new_matched_tokens(request, 0)
         self.assertEqual(result, (0, False))
+
+    @patch("vllm_ascend.distributed.kv_transfer.kv_pool.ascend_store.pool_scheduler.LookupKeyClient")
+    def test_retention_threshold_below_skips_lookup(self, mock_client_cls):
+        scheduler = KVPoolScheduler(self._make_config(), use_layerwise=False)
+        scheduler.retention_interval = 16
+        request = self._make_request(31)
+
+        self.assertEqual(scheduler.get_num_new_matched_tokens(request, 0), (0, False))
+        mock_client_cls.return_value.lookup.assert_not_called()
+        self.assertNotIn("r1", scheduler.load_specs)
+
+    @patch("vllm_ascend.distributed.kv_transfer.kv_pool.ascend_store.pool_scheduler.LookupKeyClient")
+    def test_retention_threshold_equal_runs_lookup(self, mock_client_cls):
+        scheduler = KVPoolScheduler(self._make_config(), use_layerwise=False)
+        scheduler.retention_interval = 16
+        mock_client_cls.return_value.lookup.return_value = 16
+        request = self._make_request(32)
+
+        self.assertEqual(scheduler.get_num_new_matched_tokens(request, 4), (12, False))
+        mock_client_cls.return_value.lookup.assert_called_once_with(
+            32,
+            request.block_hashes,
+            [0],
+            hbm_hit_tokens=4,
+        )
+
+    @patch("vllm_ascend.distributed.kv_transfer.kv_pool.ascend_store.pool_scheduler.LookupKeyClient")
+    def test_retention_threshold_above_runs_lookup(self, mock_client_cls):
+        scheduler = KVPoolScheduler(self._make_config(), use_layerwise=False)
+        scheduler.retention_interval = 16
+        mock_client_cls.return_value.lookup.return_value = 32
+        request = self._make_request(48)
+
+        self.assertEqual(scheduler.get_num_new_matched_tokens(request, 0), (32, False))
+        mock_client_cls.return_value.lookup.assert_called_once_with(
+            48,
+            request.block_hashes,
+            [0],
+            hbm_hit_tokens=0,
+        )
+
+    @patch("vllm_ascend.distributed.kv_transfer.kv_pool.ascend_store.pool_scheduler.LookupKeyClient")
+    def test_retention_threshold_below_still_builds_put_metadata(self, mock_client_cls):
+        scheduler = KVPoolScheduler(self._make_config(), use_layerwise=False)
+        scheduler.retention_interval = 16
+        request = self._make_request(31)
+
+        self.assertEqual(scheduler.get_num_new_matched_tokens(request, 0), (0, False))
+        scheduler.update_state_after_alloc(request, MagicMock(), 0)
+
+        scheduled_request = MagicMock()
+        scheduled_request.req_id = "r1"
+        scheduled_request.num_computed_tokens = 0
+        scheduled_request.block_ids = [0]
+        scheduled_request.prompt_token_ids = request.prompt_token_ids
+        scheduler_output = MagicMock()
+        scheduler_output.finished_req_ids = set()
+        scheduler_output.preempted_req_ids = set()
+        scheduler_output.scheduled_new_reqs = [scheduled_request]
+        scheduler_output.num_scheduled_tokens = {"r1": 16}
+        scheduler_output.scheduled_cached_reqs.req_ids = []
+
+        metadata = scheduler.build_connector_meta(scheduler_output)
+
+        self.assertEqual(len(metadata.requests), 1)
+        self.assertTrue(metadata.requests[0].can_save)
+        self.assertIsNone(metadata.requests[0].load_spec)
+        self.assertEqual(metadata.requests[0].num_prompt_tokens, 31)
+
+    @patch("vllm_ascend.distributed.kv_transfer.kv_pool.ascend_store.pool_scheduler.LookupKeyClient")
+    def test_hbm_full_hit_skips_external_lookup(self, mock_client_cls):
+        scheduler = KVPoolScheduler(self._make_config(), use_layerwise=False)
+        scheduler.retention_interval = None
+        request = self._make_request(32)
+
+        self.assertEqual(scheduler.get_num_new_matched_tokens(request, 32), (0, False))
+        mock_client_cls.return_value.lookup.assert_not_called()
 
     @patch("vllm_ascend.distributed.kv_transfer.kv_pool.ascend_store.pool_scheduler.LookupKeyClient")
     def test_get_num_new_matched_tokens_hit(self, mock_client_cls):
@@ -113,6 +199,8 @@ class TestKVPoolScheduler(unittest.TestCase):
 
         need, _ = scheduler.get_num_new_matched_tokens(request, 0)
         self.assertEqual(need, 63)
+        self.assertEqual(scheduler.load_specs["r1"].kvpool_cached_tokens, 63)
+        self.assertEqual(scheduler.load_specs["r1"].kvpool_store_skip_tokens, 64)
 
     @patch("vllm_ascend.distributed.kv_transfer.kv_pool.ascend_store.pool_scheduler.LookupKeyClient")
     def test_get_num_new_matched_tokens_less_than_computed(self, mock_client_cls):
@@ -387,9 +475,18 @@ class TestLookupKeyClient(unittest.TestCase):
         mock_socket.recv.return_value = (32).to_bytes(4, "big")
 
         client = LookupKeyClient(config)
-        result = client.lookup(64, [b"\xaa\xbb"])
+        client.encoder.encode.side_effect = [[b"hash-frame"], [b"group-frame"]]
+        result = client.lookup(64, [b"\xaa\xbb"], [3], hbm_hit_tokens=16)
         self.assertEqual(result, 32)
-        mock_socket.send_multipart.assert_called_once()
+        mock_socket.send_multipart.assert_called_once_with(
+            [
+                (64).to_bytes(4, "big"),
+                b"group-frame",
+                (16).to_bytes(4, "big"),
+                b"hash-frame",
+            ],
+            copy=False,
+        )
 
     @patch("vllm_ascend.distributed.kv_transfer.kv_pool.ascend_store.pool_scheduler.make_zmq_socket")
     @patch("vllm_ascend.distributed.kv_transfer.kv_pool.ascend_store.pool_scheduler.zmq")

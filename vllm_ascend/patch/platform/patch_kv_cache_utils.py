@@ -39,7 +39,7 @@ def _ascend_resolve_kv_cache_block_sizes(
     dcp = vllm_config.parallel_config.decode_context_parallel_size
     pcp = vllm_config.parallel_config.prefill_context_parallel_size
     groups = kv_cache_config.kv_cache_groups
-
+    group_block_sizes = [g.kv_cache_spec.block_size for g in groups]
     if len(groups) <= 1:
         bs = cache_config.block_size * dcp * pcp
         return bs, bs
@@ -48,7 +48,6 @@ def _ascend_resolve_kv_cache_block_sizes(
         # Ascend supports CP with multiple KV cache groups; compute
         # scheduler_block_size using the LCM of all group block sizes
         # multiplied by the CP factors for proper alignment.
-        group_block_sizes = [g.kv_cache_spec.block_size for g in groups]
         scheduler_block_size = math.lcm(*group_block_sizes) * dcp * pcp
         return scheduler_block_size, scheduler_block_size
 

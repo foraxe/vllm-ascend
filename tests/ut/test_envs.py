@@ -14,6 +14,7 @@
 
 import inspect
 import os
+from unittest import mock
 
 import vllm_ascend.envs as envs_ascend
 from tests.ut.base import TestBase
@@ -57,3 +58,14 @@ class TestEnvVariables(TestBase):
         for var_name in self.env_vars:
             with self.subTest(var=var_name):
                 getattr(envs_ascend, var_name)
+
+    def test_prefix_cache_retention_interval_is_optional_integer(self):
+        handler = envs_ascend.env_variables["VLLM_PREFIX_CACHE_RETENTION_INTERVAL"]
+        with self.subTest("unset"), mock.patch.dict(os.environ, {}, clear=True):
+            self.assertIsNone(handler())
+        with self.subTest("set"), mock.patch.dict(
+            os.environ,
+            {"VLLM_PREFIX_CACHE_RETENTION_INTERVAL": "16384"},
+            clear=True,
+        ):
+            self.assertEqual(handler(), 16384)

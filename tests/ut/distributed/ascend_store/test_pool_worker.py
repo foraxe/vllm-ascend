@@ -73,6 +73,132 @@ class TestKVPoolWorkerHelpers(unittest.TestCase):
         result = cls.find_min_first_non_one_index(None, [])
         self.assertEqual(result, -1)
 
+    def _make_coordinator_worker(self, families):
+        cls = self._make_worker_class()
+        worker = object.__new__(cls)
+        worker.cache_coordinator = MagicMock()
+        worker.num_kv_cache_groups = len(families)
+        worker.lookup_reachable_mask = False
+        worker.lookup_full_guard = False
+        worker.group_uses_align_state = [False] * len(families)
+        worker.tp_size = 1
+        worker.pp_size = 1
+        worker.use_mla = False
+        worker.use_sparse = False
+        worker.num_kv_head = 1
+        worker.m_store = MagicMock()
+        worker.token_database = MagicMock()
+        worker.token_database.get_block_size.return_value = 1
+        worker.token_database.hash_block_size = 1
+        worker.token_database.group_cache_families = {
+            "kv": {group_id: family for group_id, family in enumerate(families)}
+        }
+        return worker
+
+    def test_c128_first_candidate_miss_short_circuits_other_groups(self):
+        worker = self._make_coordinator_worker(["c128", "c4"])
+        calls = []
+
+        def process(_token_len, _hashes, **kwargs):
+            group_id = kwargs["kv_cache_group_id"]
+            calls.append(group_id)
+            if group_id == 0:
+                yield 0, 1, "c128-key-0", b"c128-hash-0"
+            else:
+                yield 0, 1, "c4-key-0", b"c4-hash-0"
+
+        worker.token_database.process_token_key_strings.side_effect = process
+        worker.m_store.exists.return_value = [0]
+
+        hit = worker.lookup_scheduler(256, [b"h"] * 256, [0, 1], hbm_hit_tokens=0)
+
+        self.assertEqual(hit, 0)
+        self.assertEqual(calls, [0])
+        worker.cache_coordinator.find_longest_cache_hit.assert_not_called()
+
+    def test_c128_miss_returns_hbm_boundary(self):
+        worker = self._make_coordinator_worker(["c128", "c4"])
+
+        def process(_token_len, _hashes, **kwargs):
+            if kwargs["kv_cache_group_id"] == 0:
+                self.assertEqual(kwargs["mask_num"], 128)
+                yield 1, 2, "c128-key-1", b"c128-hash-1"
+            else:
+                self.fail("non-C128 group must not be queried after gate miss")
+
+        worker.token_database.process_token_key_strings.side_effect = process
+        worker.m_store.exists.return_value = [0]
+
+        hit = worker.lookup_scheduler(256, [bytes([idx % 251]) for idx in range(256)], [0, 1], hbm_hit_tokens=128)
+
+        self.assertEqual(hit, 128)
+
+    def test_c128_partial_hit_bounds_other_group_lookup(self):
+        worker = self._make_coordinator_worker(["c128", "c4"])
+        calls = []
+
+        def process(_token_len, _hashes, **kwargs):
+            group_id = kwargs["kv_cache_group_id"]
+            calls.append((group_id, kwargs["max_num"]))
+            if group_id == 0:
+                yield 0, 1, "c128-key-0", b"c128-hash-0"
+                yield 1, 2, "c128-key-1", b"c128-hash-1"
+            else:
+                yield 0, 1, "c4-key-0", b"c4-hash-0"
+
+        worker.token_database.process_token_key_strings.side_effect = process
+        worker.m_store.exists.side_effect = [[1], [0], [1]]
+        worker.cache_coordinator.find_longest_cache_hit.return_value = ((), 128)
+
+        hit = worker.lookup_scheduler(256, [b"h"] * 256, [0, 1])
+
+        self.assertEqual(hit, 128)
+        self.assertEqual(calls, [(0, 256), (1, 128)])
+        self.assertEqual(worker.cache_coordinator.find_longest_cache_hit.call_args.args[1], 128)
+
+    def test_lookup_reachable_mask_filters_before_key_build(self):
+        worker = self._make_coordinator_worker(["default"])
+        worker.token_database.get_block_size.return_value = 16
+        worker.token_database.hash_block_size = 16
+        worker.lookup_reachable_mask = True
+        worker.cache_coordinator.lcm_block_size = 16
+        worker.cache_coordinator.lookup_mask.return_value = ([False, True],)
+        worker.cache_coordinator.store_mask.return_value = ([True, True],)
+        worker.cache_coordinator.find_longest_cache_hit.return_value = ((), 32)
+
+        def process(_token_len, _hashes, **kwargs):
+            chunk_filter = kwargs["chunk_filter"]
+            for index, start in enumerate((0, 16)):
+                if chunk_filter(start):
+                    yield start, start + 16, f"key-{index}", f"hash-{index}"
+
+        worker.token_database.process_token_key_strings.side_effect = process
+        worker.m_store.exists.return_value = [1]
+
+        hit = worker.lookup_scheduler(32, [b"h0", b"h1"], [0])
+
+        self.assertEqual(hit, 32)
+        worker.m_store.exists.assert_called_once_with(["key-1"])
+
+    def test_lookup_key_variants_cover_tp_and_pp_ranks(self):
+        worker = self._make_coordinator_worker(["default"])
+        worker.tp_size = 2
+        worker.num_kv_head = 4
+        worker.pp_size = 2
+        key = "model@head_or_tp_rank:0@pp_rank:0@hash"
+
+        variants = worker._expand_lookup_key_variants(key, 0, include_all_ranks=True)
+
+        self.assertEqual(
+            variants,
+            [
+                "model@head_or_tp_rank:0@pp_rank:0@hash",
+                "model@head_or_tp_rank:0@pp_rank:1@hash",
+                "model@head_or_tp_rank:1@pp_rank:0@hash",
+                "model@head_or_tp_rank:1@pp_rank:1@hash",
+            ],
+        )
+
 
 class TestKVPoolWorkerInit(unittest.TestCase):
     """Test KVPoolWorker initialization with mocked dependencies."""
@@ -534,6 +660,8 @@ class TestKVPoolWorkerRegisterAndTransfer(unittest.TestCase):
     def test_wait_for_save(self):
         worker = self._make_worker()
         worker.kv_send_thread = MagicMock()
+        worker.kv_send_thread._per_request_save_wait = False
+        worker.kv_send_thread._async_save = False
 
         req = ReqMeta(
             req_id="r1",
@@ -547,6 +675,49 @@ class TestKVPoolWorkerRegisterAndTransfer(unittest.TestCase):
         worker.wait_for_save(meta)
         worker.kv_send_thread.add_stored_request.assert_called_with("r1")
         worker.kv_send_thread.add_request.assert_called_once()
+        worker.kv_send_thread.request_queue.join.assert_called_once()
+
+    def test_wait_for_save_async_does_not_join(self):
+        worker = self._make_worker()
+        worker.kv_send_thread = MagicMock()
+        worker.kv_send_thread._per_request_save_wait = False
+        worker.kv_send_thread._async_save = True
+        req = ReqMeta(
+            req_id="r1",
+            token_len_chunk=16,
+            block_ids=[0],
+            block_hashes=["h0"],
+            can_save=True,
+        )
+        meta = AscendConnectorMetadata(set(), set())
+        meta.add_request(req)
+
+        worker.wait_for_save(meta)
+
+        worker.kv_send_thread.request_queue.join.assert_not_called()
+
+    def test_wait_for_save_per_request_waits_only_own_event(self):
+        worker = self._make_worker()
+        event = MagicMock()
+        event.wait.return_value = True
+        worker.kv_send_thread = MagicMock()
+        worker.kv_send_thread._per_request_save_wait = True
+        worker.kv_send_thread._async_save = True
+        worker.kv_send_thread.prepare_stored_request_done_event.return_value = event
+        req = ReqMeta(
+            req_id="r1",
+            token_len_chunk=16,
+            block_ids=[0],
+            block_hashes=["h0"],
+            can_save=True,
+        )
+        meta = AscendConnectorMetadata(set(), set())
+        meta.add_request(req)
+
+        worker.wait_for_save(meta)
+
+        event.wait.assert_called_once_with(timeout=300)
+        worker.kv_send_thread.request_queue.join.assert_not_called()
 
     def test_wait_for_save_skip_non_save(self):
         worker = self._make_worker()

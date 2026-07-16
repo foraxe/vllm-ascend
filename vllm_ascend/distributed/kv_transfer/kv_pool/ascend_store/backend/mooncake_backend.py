@@ -139,7 +139,12 @@ class MooncakeBackend(Backend):
 
     def get(self, keys: list[str], addrs: list[list[int]], sizes: list[list[int]]):
         if self._lazy_init and not self._store_initialized:
-            logger.error("MooncakeBackend.get called before store initialization, keys=%s", keys)
+            logger.error(
+                "MooncakeBackend.get called before store initialization, "
+                "keys=%d sample_keys=%s",
+                len(keys),
+                keys[:3],
+            )
             return
         assert self.store is not None
         logger.debug(
@@ -150,17 +155,31 @@ class MooncakeBackend(Backend):
         try:
             res = self.store.batch_get_into_multi_buffers(keys, addrs, sizes)
             res_list = list(res)
+            negative_count = sum(1 for value in res_list if value < 0)
             logger.debug(
-                "MooncakeBackend.get result keys=%d result_sample=%s negative_count=%d",
+                "MooncakeBackend.get result keys=%d sample_keys=%s "
+                "result_sample=%s negative_count=%d",
                 len(keys),
+                keys[:3],
                 res_list[:12],
-                sum(1 for value in res_list if value < 0),
+                negative_count,
             )
-            for value in res_list:
-                if value < 0:
-                    logger.error("Failed to get key %s, res:%s", keys, res_list)
+            if negative_count:
+                logger.error(
+                    "Failed to get keys count=%d sample_keys=%s "
+                    "result_sample=%s negative_count=%d",
+                    len(keys),
+                    keys[:3],
+                    res_list[:12],
+                    negative_count,
+                )
         except Exception as e:
-            logger.error("Failed to get key %s, error:%s", keys, e)
+            logger.error(
+                "Failed to get keys count=%d sample_keys=%s error:%s",
+                len(keys),
+                keys[:3],
+                e,
+            )
 
 
 @dataclass
