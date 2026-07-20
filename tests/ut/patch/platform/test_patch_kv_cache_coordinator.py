@@ -48,57 +48,122 @@ def test_deepseek_v4_detection_supports_direct_and_nested_specs() -> None:
     assert coordinator_patch._is_deepseek_v4_kv_cache_config(_config(unrelated, nested))
 
 
-def test_factory_delegates_and_filters_kwargs_when_dsv4_patch_is_disabled() -> None:
-    sentinel = object()
-    received = {}
-
-    def original(kv_cache_config, max_model_len, use_eagle):
-        received.update(
-            kv_cache_config=kv_cache_config,
-            max_model_len=max_model_len,
-            use_eagle=use_eagle,
-        )
-        return sentinel
-
+def test_factory_builds_ascend_coordinator_for_dsv4() -> None:
     config = _config(SimpleNamespace(model_version="deepseek_v4"))
-    with (
-        patch.object(coordinator_patch.envs, "VLLM_ASCEND_APPLY_DSV4_PATCH", False),
-        patch.object(coordinator_patch, "_orig_get_kv_cache_coordinator", original),
-    ):
-        result = _call_factory(config)
-
-    assert result is sentinel
-    assert received == {
-        "kv_cache_config": config,
-        "max_model_len": 4096,
-        "use_eagle": True,
-    }
-
-
-def test_factory_delegates_non_dsv4_config_even_when_patch_is_enabled() -> None:
-    original = MagicMock(return_value="upstream")
-    config = _config(SimpleNamespace(model_version="llama"))
-    with (
-        patch.object(coordinator_patch.envs, "VLLM_ASCEND_APPLY_DSV4_PATCH", True),
-        patch.object(coordinator_patch, "_orig_get_kv_cache_coordinator", original),
-    ):
-        result = _call_factory(config)
-
-    assert result == "upstream"
-    original.assert_called_once()
-
-
-def test_factory_builds_ascend_coordinator_only_for_enabled_dsv4() -> None:
-    config = _config(SimpleNamespace(model_version="deepseek_v4"))
-    with (
-        patch.object(coordinator_patch.envs, "VLLM_ASCEND_APPLY_DSV4_PATCH", True),
-        patch.object(coordinator_patch, "AscendHybridKVCacheCoordinator") as ascend_cls,
-    ):
+    with patch.object(
+        coordinator_patch, "AscendHybridKVCacheCoordinator"
+    ) as ascend_cls:
         result = _call_factory(config)
 
     assert result is ascend_cls.return_value
     assert ascend_cls.call_args.args[:3] == (config, 4096, True)
     assert ascend_cls.call_args.kwargs["max_num_batched_tokens"] == 1024
+
+
+def test_factory_delegates_non_dsv4_config() -> None:
+    original = MagicMock(return_value="upstream")
+    config = _config(SimpleNamespace(model_version="llama"))
+    with patch.object(coordinator_patch, "_orig_get_kv_cache_coordinator", original):
+        result = _call_factory(config)
+
+    assert result == "upstream"
+    original.assert_called_once_with(
+        kv_cache_config=config,
+        max_model_len=4096,
+        max_num_batched_tokens=1024,
+        use_eagle=True,
+        enable_caching=True,
+        enable_kv_cache_events=False,
+        dcp_world_size=1,
+        pcp_world_size=1,
+        hash_block_size=32,
+        eagle_attn_layer_names=None,
+        metrics_collector=None,
+    )
+
+
+def test_factory_filters_unsupported_kwargs_for_non_dsv4_config() -> None:
+    received = {}
+
+    def original(
+        kv_cache_config,
+        max_model_len,
+        max_num_batched_tokens,
+        use_eagle,
+        enable_caching,
+        enable_kv_cache_events,
+        dcp_world_size,
+        pcp_world_size,
+        hash_block_size,
+        metrics_collector=None,
+    ):
+        received.update(
+            kv_cache_config=kv_cache_config,
+            max_model_len=max_model_len,
+            max_num_batched_tokens=max_num_batched_tokens,
+            use_eagle=use_eagle,
+            enable_caching=enable_caching,
+            enable_kv_cache_events=enable_kv_cache_events,
+            dcp_world_size=dcp_world_size,
+            pcp_world_size=pcp_world_size,
+            hash_block_size=hash_block_size,
+            metrics_collector=metrics_collector,
+        )
+        return "upstream"
+
+    config = _config(SimpleNamespace(model_version="llama"))
+    with patch.object(coordinator_patch, "_orig_get_kv_cache_coordinator", original):
+        result = _call_factory(config)
+
+    assert result == "upstream"
+    assert received == {
+        "kv_cache_config": config,
+        "max_model_len": 4096,
+        "max_num_batched_tokens": 1024,
+        "use_eagle": True,
+        "enable_caching": True,
+        "enable_kv_cache_events": False,
+        "dcp_world_size": 1,
+        "pcp_world_size": 1,
+        "hash_block_size": 32,
+        "metrics_collector": None,
+    }
+
+
+def test_compressed_group_disables_eagle_adjustment_for_all_groups() -> None:
+    compressed_spec = SimpleNamespace(block_size=128, compress_ratio=128)
+    uncompressed_spec = SimpleNamespace(block_size=128, compress_ratio=1)
+    config = SimpleNamespace(
+        num_blocks=32,
+        kv_cache_groups=[
+            SimpleNamespace(kv_cache_spec=compressed_spec, is_eagle_group=False),
+            SimpleNamespace(kv_cache_spec=uncompressed_spec, is_eagle_group=True),
+        ],
+    )
+    with (
+        patch.object(coordinator_patch, "BlockPool"),
+        patch.object(
+            coordinator_patch,
+            "get_manager_for_kv_cache_spec",
+            side_effect=[MagicMock(kv_cache_group_id=0), MagicMock(kv_cache_group_id=1)],
+        ),
+        patch.object(
+            coordinator_patch.AscendHybridKVCacheCoordinator,
+            "verify_and_split_kv_cache_groups",
+        ),
+    ):
+        coordinator = coordinator_patch.AscendHybridKVCacheCoordinator(
+            kv_cache_config=config,
+            max_model_len=32768,
+            use_eagle=True,
+            enable_caching=False,
+            enable_kv_cache_events=False,
+            dcp_world_size=1,
+            pcp_world_size=1,
+            hash_block_size=128,
+        )
+
+    assert coordinator.eagle_group_ids == set()
 
 
 def test_ascend_coordinator_cache_blocks_forwards_group_eagle_flags() -> None:

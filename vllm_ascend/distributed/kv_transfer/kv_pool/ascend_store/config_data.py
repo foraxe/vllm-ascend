@@ -901,16 +901,6 @@ class _LazyGroupedBlockHashList(Sequence[BlockHash]):
         for idx in range(self._length):
             yield self[idx]
 
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, Sequence):
-            return NotImplemented
-        return len(self) == len(other) and all(
-            left == right for left, right in zip(self, other, strict=True)
-        )
-
-    def __repr__(self) -> str:
-        return repr(list(self))
-
     def __getitem__(self, index):
         if isinstance(index, slice):
             return [self[idx] for idx in range(*index.indices(self._length))]

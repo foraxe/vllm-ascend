@@ -229,7 +229,7 @@ class TestChunkedTokenDatabase(unittest.TestCase):
     def test_get_block_hashes_rehashes_grouped_str_hashes(self):
         result = get_block_hashes(["a", "b", "c", "d"], group_block_size=32, hash_block_size=16)
         self.assertEqual(
-            result,
+            list(result),
             [
                 _expected_grouped_hash("a", "b"),
                 _expected_grouped_hash("c", "d"),
@@ -241,14 +241,14 @@ class TestChunkedTokenDatabase(unittest.TestCase):
         hex_hashes = [block_hash.hex() for block_hash in raw_hashes]
 
         self.assertEqual(
-            get_block_hashes(hex_hashes, group_block_size=32, hash_block_size=16),
-            get_block_hashes(raw_hashes, group_block_size=32, hash_block_size=16),
+            list(get_block_hashes(hex_hashes, group_block_size=32, hash_block_size=16)),
+            list(get_block_hashes(raw_hashes, group_block_size=32, hash_block_size=16)),
         )
 
     def test_get_block_hashes_rehashes_grouped_bytes_hashes(self):
         result = get_block_hashes([b"a", b"b", b"c", b"d"], group_block_size=32, hash_block_size=16)
         self.assertEqual(
-            result,
+            list(result),
             [
                 _expected_grouped_hash(b"a", b"b"),
                 _expected_grouped_hash(b"c", b"d"),

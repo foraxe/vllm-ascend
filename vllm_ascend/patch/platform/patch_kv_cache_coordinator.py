@@ -22,7 +22,6 @@ from vllm.v1.core.single_type_kv_cache_manager import SingleTypeKVCacheManager
 from vllm.v1.kv_cache_interface import FullAttentionSpec, KVCacheConfig, KVCacheSpec, MambaSpec
 
 from vllm_ascend.core.single_type_kv_cache_manager import get_manager_for_kv_cache_spec
-from vllm_ascend import envs
 from vllm_ascend.patch.platform.patch_prefix_cache_retention import (
     get_prefix_cache_retention_interval,
 )
@@ -109,21 +108,19 @@ class AscendHybridKVCacheCoordinator(HybridKVCacheCoordinator):
             metrics_collector,
         )
 
-        compressed_group_ids = {
-            i
-            for i, group in enumerate(kv_cache_config.kv_cache_groups)
-            if _compress_ratio(group.kv_cache_spec) > 1
-        }
-        marked_eagle_group_ids = {
-            i for i, group in enumerate(kv_cache_config.kv_cache_groups)
-            if getattr(group, "is_eagle_group", False)
-        }
-        self.eagle_group_ids = marked_eagle_group_ids - compressed_group_ids
-        if use_eagle and not self.eagle_group_ids:
-            # Compressed groups are aligned to large chunks. Dropping one EAGLE
-            # block there can erase the entire aligned hit, so only apply the
-            # one-block adjustment to uncompressed groups.
-            self.eagle_group_ids = set(range(len(kv_cache_config.kv_cache_groups))) - compressed_group_ids
+        has_compressed_group = any(
+            _compress_ratio(group.kv_cache_spec) > 1 for group in kv_cache_config.kv_cache_groups
+        )
+        if use_eagle and has_compressed_group:
+            # DSV4 local hits are aligned to compressed chunks (for example 16K).
+            # Dropping one c4/c128 chunk can erase the whole aligned hit.
+            self.eagle_group_ids: set[int] = set()
+        else:
+            self.eagle_group_ids = {
+                i for i, g in enumerate(kv_cache_config.kv_cache_groups) if getattr(g, "is_eagle_group", False)
+            }
+            if use_eagle and not self.eagle_group_ids:
+                self.eagle_group_ids = set(range(len(kv_cache_config.kv_cache_groups)))
 
         self.single_type_managers = tuple(
             get_manager_for_kv_cache_spec(
@@ -331,7 +328,7 @@ def get_kv_cache_coordinator(
     eagle_attn_layer_names: list[str] | None = None,
     metrics_collector: KVCacheMetricsCollector | None = None,
 ) -> KVCacheCoordinator:
-    if not envs.VLLM_ASCEND_APPLY_DSV4_PATCH or not _is_deepseek_v4_kv_cache_config(kv_cache_config):
+    if not _is_deepseek_v4_kv_cache_config(kv_cache_config):
         call_kwargs = {
             "kv_cache_config": kv_cache_config,
             "max_model_len": max_model_len,

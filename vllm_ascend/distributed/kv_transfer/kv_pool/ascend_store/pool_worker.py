@@ -1020,7 +1020,7 @@ class KVPoolWorker:
 
         lookup_limit = token_len
 
-        def lookup_group(group_id: int, *, probe_first: bool = False) -> tuple[bool, int, int]:
+        def lookup_group(group_id: int) -> tuple[bool, int, int]:
             keys: list[str] = []
             chunk_hashes: list[BlockHash | str] = []
             chunk_ranges: list[tuple[int, int]] = []
@@ -1056,49 +1056,14 @@ class KVPoolWorker:
                     return False
                 return True
 
-            candidates = iter(
-                self.token_database.process_token_key_strings(
-                    token_len,
-                    block_hashes,
-                    mask_num=lookup_start,
-                    kv_cache_group_id=group_id,
-                    max_num=lookup_limit,
-                    chunk_filter=lookup_chunk_filter,
-                )
-            )
-            contiguous_hit_end = lookup_start
-            queried_key_count = 0
-            sample_keys: list[str] = []
-
-            if probe_first:
-                try:
-                    start_idx, end_idx, key_string, chunk_hash = next(candidates)
-                except StopIteration:
-                    return False, lookup_start, lookup_start
-
-                variants = self._expand_lookup_key_variants(key_string, group_id, include_all_ranks)
-                values = self.m_store.exists(variants)  # type: ignore[assignment]
-                queried_key_count += len(variants)
-                sample_keys.extend(variants[:3])
-                first_hit = bool(values) and all(value == 1 for value in values)  # type: ignore[arg-type]
-                if first_hit:
-                    exists.add((group_id, self._chunk_hash_to_bytes(chunk_hash)))
-                chunk_start = start_idx * cache_family_ratio
-                chunk_end = end_idx * cache_family_ratio
-                if not first_hit or chunk_start != lookup_start:
-                    logger.debug(
-                        "KV pool coordinator first-candidate probe group=%d hit=%s "
-                        "lookup_start=%d chunk_start=%d keys=%d",
-                        group_id,
-                        first_hit,
-                        lookup_start,
-                        chunk_start,
-                        len(variants),
-                    )
-                    return True, lookup_start, lookup_start
-                contiguous_hit_end = min(chunk_end, lookup_limit)
-
-            for start_idx, end_idx, key_string, chunk_hash in candidates:
+            for start_idx, end_idx, key_string, chunk_hash in self.token_database.process_token_key_strings(
+                token_len,
+                block_hashes,
+                mask_num=lookup_start,
+                kv_cache_group_id=group_id,
+                max_num=lookup_limit,
+                chunk_filter=lookup_chunk_filter,
+            ):
                 variants = self._expand_lookup_key_variants(key_string, group_id, include_all_ranks)
                 keys.extend(variants)
                 chunk_hashes.append(chunk_hash)
@@ -1106,13 +1071,11 @@ class KVPoolWorker:
                 variant_counts.append(len(variants))
 
             if not keys:
-                return probe_first, lookup_start, contiguous_hit_end
+                return False, lookup_start, lookup_start
 
             res = self.m_store.exists(keys)  # type: ignore[assignment]
-            queried_key_count += len(keys)
-            if len(sample_keys) < 3:
-                sample_keys.extend(keys[: 3 - len(sample_keys)])
             offset = 0
+            contiguous_hit_end = lookup_start
             prefix_is_contiguous = True
             for chunk_hash, chunk_range, count in zip(
                 chunk_hashes,
@@ -1136,10 +1099,10 @@ class KVPoolWorker:
                 "KV pool coordinator lookup group=%d token_len=%d keys=%d exists_chunks=%d/%d sample_keys=%s",
                 group_id,
                 token_len,
-                queried_key_count,
+                len(keys),
                 sum(1 for group, _ in exists if group == group_id),
-                len(chunk_hashes) + int(probe_first),
-                sample_keys,
+                len(chunk_hashes),
+                keys[:3],
             )
             return True, lookup_start, contiguous_hit_end
 
@@ -1150,11 +1113,9 @@ class KVPoolWorker:
         c128_group_ids = [group_id for group_id in kv_cache_group_ids if is_c128_group(group_id)]
         queried_c128_groups: set[int] = set()
         c128_prefix_limit = token_len
-        if not self.lookup_full_guard:
+        if self.lookup_full_guard:
             for group_id in c128_group_ids:
-                queried, group_lookup_start, contiguous_hit_end = lookup_group(
-                    group_id, probe_first=True
-                )
+                queried, group_lookup_start, contiguous_hit_end = lookup_group(group_id)
                 queried_c128_groups.add(group_id)
                 if queried:
                     c128_prefix_limit = min(c128_prefix_limit, contiguous_hit_end)

@@ -79,7 +79,7 @@ class TestKVPoolWorkerHelpers(unittest.TestCase):
         worker.cache_coordinator = MagicMock()
         worker.num_kv_cache_groups = len(families)
         worker.lookup_reachable_mask = False
-        worker.lookup_full_guard = False
+        worker.lookup_full_guard = True
         worker.group_uses_align_state = [False] * len(families)
         worker.tp_size = 1
         worker.pp_size = 1
@@ -133,7 +133,27 @@ class TestKVPoolWorkerHelpers(unittest.TestCase):
 
         self.assertEqual(hit, 128)
 
-    def test_c128_partial_hit_bounds_other_group_lookup(self):
+    def test_c128_guard_disabled_defers_to_full_coordinator_lookup(self):
+        worker = self._make_coordinator_worker(["c128", "c4"])
+        worker.lookup_full_guard = False
+        calls = []
+
+        def process(_token_len, _hashes, **kwargs):
+            group_id = kwargs["kv_cache_group_id"]
+            calls.append(group_id)
+            yield 0, 1, f"key-{group_id}", f"hash-{group_id}"
+
+        worker.token_database.process_token_key_strings.side_effect = process
+        worker.m_store.exists.side_effect = [[0], [1]]
+        worker.cache_coordinator.find_longest_cache_hit.return_value = ((), 0)
+
+        hit = worker.lookup_scheduler(256, [b"h"] * 256, [0, 1])
+
+        self.assertEqual(hit, 0)
+        self.assertEqual(calls, [0, 1])
+        worker.cache_coordinator.find_longest_cache_hit.assert_called_once()
+
+    def test_c128_partial_hit_single_batch_bounds_other_group_lookup(self):
         worker = self._make_coordinator_worker(["c128", "c4"])
         calls = []
 
@@ -147,13 +167,18 @@ class TestKVPoolWorkerHelpers(unittest.TestCase):
                 yield 0, 1, "c4-key-0", b"c4-hash-0"
 
         worker.token_database.process_token_key_strings.side_effect = process
-        worker.m_store.exists.side_effect = [[1], [0], [1]]
+        worker.m_store.exists.side_effect = [[1, 0], [1]]
         worker.cache_coordinator.find_longest_cache_hit.return_value = ((), 128)
 
         hit = worker.lookup_scheduler(256, [b"h"] * 256, [0, 1])
 
         self.assertEqual(hit, 128)
         self.assertEqual(calls, [(0, 256), (1, 128)])
+        self.assertEqual(worker.m_store.exists.call_count, 2)
+        self.assertEqual(
+            worker.m_store.exists.call_args_list[0].args[0],
+            ["c128-key-0", "c128-key-1"],
+        )
         self.assertEqual(worker.cache_coordinator.find_longest_cache_hit.call_args.args[1], 128)
 
     def test_lookup_reachable_mask_filters_before_key_build(self):

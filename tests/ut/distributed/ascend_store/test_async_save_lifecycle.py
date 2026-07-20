@@ -40,6 +40,8 @@ AscendConnectorMetadata = local_config_data.AscendConnectorMetadata
 LoadSpec = local_config_data.LoadSpec
 ReqMeta = local_config_data.ReqMeta
 KVCacheStoreSendingThread = local_kv_transfer.KVCacheStoreSendingThread
+KVCacheStoreRecvingThread = local_kv_transfer.KVCacheStoreRecvingThread
+KVCacheStoreLayerRecvingThread = local_kv_transfer.KVCacheStoreLayerRecvingThread
 KVPoolScheduler = local_pool_scheduler.KVPoolScheduler
 KVPoolWorker = local_pool_worker.KVPoolWorker
 
@@ -243,6 +245,67 @@ def test_process_request_exception_dec_stored_request_and_task_done():
         thread._process_request(req)
 
     assert thread.stored_requests["r1"] == 0
+    assert thread.request_queue.unfinished_tasks == 0
+
+
+def test_process_request_early_return_marks_task_done():
+    thread = KVCacheStoreSendingThread(
+        m_store=FakeStore(),
+        token_database=FakeTokenDatabase(),
+        block_size=16,
+        tp_rank=0,
+        dcp_size=1,
+        put_step=1,
+        kv_role="kv_producer",
+        ready_event=threading.Event(),
+    )
+    req = make_req()
+    thread.request_queue.put(req)
+
+    thread._process_request(req)
+
+    assert thread.request_queue.unfinished_tasks == 0
+
+
+def test_process_recv_exception_marks_finished_and_task_done():
+    thread = KVCacheStoreRecvingThread(
+        m_store=FakeStore(),
+        token_database=FakeTokenDatabase(),
+        block_size=16,
+        tp_rank=0,
+        dcp_size=1,
+        ready_event=threading.Event(),
+    )
+    req = make_req()
+    thread.request_queue.put(req)
+    thread._handle_request = MagicMock(side_effect=RuntimeError("load failed"))
+
+    with pytest.raises(RuntimeError, match="load failed"):
+        thread._process_request(req)
+
+    assert thread.get_and_clear_finished_requests() == {"r1"}
+    assert thread.request_queue.unfinished_tasks == 0
+
+
+def test_process_layer_recv_exception_sets_event_and_task_done():
+    get_event = threading.Event()
+    thread = KVCacheStoreLayerRecvingThread(
+        m_store=FakeStore(),
+        token_database=FakeTokenDatabase(),
+        block_size=16,
+        tp_rank=0,
+        dcp_size=1,
+        ready_event=threading.Event(),
+        get_event=get_event,
+    )
+    req = SimpleNamespace(req_id="r1")
+    thread.request_queue.put(req)
+    thread._handle_request = MagicMock(side_effect=RuntimeError("layer load failed"))
+
+    with pytest.raises(RuntimeError, match="layer load failed"):
+        thread._process_request(req)
+
+    assert get_event.is_set()
     assert thread.request_queue.unfinished_tasks == 0
 
 
