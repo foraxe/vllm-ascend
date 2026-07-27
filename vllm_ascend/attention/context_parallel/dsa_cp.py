@@ -916,6 +916,7 @@ class AscendDSACPImpl(DSAAttentionImpl):
 
         self.wo_a = kwargs["wo_a"]
         self.wo_b = kwargs["wo_b"]
+        self._batched_wo_a: torch.Tensor | None = None
 
         self.eps = kwargs["eps"]
 
@@ -964,23 +965,26 @@ class AscendDSACPImpl(DSAAttentionImpl):
                 "DSA-CP expects full-head attn_sink loaded on every TP rank, "
                 f"got {self.attn_sink.numel()} heads, expected {self.num_heads}."
             )
-        if not olora_tp_enable() and self.wo_a.weight.dim() == 2:
-            wo_a = self.wo_a.weight
+
+    def _get_batched_wo_a(self) -> torch.Tensor:
+        wo_a = self.wo_a.weight
+        if wo_a.dim() == 3:
+            return wo_a
+        if self._batched_wo_a is None:
             expected_output_size = self.n_local_groups * self.o_lora_rank
             if wo_a.shape[0] != expected_output_size:
                 raise RuntimeError(
                     "DSA-CP expected a ColumnParallel wo_a weight with "
                     f"{expected_output_size} output rows, got {tuple(wo_a.shape)}."
                 )
-            # ColumnParallelLinear stores the ordinary linear layout
-            # [group * o_lora_rank, head_dim]. DSA-CP's batched matmul takes
-            # [group, head_dim, o_lora_rank]. Production checkpoint loading
-            # already materializes this layout; DummyModelLoader leaves the
-            # raw two-dimensional parameter. Convert it once after loading so
-            # the hot forward path stays allocation-free.
-            self.wo_a.weight.data = wo_a.data.transpose(0, 1).contiguous().view(
+            # DummyModelLoader keeps ColumnParallelLinear's raw [out, in]
+            # layout, while the DSA-CP batched matmul consumes
+            # [group, in, o_lora_rank]. Cache the transposed layout per layer
+            # so only the first (unprofiled) warmup performs this allocation.
+            self._batched_wo_a = wo_a.transpose(0, 1).contiguous().view(
                 self.n_local_groups, wo_a.shape[1], self.o_lora_rank
             )
+        return self._batched_wo_a
 
     def forward(  # type: ignore[override]
         self,
@@ -1009,7 +1013,7 @@ class AscendDSACPImpl(DSAAttentionImpl):
             # o = torch.einsum("tgd,grd->tgr", o, wo_a)
             o_proj_tmp = torch_npu.npu_transpose_batchmatmul(
                 o_proj_input,
-                self.wo_a.weight,
+                self._get_batched_wo_a(),
                 bias=None,
                 scale=None,
                 perm_x1=(1, 0, 2),
