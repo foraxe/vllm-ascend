@@ -149,6 +149,17 @@ chunk (320 tokens/rank, five 64-token blocks). It changes
 `hidden AllGather + 16x WKV` to `one owner WKV + direct-out` without changing
 the existing attention kernel.
 
+Before that device prototype, run the CPU semantic oracle:
+
+```bash
+python -m pytest tests/ut/attention/test_dsa_cp_owner_placement_reference.py -q
+```
+
+It proves owner-local stateless WKV plus direct target-slot placement matches
+the gathered-hidden reference cache, rejects colliding target slots, and
+explicitly demonstrates why stateful C4/C128 compression needs a prefix-state
+protocol instead of this first shortcut.
+
 ### Track C: cold-history capacity after TTFT path is sound
 
 8. Owner-shard C128 compressed history by logical page modulo 16; keep Q,
