@@ -103,6 +103,11 @@ both files contain three successful timed samples. The 2026-07-27 B0 result
 with this exact workload is `6191.205 tok/s` median (range `6108.545` to
 `6245.094`); it is synthetic path evidence only.
 
+The first A/B result is `FAIL`: overlap=1 reached `6037.137 tok/s` median
+(`-2.4885%` versus B0), with all B0 and overlap=1 validity fields unchanged.
+Do not tune this flag further for this workload without a changed code path or
+a profile proving a different overlap opportunity.
+
 ## DSA-CP optimization tasks from the design notes
 
 ### Track A: immediate measurement and low-risk implementation
