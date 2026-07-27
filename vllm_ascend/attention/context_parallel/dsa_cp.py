@@ -989,11 +989,17 @@ class AscendDSACPImpl(DSAAttentionImpl):
         if olora_tp_enable():
             o_proj_tmp = self.wo_a(o_proj_input)
         else:
-            # wo_a = self.wo_a.weight.view(self.n_local_groups, self.o_lora_rank, -1)
+            # Checkpoint loading normally materializes this weight in batched
+            # form. DummyModelLoader initializes the original 2-D parameter,
+            # so materialize that equivalent view here as well. Keeping an
+            # already-batched weight untouched preserves the production path.
+            wo_a = self.wo_a.weight
+            if wo_a.dim() == 2:
+                wo_a = wo_a.view(self.n_local_groups, self.o_lora_rank, -1)
             # o = torch.einsum("tgd,grd->tgr", o, wo_a)
             o_proj_tmp = torch_npu.npu_transpose_batchmatmul(
                 o_proj_input,
-                self.wo_a.weight,
+                wo_a,
                 bias=None,
                 scale=None,
                 perm_x1=(1, 0, 2),
