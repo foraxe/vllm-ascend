@@ -73,7 +73,7 @@ rtk proxy env KUBECONFIG=/Users/nyx/.kube/wulan-htest4.yaml kubectl --context=a3
   RUN_ID=synthetic64_overlap0 \
   SYNTHETIC_ROUTED_EXPERTS=64 \
   ALLOW_SYNTHETIC_WEIGHTS=1 \
-  ENABLE_DSA_LAYER_SHARDING=0 \
+  ENABLE_DSA_LAYER_SHARDING=1 \
   ENABLE_PREFILL_COMM_COMPUTE_OVERLAP=0 \
   nohup ./start_single_node.sh > launcher_synthetic64_overlap0.log 2>&1 &
 '
@@ -92,14 +92,16 @@ remote role directory:
 
 ```bash
 python3 bench_prefill_only.py \
-  --words 4096 --warmup 2 --runs 5 --timeout 600 \
-  --output result_synthetic64_prefill_overlap0.json
+  --words 8192 --warmup 1 --runs 3 --timeout 600 \
+  --output results/b0_8k_perf.json
 ```
 
 For the only valid immediate A/B, restart with
 `ENABLE_PREFILL_COMM_COMPUTE_OVERLAP=1`, retain all other fields, and write
-`result_synthetic64_prefill_overlap1.json`. Compare median prompt tokens/s
-only after both files contain five successful samples.
+`results/overlap1_8k_perf.json`. Compare median prompt tokens/s only after
+both files contain three successful timed samples. The 2026-07-27 B0 result
+with this exact workload is `6191.205 tok/s` median (range `6108.545` to
+`6245.094`); it is synthetic path evidence only.
 
 ## DSA-CP optimization tasks from the design notes
 
@@ -108,6 +110,8 @@ only after both files contain five successful samples.
 1. Establish a clean B0 synthetic baseline, then A/B
    `prefill_comm_compute_overlap`. This is the existing pure-prefill overlap
    path; `multistream_dsa_preprocess` is decode-only and is not a prefill A/B.
+   The B0 profile shows the largest communication kernel-sum is variable-size
+   MoE `alltoallv` dispatch/return; this A/B tests whether it is hidden.
 2. Add a current-KV execution view: attention consumes WKV/compressed/indexer
    artifacts before their paged-cache scatter completes; page publication and
    P/D/store persistence become asynchronous.
@@ -156,6 +160,42 @@ the existing attention kernel.
 
 Do not owner-shard the dense SWA hot window first: it is repeatedly reused and
 remote reads would put fabric latency on the critical attention path.
+
+## Ascend VMM and peer-memory feasibility gate
+
+CUDA VMM cannot be called from this NPU implementation. The CANN counterparts
+exist, but they are a separate R&D gate rather than a launch flag:
+
+```text
+aclrtReserveMemAddress       reserve virtual address space
+aclrtMemGetAllocationGranularity
+aclrtMallocPhysical          create physical allocation
+aclrtMapMem / aclrtUnmapMem  map/unmap an allocation
+aclrtMemSetAccess            set access permission
+aclrtMemExportToShareableHandleV2 / aclrtMemImportFromShareableHandleV2
+aclrtDeviceCanAccessPeer / aclrtDeviceEnablePeerAccess
+```
+
+`vllm_ascend/csrc/camem_allocator.cpp` already uses local reserve/physical
+allocation/map for its allocator. It does **not** export/import peer mappings,
+and `dsa_cp.py` passes ordinary local cache tensors to
+`npu_sparse_attn_sharedkv`. A VMM map alone therefore does not prove that the
+stock fused attention operator can dereference remote rows.
+
+Run a separate two-process probe before modifying DSA-CP:
+
+1. On the intended rank edges, verify the CANN symbols and that
+   `aclrtDeviceCanAccessPeer` returns `1`.
+2. Export a 64 MiB physical allocation from rank 0, import/map it in rank 1 at
+   an allocation-granular VA, and verify deterministic rank-1 read/write with
+   explicit synchronization and exporter lifetime held.
+3. Only then prove an AscendC accessor or a supported `HcclBatchGet/Put` path
+   can consume it. Do not assume a PyTorch tensor or the stock sparse-attention
+   kernel accepts a mapped remote pointer.
+
+For immediate TTFT, use HCCL staged owner/fan-out experiments first. VMM is
+the enabling path for the later owner-direct-placement prototype, not for MoE
+`alltoallv` dispatch/return.
 
 ## Result labels
 
