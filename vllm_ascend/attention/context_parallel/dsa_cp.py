@@ -964,6 +964,23 @@ class AscendDSACPImpl(DSAAttentionImpl):
                 "DSA-CP expects full-head attn_sink loaded on every TP rank, "
                 f"got {self.attn_sink.numel()} heads, expected {self.num_heads}."
             )
+        if not olora_tp_enable() and self.wo_a.weight.dim() == 2:
+            wo_a = self.wo_a.weight
+            expected_output_size = self.n_local_groups * self.o_lora_rank
+            if wo_a.shape[0] != expected_output_size:
+                raise RuntimeError(
+                    "DSA-CP expected a ColumnParallel wo_a weight with "
+                    f"{expected_output_size} output rows, got {tuple(wo_a.shape)}."
+                )
+            # ColumnParallelLinear stores the ordinary linear layout
+            # [group * o_lora_rank, head_dim]. DSA-CP's batched matmul takes
+            # [group, head_dim, o_lora_rank]. Production checkpoint loading
+            # already materializes this layout; DummyModelLoader leaves the
+            # raw two-dimensional parameter. Convert it once after loading so
+            # the hot forward path stays allocation-free.
+            self.wo_a.weight.data = wo_a.data.transpose(0, 1).contiguous().view(
+                self.n_local_groups, wo_a.shape[1], self.o_lora_rank
+            )
 
     def forward(  # type: ignore[override]
         self,
@@ -989,17 +1006,10 @@ class AscendDSACPImpl(DSAAttentionImpl):
         if olora_tp_enable():
             o_proj_tmp = self.wo_a(o_proj_input)
         else:
-            # Checkpoint loading normally materializes this weight in batched
-            # form. DummyModelLoader initializes the original 2-D parameter,
-            # so materialize that equivalent view here as well. Keeping an
-            # already-batched weight untouched preserves the production path.
-            wo_a = self.wo_a.weight
-            if wo_a.dim() == 2:
-                wo_a = wo_a.view(self.n_local_groups, self.o_lora_rank, -1)
             # o = torch.einsum("tgd,grd->tgr", o, wo_a)
             o_proj_tmp = torch_npu.npu_transpose_batchmatmul(
                 o_proj_input,
-                wo_a,
+                self.wo_a.weight,
                 bias=None,
                 scale=None,
                 perm_x1=(1, 0, 2),
