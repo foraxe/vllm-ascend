@@ -69,3 +69,14 @@ class TestEnvVariables(TestBase):
             clear=True,
         ):
             self.assertEqual(handler(), 16384)
+
+    def test_kvpool_retention_lookup_factor(self):
+        handler = envs_ascend.env_variables["VLLM_ASCEND_KVPOOL_RETENTION_LOOKUP_FACTOR"]
+        with self.subTest("default"), mock.patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(handler(), 2)
+        with self.subTest("override"), mock.patch.dict(
+            os.environ,
+            {"VLLM_ASCEND_KVPOOL_RETENTION_LOOKUP_FACTOR": "3"},
+            clear=True,
+        ):
+            self.assertEqual(handler(), 3)

@@ -1,4 +1,5 @@
 import math
+import os
 from typing import Any, cast
 
 import vllm.envs as envs
@@ -78,6 +79,7 @@ class KVPoolScheduler:
         self.load_async = vllm_config.kv_transfer_config.kv_connector_extra_config.get("load_async", False)
         retention_interval = getattr(envs, "VLLM_PREFIX_CACHE_RETENTION_INTERVAL", None)
         self.retention_interval = retention_interval if isinstance(retention_interval, int) else None
+        self.retention_lookup_factor = int(os.getenv("VLLM_ASCEND_KVPOOL_RETENTION_LOOKUP_FACTOR", "2"))
         self.client = LookupKeyClient(vllm_config)
         # request_id -> (vllm cached tokes, kvpool cached tokens)
         self.load_specs: dict[str, LoadSpec] = {}
@@ -221,7 +223,10 @@ class KVPoolScheduler:
             return 0, False
 
         prompt_token_len = len(request.prompt_token_ids)
-        if self.retention_interval is not None and prompt_token_len < 2 * self.retention_interval:
+        if (
+            self.retention_interval is not None
+            and prompt_token_len < self.retention_lookup_factor * self.retention_interval
+        ):
             return 0, False
 
         if self._discard_partial_chunks:

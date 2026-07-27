@@ -114,6 +114,10 @@ env_variables: dict[str, Callable[[], Any]] = {
     "VLLM_ASCEND_ENABLE_BATCH_MEMCPY": lambda: os.getenv("VLLM_ASCEND_ENABLE_BATCH_MEMCPY", None),
     # Whether to use MultiBlockPool for KV cache management
     "VLLM_ASCEND_APPLY_DSV4_PATCH": lambda: bool(int(os.getenv("VLLM_ASCEND_APPLY_DSV4_PATCH", "0"))),
+    # Minimum prompt length, in retention intervals, before KVPool lookup.
+    "VLLM_ASCEND_KVPOOL_RETENTION_LOOKUP_FACTOR": lambda: int(
+        os.getenv("VLLM_ASCEND_KVPOOL_RETENTION_LOOKUP_FACTOR", "2")
+    ),
     # Retain local sliding-window KV checkpoints for prefix caching.
     # This mirrors vLLM's VLLM_PREFIX_CACHE_RETENTION_INTERVAL.
     "VLLM_PREFIX_CACHE_RETENTION_INTERVAL": lambda: (

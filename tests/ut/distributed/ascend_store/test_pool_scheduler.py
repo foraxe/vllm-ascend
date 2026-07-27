@@ -15,6 +15,7 @@
 # This file is a part of the vllm-ascend project.
 #
 
+import os
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -114,6 +115,16 @@ class TestKVPoolScheduler(unittest.TestCase):
             [0],
             hbm_hit_tokens=4,
         )
+
+    @patch("vllm_ascend.distributed.kv_transfer.kv_pool.ascend_store.pool_scheduler.LookupKeyClient")
+    def test_retention_lookup_factor_changes_threshold(self, mock_client_cls):
+        with patch.dict(os.environ, {"VLLM_ASCEND_KVPOOL_RETENTION_LOOKUP_FACTOR": "3"}):
+            scheduler = KVPoolScheduler(self._make_config(), use_layerwise=False)
+        scheduler.retention_interval = 16
+        request = self._make_request(32)
+
+        self.assertEqual(scheduler.get_num_new_matched_tokens(request, 0), (0, False))
+        mock_client_cls.return_value.lookup.assert_not_called()
 
     @patch("vllm_ascend.distributed.kv_transfer.kv_pool.ascend_store.pool_scheduler.LookupKeyClient")
     def test_retention_threshold_above_runs_lookup(self, mock_client_cls):
