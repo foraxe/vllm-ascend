@@ -108,6 +108,58 @@ The first A/B result is `FAIL`: overlap=1 reached `6037.137 tok/s` median
 Do not tune this flag further for this workload without a changed code path or
 a profile proving a different overlap opportunity.
 
+## FusedMC2 8K streaming-TTFT A/B/A (`PASS`)
+
+The profile's largest communication kernel sum is the three variable-size MoE
+AllToAllV legs (activation-scale dispatch, activation dispatch, and expert
+return). On A3 the existing `FusedMC2CommImpl` replaces that prefill path with
+the fused `dispatch_ffn_combine` operator. This is a configuration-only
+experiment: it does not alter DSA-CP cache semantics, model shape, or request
+shape.
+
+Use the same synthetic baseline, but change only `ENABLE_FUSED_MC2`:
+
+```bash
+RUN_ID=fmc2_8k_ttft \
+SYNTHETIC_ROUTED_EXPERTS=64 \
+ALLOW_SYNTHETIC_WEIGHTS=1 \
+ENABLE_DSA_LAYER_SHARDING=1 \
+ENABLE_PREFILL_COMM_COMPUTE_OVERLAP=0 \
+ENABLE_FUSED_MC2=1 \
+ENABLE_MTP=0 \
+ENABLE_TORCH_PROFILER=0 \
+bash ./start_single_node.sh
+```
+
+`start_single_node.sh` emits `"enable_fused_mc2": 1` in
+`--additional-config`; verify that exact field in the launch log before
+benchmarking. Wait for `health_http=200`, copy `bench_ttft_stream.py` to the
+role directory, then run the fixed streaming contract:
+
+```bash
+python3 bench_ttft_stream.py \
+  --endpoint http://127.0.0.1:7100/v1/chat/completions \
+  --words 8192 --warmup 1 --runs 10 --timeout 600 \
+  --output results/fmc2_8k_ttft_stream.json
+```
+
+The metric is client time to the first nonempty SSE text delta, with one output
+token, `temperature=0`, a unique prompt suffix, and prefix caching disabled.
+For the 2026-07-27 TP16/EP16 dummy-model A/B/A, all timed responses had the
+same four-character completion length:
+
+| Configuration | 10-run TTFT P50 | TTFT change vs post-run B0 |
+|---|---:|---:|
+| B0 recheck (`enable_fused_mc2=0`) | 1.326215 s | baseline |
+| FusedMC2 first distribution | 1.211960 s | -8.61% |
+| FusedMC2 independent repeat | 1.185368 s | -10.62% |
+
+The corresponding 8K non-streaming cross-check was `6955.178 tok/s` median
+versus the prior B0 `6191.205 tok/s` (+12.33%). Preserve the raw JSON outputs
+and restore `ENABLE_FUSED_MC2=0` after the candidate run to execute the B0
+recheck. These are synthetic path-performance results, not a production
+384-expert accuracy or throughput claim.
+
 ## DSA-CP optimization tasks from the design notes
 
 ### Track A: immediate measurement and low-risk implementation
