@@ -271,6 +271,13 @@ class NPUModelRunner(GPUModelRunner):
         # indexer cache and external KV connectors need a different ownership
         # protocol, so neither is silently included here.
         self.enable_c128_owner_shard = bool(additional_config.get("enable_c128_owner_shard", False))
+        # Keep placement and compact allocation independently gated.  The
+        # former validates the compressor-to-owner-cache data contract; the
+        # latter is the capacity optimization and must not hide a layout ABI
+        # failure during that first gate.
+        self.enable_c128_owner_compact_allocation = bool(
+            additional_config.get("enable_c128_owner_compact_allocation", False)
+        )
         if self.enable_c128_owner_shard:
             if vllm_config.kv_transfer_config is not None:
                 raise ValueError("enable_c128_owner_shard does not support a KV-transfer connector")
@@ -3693,7 +3700,7 @@ class NPUModelRunner(GPUModelRunner):
                         # shared the kvcache for all shared layers
                         kv_cache_raw_tensors[layer_name_inner] = tensor
                 elif "attn" in layer_name and self.use_compress and layer_name not in kv_cache_raw_tensors:
-                    if is_c128_owner_tensor:
+                    if is_c128_owner_tensor and self.enable_c128_owner_compact_allocation:
                         current_kv_cache_spec = layer_kv_cache_spec[layer_name]
                         assert isinstance(current_kv_cache_spec, MLAAttentionSpec)
                         owner_blocks = cdiv(
@@ -3904,7 +3911,7 @@ class NPUModelRunner(GPUModelRunner):
                     is_c128_owner_cache = self._is_c128_owner_tensor([layer_name], layer_kv_cache_spec)
                     sum_page_size_bytes = kv_tensor.numel()
                     num_blocks = sum_page_size_bytes // current_kv_cache_spec.page_size_bytes
-                    if is_c128_owner_cache:
+                    if is_c128_owner_cache and self.enable_c128_owner_compact_allocation:
                         assert isinstance(current_kv_cache_spec, MLAAttentionSpec)
                         expected_owner_blocks = cdiv(
                             kv_cache_config.num_blocks, self.vllm_config.parallel_config.tensor_parallel_size
