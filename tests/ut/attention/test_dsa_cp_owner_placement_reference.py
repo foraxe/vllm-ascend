@@ -77,6 +77,18 @@ def _materialize_owner_rows(
     return torch.stack(rows)
 
 
+def _materialize_owner_quantized_rows(
+    owner_quantized_shards: list[torch.Tensor],
+    owner_scale_shards: list[torch.Tensor],
+    selected_rows: torch.Tensor,
+    page_size: int,
+) -> torch.Tensor:
+    """Dequantize selected owner rows into the local attention workspace."""
+    quantized = _materialize_owner_rows(owner_quantized_shards, selected_rows, page_size)
+    scales = _materialize_owner_rows(owner_scale_shards, selected_rows, page_size)
+    return quantized.to(torch.float32) * scales.to(torch.float32)
+
+
 def test_owner_sharded_c128_materialization_matches_replicated_history() -> None:
     """Frozen C128 rows need one owner copy and a local selected-row workspace.
 
@@ -97,6 +109,50 @@ def test_owner_sharded_c128_materialization_matches_replicated_history() -> None
     materialized = _materialize_owner_rows(owner_shards, selected_rows, page_size)
     expected = replicated_history.flatten(0, 1)[selected_rows]
     torch.testing.assert_close(materialized, expected)
+
+
+@pytest.mark.parametrize("world_size", [2, 4, 16])
+def test_owner_sharded_quantized_c128_dequantizes_only_selected_rows(world_size: int) -> None:
+    """The #49741-style prefill consumer reads quantized owner rows locally.
+
+    Persistent storage contains one quantized C128 page and one scale page per
+    logical page. Only selected rows are dequantized into a temporary local
+    workspace; neither the quantized page nor the BF16 result is replicated.
+    """
+    torch.manual_seed(23)
+    page_size, pages_per_owner, kv_dim = 2, 3, 5
+    total_pages = world_size * pages_per_owner
+    quantized_history = torch.randint(
+        -127, 128, (total_pages, page_size, kv_dim), dtype=torch.int8
+    )
+    scales_history = torch.rand(total_pages, page_size, 1, dtype=torch.float32) + 0.01
+    owner_quantized_shards = [
+        quantized_history[owner::world_size].clone() for owner in range(world_size)
+    ]
+    owner_scale_shards = [
+        scales_history[owner::world_size].clone() for owner in range(world_size)
+    ]
+    selected_rows = torch.tensor([0, 3, 4, 7, total_pages * page_size - 1])
+
+    materialized = _materialize_owner_quantized_rows(
+        owner_quantized_shards, owner_scale_shards, selected_rows, page_size
+    )
+    expected = (
+        quantized_history.flatten(0, 1)[selected_rows].to(torch.float32)
+        * scales_history.flatten(0, 1)[selected_rows]
+    )
+    torch.testing.assert_close(materialized, expected)
+
+    owner_persistent_bytes = sum(
+        quantized.numel() * quantized.element_size()
+        + scale.numel() * scale.element_size()
+        for quantized, scale in zip(owner_quantized_shards, owner_scale_shards)
+    )
+    replicated_persistent_bytes = world_size * (
+        quantized_history.numel() * quantized_history.element_size()
+        + scales_history.numel() * scales_history.element_size()
+    )
+    assert owner_persistent_bytes * world_size == replicated_persistent_bytes
 
 
 def _stateful_compressor(tokens: torch.Tensor, initial_state: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:

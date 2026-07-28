@@ -81,12 +81,16 @@ rerun.
 ### G3: owner-sharded C128 materialization oracle — PASS
 
 `tests/ut/attention/test_dsa_cp_owner_placement_reference.py` now verifies
-rank-major owner-page translation and selected-row local materialization
-against a replicated C128 oracle. On the `.204` image:
+rank-major owner-page translation, selected-row quantized dequantization into
+a local workspace, and equality with a replicated C128 oracle. It exercises
+CP sizes 2, 4, and 16. For the C128 quantized-page-plus-scale family, owner
+storage is exactly `1 / CP` of persistent replicated storage; the temporary
+materialization workspace is excluded from that capacity count. On the `.204`
+image:
 
 ```text
 VLLM_VERSION=0.20.2 python3 -m pytest -q test_dsa_cp_owner_placement_reference.py
-5 passed
+8 passed
 ```
 
 ## Current blocker
