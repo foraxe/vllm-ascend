@@ -190,8 +190,12 @@ class C128OwnerShardCache:
         """Persist a precomputed owner subset of the compressor output."""
         if compressed_kv is None:
             return
-        if compressed_kv.shape[0] != expected_rows:
-            raise ValueError("compressed_kv and prepared C128 owner rows differ")
+        # Do not inspect the dynamic compressor result here.  On the target
+        # CANN runtime even the first shape query after ``compressor`` is a
+        # synchronization boundary.  ``expected_rows`` is retained in the
+        # plan API for the CPU/reference contract; eager production relies on
+        # the existing compressor/slot-mapping ABI.
+        del expected_rows
         print(f"DSA_OWNER_TRACE owner_cache_prepared_select_begin rank={tp_rank}", flush=True)
         owned_kv = compressed_kv.index_select(0, owner_rows)
         print(f"DSA_OWNER_TRACE owner_cache_prepared_select_queued rank={tp_rank}", flush=True)
