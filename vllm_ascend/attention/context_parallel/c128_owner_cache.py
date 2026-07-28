@@ -124,14 +124,6 @@ class C128OwnerShardCache:
         # padded ``-1`` never aliases the final TP rank.
         valid_mask = (page_ids >= 0) & (slot_mapping[:, 1] >= 0)
         owner_mask = valid_mask & (c128_owner(page_ids, self.tp_size) == tp_rank)
-        logger.info(
-            "C128 owner scatter: rank=%d rows=%d owned_rows=%d",
-            tp_rank,
-            slot_mapping.shape[0],
-            int(owner_mask.sum().item()),
-        )
-        if not bool(owner_mask.any()):
-            return
         local_slot_mapping = slot_mapping[owner_mask].clone()
         local_slot_mapping[:, 0] = c128_local_page(local_slot_mapping[:, 0], self.tp_size)
         # ``npu_scatter_nd_update_v2`` is the normal full-cache update, but
@@ -142,6 +134,9 @@ class C128OwnerShardCache:
         flat_slots = (
             local_slot_mapping[:, 0] * page_size + local_slot_mapping[:, 1]
         ).view(-1, 1)
+        # Empty index/update tensors are accepted by torch_npu. Keeping that
+        # path device-only avoids a host `.item()`/`any()` synchronization
+        # between the stateful compressor and the owner write.
         torch_npu.npu_scatter_nd_update_(
             self.persistent_cache.view(-1, *self.persistent_cache.shape[2:]),
             flat_slots,
