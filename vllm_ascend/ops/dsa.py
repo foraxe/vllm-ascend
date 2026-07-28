@@ -188,6 +188,15 @@ def dsa_forward(
 ) -> None:
     forward_context: ForwardContext = get_forward_context()
     self = forward_context.no_compile_layers[layer_name]
+    owner_debug = bool(
+        (get_current_vllm_config().additional_config or {}).get("enable_c128_owner_debug", False)
+    )
+    if owner_debug:
+        print(
+            "DSA_OWNER_TRACE enter "
+            f"layer={layer_name} prefix={self.prefix} ratio={self.compress_ratio}",
+            flush=True,
+        )
     if forward_context.attn_metadata:
         attn_metadata = filter_metadata(forward_context.attn_metadata, self.prefix)
     else:
@@ -199,10 +208,18 @@ def dsa_forward(
         return
 
     kv_cache = _build_kv_cache(self, forward_context)
+    if owner_debug:
+        cache_shapes = [tuple(cache.shape) if isinstance(cache, torch.Tensor) else None for cache in kv_cache]
+        print(
+            f"DSA_OWNER_TRACE cache_ready layer={layer_name} shapes={cache_shapes}",
+            flush=True,
+        )
 
     self.dsa_attn.impl.forward(
         self.dsa_attn.layer_name, hidden_states, kv_cache, attn_metadata, need_gather_q_kv, output
     )
+    if owner_debug:
+        print(f"DSA_OWNER_TRACE complete layer={layer_name}", flush=True)
     return
 
 

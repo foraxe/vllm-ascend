@@ -22,6 +22,9 @@ ENABLE_PREFILL_COMM_COMPUTE_OVERLAP=${ENABLE_PREFILL_COMM_COMPUTE_OVERLAP:-0}
 # pages needed by prefill attention through HCCL.  This is independent of
 # Mooncake and stays off until its replicated fallback has been compared.
 ENABLE_C128_OWNER_SHARD=${ENABLE_C128_OWNER_SHARD:-0}
+# Emits per-layer direct DSA custom-op boundary markers. Keep this off for
+# performance experiments; it exists only to localize feature-on failures.
+ENABLE_C128_OWNER_DEBUG=${ENABLE_C128_OWNER_DEBUG:-0}
 # `layer_sharding` is accepted only by a PD-disaggregated prefill (P) role in
 # this vLLM release. Keep the historical P-side default, but set this to 0 for
 # a direct standalone service such as the DSV4-Flash single-node baseline.
@@ -53,7 +56,7 @@ SAFETENSORS_LOAD_STRATEGY=${SAFETENSORS_LOAD_STRATEGY:-prefetch}
 SYNTHETIC_ROUTED_EXPERTS=${SYNTHETIC_ROUTED_EXPERTS:-0}
 ALLOW_SYNTHETIC_WEIGHTS=${ALLOW_SYNTHETIC_WEIGHTS:-0}
 
-for boolean_name in ENABLE_PREFILL_COMM_COMPUTE_OVERLAP ENABLE_C128_OWNER_SHARD \
+for boolean_name in ENABLE_PREFILL_COMM_COMPUTE_OVERLAP ENABLE_C128_OWNER_SHARD ENABLE_C128_OWNER_DEBUG \
     ENABLE_DSA_LAYER_SHARDING ENABLE_FUSED_MC2 ENABLE_MTP \
     ENABLE_TORCH_PROFILER ENABLE_MOONCAKE_KV_CONNECTOR; do
     boolean_value=${!boolean_name}
@@ -212,6 +215,7 @@ SPECULATIVE_CONFIG='{"num_speculative_tokens":1,"method":"mtp","enforce_eager":t
 ADDITIONAL_CONFIG=$(jq -cn \
     --argjson prefill_overlap "${ENABLE_PREFILL_COMM_COMPUTE_OVERLAP}" \
     --argjson c128_owner_shard "${ENABLE_C128_OWNER_SHARD}" \
+    --argjson c128_owner_debug "${ENABLE_C128_OWNER_DEBUG}" \
     --argjson dsa_layer_sharding "${ENABLE_DSA_LAYER_SHARDING}" \
     --argjson fused_mc2 "${ENABLE_FUSED_MC2}" \
     '({
@@ -220,6 +224,7 @@ ADDITIONAL_CONFIG=$(jq -cn \
       enable_shared_expert_dp:true,
       prefill_comm_compute_overlap:$prefill_overlap,
       enable_c128_owner_shard:$c128_owner_shard,
+      enable_c128_owner_debug:$c128_owner_debug,
       enable_fused_mc2:$fused_mc2
     } + if $dsa_layer_sharding == 1 then {layer_sharding:["q_b_proj", "o_proj"]} else {} end)')
 
@@ -346,8 +351,8 @@ ENV_KEYS=(
 
 print_effective_config() {
     local key
-    printf 'role=%s local_ip=%s prefill_comm_compute_overlap=%s c128_owner_shard=%s dsa_layer_sharding=%s enable_fused_mc2=%s enable_mtp=%s mooncake_kv_connector=%s synthetic_routed_experts=%s torch_profiler=%s\n' \
-        "${ROLE_NAME}" "${LOCAL_IP}" "${ENABLE_PREFILL_COMM_COMPUTE_OVERLAP}" "${ENABLE_C128_OWNER_SHARD}" "${ENABLE_DSA_LAYER_SHARDING}" "${ENABLE_FUSED_MC2}" "${ENABLE_MTP}" "${ENABLE_MOONCAKE_KV_CONNECTOR}" "${SYNTHETIC_ROUTED_EXPERTS}" "${ENABLE_TORCH_PROFILER}"
+    printf 'role=%s local_ip=%s prefill_comm_compute_overlap=%s c128_owner_shard=%s c128_owner_debug=%s dsa_layer_sharding=%s enable_fused_mc2=%s enable_mtp=%s mooncake_kv_connector=%s synthetic_routed_experts=%s torch_profiler=%s\n' \
+        "${ROLE_NAME}" "${LOCAL_IP}" "${ENABLE_PREFILL_COMM_COMPUTE_OVERLAP}" "${ENABLE_C128_OWNER_SHARD}" "${ENABLE_C128_OWNER_DEBUG}" "${ENABLE_DSA_LAYER_SHARDING}" "${ENABLE_FUSED_MC2}" "${ENABLE_MTP}" "${ENABLE_MOONCAKE_KV_CONNECTOR}" "${SYNTHETIC_ROUTED_EXPERTS}" "${ENABLE_TORCH_PROFILER}"
     printf 'dp_size=%s dp_rank=%s tp_size=%s api_port=%s\n' \
         "${DP_SIZE}" "${DP_RANK}" "${TP_SIZE}" "${VLLM_PORT}"
     printf 'safetensors_load_strategy=%s\n' "${SAFETENSORS_LOAD_STRATEGY}"
