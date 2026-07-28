@@ -1112,6 +1112,21 @@ class AscendDSACPImpl(DSAAttentionImpl):
 
         trace_c128_stage("enter")
         if trace_c128:
+            # CP ownership is a correctness input to the future state-handoff
+            # producer path. Keep this diagnostic out of clean serving runs;
+            # it intentionally synchronizes small metadata tensors only.
+            state_block_table = compressor_kv_state_metadata.req_metadata.block_table
+            compressor_slot_mapping = compressor_attn_metadata.req_metadata.slot_mapping
+            print(
+                "DSA_OWNER_TRACE c128_cp_layout "
+                f"layer={layer_name} rank={self.tp_rank} need_gather={need_gather_q_kv} "
+                f"local_tokens={hidden_states_local.shape[0]} global_tokens={hidden_states.shape[0]} "
+                f"global_qsl={actual_seq_lengths_query.cpu().tolist()} "
+                f"local_qsl={local_seq_lengths_query.cpu().tolist()} "
+                f"state_block_shape={tuple(state_block_table.shape)} "
+                f"compress_slot_shape={tuple(compressor_slot_mapping.shape)}",
+                flush=True,
+            )
             # The compact owner cache and the compressor state historically
             # shared a raw allocator bucket.  Record this before the
             # compressor is queued: data_ptr() is host-side metadata and does
