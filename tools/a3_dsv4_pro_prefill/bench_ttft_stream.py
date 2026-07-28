@@ -27,7 +27,7 @@ def _percentile(values: list[float], q: float) -> float:
     return statistics.quantiles(values, n=100, method="inclusive")[q - 1]
 
 
-def run_once(endpoint: str, words: int, timeout: float, repetition: int) -> dict[str, float | int]:
+def run_once(endpoint: str, words: int, timeout: float, repetition: int) -> dict[str, float | int | str]:
     # The changing suffix prevents accidental prefix-cache reuse if configuration drifts.
     prompt = (" hello" * words) + f" benchmark-run-{repetition}"
     payload = {
@@ -70,6 +70,9 @@ def run_once(endpoint: str, words: int, timeout: float, repetition: int) -> dict
         "first_token_s": first_token_s,
         "elapsed_s": elapsed_s,
         "completion_chars": len(completion),
+        # Preserve deterministic greedy text for feature-on/off correctness
+        # gates.  TTFT aggregation ignores this field.
+        "completion": completion,
     }
 
 
@@ -108,4 +111,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
