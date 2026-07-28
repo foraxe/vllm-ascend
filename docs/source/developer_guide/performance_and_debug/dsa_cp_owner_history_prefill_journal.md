@@ -696,3 +696,33 @@ Raw evidence:
   log_single_node_prefill_flash_tp8_c128_owner_r34_local_c128_alignment_fmc2.log
   bench_flash_tp8_c128_owner_r34_local_c128_alignment_fmc2_smoke_8k.out
 ```
+
+### G18: static C128 result buffer integration — BLOCKED at server initialization
+
+r35 replaces the prohibited Python-list `all_gather` bridge with a fixed,
+TP-major buffer allocated before the C128 `compressor`, followed by
+`all_to_all_single`.  For the validated 5,120-token / TP8 chunk it exchanges
+only 40 compressed rows and preserves the existing rank-major global-slot
+order expected by owner scatter.  It has not reached that branch yet.
+
+The Flash server remained unready for more than eight minutes after launch:
+the API port 7100 did not accept `/health`, the log stopped at 104,711 bytes
+at `2026-07-28T21:54:55Z`, and no `c128_static_collective_*` marker was
+emitted.  All eight workers remained alive, each with roughly 57,085 MB HBM
+allocated and sustained host CPU use, while NPU AICore utilization was zero.
+This is an initialization-state blocker, not evidence that the static copy or
+HCCL collective is invalid.  No TTFT, cache-equivalence, or output-equivalence
+claim follows from r35; do not use it as a performance result.
+
+The CPU layout oracle passed on the target image (14 tests): it verifies that
+the broadcast TP-major send buffer produces the rank-major compressed-slot
+order expected after equal-split `all_to_all_single`.  The unready server was
+then stopped with `SIGTERM`; all r35 API, EngineCore, and worker PIDs were
+absent eight seconds later.
+
+Raw evidence:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/20260728_prefill_owner/flash_c128_owner/
+  log_single_node_prefill_flash_tp8_c128_owner_r35_local_c128_static_a2a_fmc2.log
+```

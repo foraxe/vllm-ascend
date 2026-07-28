@@ -1298,6 +1298,24 @@ class AscendDSACPImpl(DSAAttentionImpl):
                 )
 
             coff = 2 if self.compressor_overlap else 1
+            c128_static_collective_send = None
+            c128_static_collective_recv = None
+            if use_c128_local_compressor:
+                # Allocate both sides before ``compressor``.  The target CANN
+                # runtime terminated when a Python list of output-shaped
+                # buffers was constructed for all_gather after this async
+                # custom op.  This fixed TP-major buffer has a static shape
+                # derived solely from request metadata.
+                assert c128_local_compressor_plan is not None
+                c128_static_collective_send = torch.empty(
+                    (
+                        self.tp_size * c128_local_compressor_plan.rows,
+                        self.compressor_norm.weight.shape[0],
+                    ),
+                    dtype=hidden_states_local.dtype,
+                    device=hidden_states_local.device,
+                )
+                c128_static_collective_recv = torch.empty_like(c128_static_collective_send)
             trace_c128_stage("compressor_begin")
             compressor_hidden_states = hidden_states_local if use_c128_local_compressor else hidden_states
             compressor_cu_seqlens = local_seq_lengths_query if use_c128_local_compressor else actual_seq_lengths_query
@@ -1330,13 +1348,28 @@ class AscendDSACPImpl(DSAAttentionImpl):
             trace_c128_stage("compressor_ready")
 
             if use_c128_local_compressor:
-                # This is 1/TP of the C128 output (five rows at the validated
-                # 5120-token TP8 shape), not the hidden-state AllGather.  It
-                # restores the established full-slot owner-scatter ABI while
-                # the next gate replaces this fixed small gather with alltoallv.
-                gathered_compressed_kv = [torch.empty_like(compressed_kv) for _ in range(self.tp_size)]
-                dist.all_gather(gathered_compressed_kv, compressed_kv, group=self.tp_group.device_group)
-                compressed_kv = torch.cat(gathered_compressed_kv, dim=0)
+                # This exchanges only the static C128 result buffer (40 rows
+                # for the validated 5120-token TP8 chunk), never hidden
+                # states. Equal chunks make the recv buffer rank-major, i.e.
+                # exactly the existing global compressor-slot order consumed
+                # by the preplanned owner scatter.
+                assert c128_static_collective_send is not None
+                assert c128_static_collective_recv is not None
+                trace_c128_stage("static_collective_copy_begin")
+                c128_static_collective_send.view(
+                    self.tp_size,
+                    c128_local_compressor_plan.rows,
+                    -1,
+                ).copy_(compressed_kv)
+                trace_c128_stage("static_collective_copy_ready")
+                trace_c128_stage("static_collective_begin")
+                dist.all_to_all_single(
+                    c128_static_collective_recv,
+                    c128_static_collective_send,
+                    group=self.tp_group.device_group,
+                )
+                compressed_kv = c128_static_collective_recv
+                trace_c128_stage("static_collective_ready")
 
             if compressed_kv.numel() == 0:
                 compressed_kv = None

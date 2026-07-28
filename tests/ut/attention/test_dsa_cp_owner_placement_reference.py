@@ -262,3 +262,30 @@ def test_c128_local_compressor_plan_rejects_unaligned_tp8_tail() -> None:
         tp_size=8,
         sequence_start_pos=5120,
     ) is None
+
+
+def test_c128_static_collective_layout_restores_rank_major_slot_order() -> None:
+    """The fixed all-to-all buffer reconstructs the pre-existing slot ABI.
+
+    Each source rank broadcasts its local C128 rows into equal destination
+    chunks.  ``all_to_all_single`` then presents every receiver with source
+    rank-major chunks, exactly matching the global compressor-slot ordering
+    consumed by the existing owner-scatter plan.
+    """
+    world_size, rows, kv_dim = 8, 5, 3
+    local_rows = [
+        torch.arange(rank * rows * kv_dim, (rank + 1) * rows * kv_dim).view(rows, kv_dim)
+        for rank in range(world_size)
+    ]
+    sends = []
+    for compressed_kv in local_rows:
+        send = torch.empty(world_size * rows, kv_dim, dtype=compressed_kv.dtype)
+        send.view(world_size, rows, kv_dim).copy_(compressed_kv)
+        sends.append(send)
+
+    expected = torch.cat(local_rows)
+    for receiver in range(world_size):
+        received = torch.cat(
+            [send.view(world_size, rows, kv_dim)[receiver] for send in sends]
+        )
+        torch.testing.assert_close(received, expected)
