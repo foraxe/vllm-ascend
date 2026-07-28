@@ -450,6 +450,51 @@ for persistent attention. The existing compact-path stop after
 `compressor_ready` is the next causal target. HCCL staging, VMM, and TTFT
 remain out of scope until that gate returns one response.
 
+### G11: compact owner placement reaches attention — PASS
+
+r20 added a layout trace and reproduced the compact-path failure with a
+64-word/one-output request. On every rank the C128 persistent attention cache
+was `[524, 128, 1, 512]`, while compressor state was
+`[4190, 32, 1, 1024]`, at distinct data pointers. The earlier raw-storage
+alias hypothesis is therefore refuted. The trace stopped after
+`c128_owner_scatter_begin`, before the first owner-cache marker.
+
+r21 moved only owner-mask/address construction before the stateful compressor.
+All ranks reached `owner_prepare_ready`, but stopped at the same post-compressor
+boundary before `prepared_select_begin`. The remaining operation was a dynamic
+`compressed_kv.shape[0]` inspection. r22 removed that inspection and made the
+first dependent work `compressed_kv.index_select(precomputed_owner_rows)`.
+
+r22 is **PASS** for the compact owner-placement execution gate:
+
+* the A3 reference suite passed `12 passed`;
+* a 64-word/one-output request returned nonempty text (diagnostic TTFT
+  1.495 s, not a performance number);
+* a single 8K-word/one-output request returned nonempty text (1.066 s with
+  debug tracing, not comparable with B0);
+* trace evidence spans all TP ranks and multiple C128 layers through
+  `prepared_select`, owner scatter, HCCL materialization, and sparse attention;
+* the process remains healthy (`GET /health = 200`).
+
+This proves only the feature-on path can execute. It does **not** prove
+numerical equivalence, cache equivalence across multi-request history,
+total-memory reduction, or an 8% TTFT gain. The immediate next gates are a
+feature-on/feature-off numerical oracle and allocator accounting, then a clean
+8K paired benchmark with tracing disabled.
+
+Raw evidence:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/20260728_prefill_owner/flash_c128_owner/
+  log_single_node_prefill_flash_tp8_c128_owner_r20_compact_layout_fmc2_smoke.log
+  log_single_node_prefill_flash_tp8_c128_owner_r21_prepared_scatter_fmc2_smoke.log
+  log_single_node_prefill_flash_tp8_c128_owner_r22_direct_select_fmc2_smoke.log
+  bench_r22_smoke64.out
+  bench_r22_smoke8k.out
+  results/flash_tp8_c128_owner_r22_direct_select_smoke64.json
+  results/flash_tp8_c128_owner_r22_direct_select_smoke8k.json
+```
+
 Raw evidence:
 
 ```text
