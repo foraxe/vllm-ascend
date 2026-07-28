@@ -20,6 +20,7 @@ from vllm_ascend.attention.context_parallel.c128_owner_cache import (
     C128LocalCompressorPlan,
     get_c128_owner_cache,
     make_c128_local_compressor_plan,
+    slice_c128_local_compressor_rope,
 )
 from vllm_ascend.attention.utils import AscendCommonAttentionMetadata, split_decodes_and_prefills
 from vllm_ascend.ops.linear import AscendUnquantizedLinearMethod
@@ -1323,8 +1324,12 @@ class AscendDSACPImpl(DSAAttentionImpl):
             if use_c128_local_compressor:
                 assert c128_local_compressor_plan is not None
                 compressor_start_pos = compressor_start_pos + cp_metadata.local_start
-                compress_sin = compress_sin[c128_local_compressor_plan.slot_start : c128_local_compressor_plan.slot_end]
-                compress_cos = compress_cos[c128_local_compressor_plan.slot_start : c128_local_compressor_plan.slot_end]
+                compress_sin = slice_c128_local_compressor_rope(
+                    compress_sin, c128_local_compressor_plan
+                )
+                compress_cos = slice_c128_local_compressor_rope(
+                    compress_cos, c128_local_compressor_plan
+                )
             compressed_kv = torch.ops._C_ascend.compressor(
                 compressor_hidden_states,
                 self.compressor_wkv.weight,

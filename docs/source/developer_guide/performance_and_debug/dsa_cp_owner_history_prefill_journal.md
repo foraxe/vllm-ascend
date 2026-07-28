@@ -740,3 +740,25 @@ This validates the static buffer's HCCL and NPU-copy semantics, but it does
 not validate the asynchronous compressor-to-buffer handoff or model output.
 The next model gate may therefore use this implementation; it must retain the
 existing 8K/one-output correctness-first smoke criterion before any TTFT run.
+
+### G20: CP-local compressor RoPE boundary — FIXED, integration pending
+
+The r34 CANN diagnostic identified the actual first local-compressor failure:
+for each 640-token TP8 shard, `Compressor` requires
+`min(tokenSize, tokenSize/cmpRatio + batchSize) = 6` RoPE rows.  The previous
+local implementation sliced only its five emitted C128 rows and therefore
+failed tiling on every rank with `ropeSin shape dim 0 ... should be ... 6, but
+got 5` (`errno[561002]`).  This precedes the list-based collective and explains
+why no `c128_compressor_ready` trace was emitted.
+
+The local RoPE adapter now preserves the five shard rows and appends the
+pre-existing padded compressed-position-zero row.  It is the same padding
+metadata contract produced by `_get_padded_compressed_position`; no new RoPE
+values are synthesized.  The target-image reference suite passes 15 tests,
+including a rank-7 `[35:40] + padding` oracle.  The static HCCL gate remains
+separately passed (G19).  Actual model compressor/attention/output validation
+is still pending.
+
+r36 (full capacity) and r37 (`MAX_MODEL_LEN=8192`, correctness-only) both
+stopped at the pre-API DSA warmup/initialization boundary before a request and
+without a new Ascend error.  They do not test this fix and have no TTFT result.

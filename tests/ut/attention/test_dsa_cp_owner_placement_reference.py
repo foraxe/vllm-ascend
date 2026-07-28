@@ -13,6 +13,7 @@ import pytest
 import torch
 
 from vllm_ascend.attention.context_parallel.c128_owner_cache import (
+    C128LocalCompressorPlan,
     C128OwnerShardCache,
     c128_local_page,
     c128_owner,
@@ -20,6 +21,7 @@ from vllm_ascend.attention.context_parallel.c128_owner_cache import (
     make_c128_local_compressor_plan,
     register_c128_owner_cache,
     remap_c128_block_table,
+    slice_c128_local_compressor_rope,
 )
 
 pytestmark = pytest.mark.cpu_test
@@ -262,6 +264,16 @@ def test_c128_local_compressor_plan_rejects_unaligned_tp8_tail() -> None:
         tp_size=8,
         sequence_start_pos=5120,
     ) is None
+
+
+def test_c128_local_compressor_rope_retains_per_shard_padding_row() -> None:
+    """CANN requires five C128 rows plus one RoPE padding row per TP shard."""
+    rope = torch.arange(41, dtype=torch.float32).unsqueeze(1)
+    plan = C128LocalCompressorPlan(slot_start=35, slot_end=40)
+    local_rope = slice_c128_local_compressor_rope(rope, plan)
+    torch.testing.assert_close(
+        local_rope.squeeze(1), torch.tensor([35, 36, 37, 38, 39, 40], dtype=rope.dtype)
+    )
 
 
 def test_c128_static_collective_layout_restores_rank_major_slot_order() -> None:

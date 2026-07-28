@@ -90,6 +90,27 @@ def make_c128_local_compressor_plan(
     return C128LocalCompressorPlan(slot_start=slot_start, slot_end=slot_end)
 
 
+def slice_c128_local_compressor_rope(
+    rope: torch.Tensor,
+    plan: C128LocalCompressorPlan,
+) -> torch.Tensor:
+    """Build the local compressor's required compressed-RoPE rows.
+
+    The CANN continuous-cache compressor requires ``token_count / 128 +
+    batch_size`` RoPE entries.  A single CP-local request therefore needs its
+    ``plan.rows`` emitted C128 positions plus one padded position.  Metadata
+    construction already appends that position (input position zero) to the
+    global compressed-RoPE table; duplicate it for every local shard rather
+    than slicing it away with the global output-slot interval.
+    """
+    if rope.ndim < 1 or rope.shape[0] <= plan.slot_end:
+        raise ValueError(
+            "compressed RoPE must contain local output rows and one padded row: "
+            f"shape={tuple(rope.shape)}, plan={plan}"
+        )
+    return torch.cat((rope[plan.slot_start : plan.slot_end], rope[-1:]), dim=0)
+
+
 # A DSV4 layer's static-forward cache slot must remain a Tensor.  Inserting a
 # Python wrapper there makes the first model execution leave the normal eager
 # cache contract before DSACP gets a chance to consume it.  Keep ownership
