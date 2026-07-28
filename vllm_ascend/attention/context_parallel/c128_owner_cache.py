@@ -88,6 +88,11 @@ class C128OwnerShardCache:
     persistent_cache: torch.Tensor
     stage_cache: torch.Tensor
     tp_size: int
+    debug: bool = False
+
+    def _trace(self, message: str) -> None:
+        if self.debug:
+            print(message, flush=True)
 
     @property
     def persistent_bytes(self) -> int:
@@ -124,12 +129,12 @@ class C128OwnerShardCache:
         # padded ``-1`` never aliases the final TP rank.
         valid_mask = (page_ids >= 0) & (slot_mapping[:, 1] >= 0)
         owner_mask = valid_mask & (c128_owner(page_ids, self.tp_size) == tp_rank)
-        print(f"DSA_OWNER_TRACE owner_cache_mask_ready rank={tp_rank}", flush=True)
+        self._trace(f"DSA_OWNER_TRACE owner_cache_mask_ready rank={tp_rank}")
         local_slot_mapping = slot_mapping[owner_mask].clone()
         owned_kv = compressed_kv[owner_mask].contiguous()
-        print(f"DSA_OWNER_TRACE owner_cache_select_ready rank={tp_rank}", flush=True)
+        self._trace(f"DSA_OWNER_TRACE owner_cache_select_ready rank={tp_rank}")
         local_slot_mapping[:, 0] = c128_local_page(local_slot_mapping[:, 0], self.tp_size)
-        print(f"DSA_OWNER_TRACE owner_cache_compact_ready rank={tp_rank}", flush=True)
+        self._trace(f"DSA_OWNER_TRACE owner_cache_compact_ready rank={tp_rank}")
         # ``npu_scatter_nd_update_v2`` is the normal full-cache update, but
         # its CANN 9.0 implementation is not safe with dynamically masked
         # two-dimensional NPU indices.  Flatten the identical [page, offset]
@@ -138,7 +143,7 @@ class C128OwnerShardCache:
         flat_slots = (
             local_slot_mapping[:, 0] * page_size + local_slot_mapping[:, 1]
         ).view(-1, 1)
-        print(f"DSA_OWNER_TRACE owner_cache_scatter_begin rank={tp_rank}", flush=True)
+        self._trace(f"DSA_OWNER_TRACE owner_cache_scatter_begin rank={tp_rank}")
         # Empty index/update tensors are accepted by torch_npu. Keeping that
         # path device-only avoids a host `.item()`/`any()` synchronization
         # between the stateful compressor and the owner write.
@@ -147,7 +152,7 @@ class C128OwnerShardCache:
             flat_slots,
             owned_kv,
         )
-        print(f"DSA_OWNER_TRACE owner_cache_scatter_queued rank={tp_rank}", flush=True)
+        self._trace(f"DSA_OWNER_TRACE owner_cache_scatter_queued rank={tp_rank}")
 
     def prepare_owned_scatter(
         self,
@@ -196,15 +201,15 @@ class C128OwnerShardCache:
         # plan API for the CPU/reference contract; eager production relies on
         # the existing compressor/slot-mapping ABI.
         del expected_rows
-        print(f"DSA_OWNER_TRACE owner_cache_prepared_select_begin rank={tp_rank}", flush=True)
+        self._trace(f"DSA_OWNER_TRACE owner_cache_prepared_select_begin rank={tp_rank}")
         owned_kv = compressed_kv.index_select(0, owner_rows)
-        print(f"DSA_OWNER_TRACE owner_cache_prepared_select_queued rank={tp_rank}", flush=True)
+        self._trace(f"DSA_OWNER_TRACE owner_cache_prepared_select_queued rank={tp_rank}")
         torch_npu.npu_scatter_nd_update_(
             self.persistent_cache.view(-1, *self.persistent_cache.shape[2:]),
             flat_slots,
             owned_kv,
         )
-        print(f"DSA_OWNER_TRACE owner_cache_prepared_scatter_queued rank={tp_rank}", flush=True)
+        self._trace(f"DSA_OWNER_TRACE owner_cache_prepared_scatter_queued rank={tp_rank}")
 
     @staticmethod
     def _all_gather_fixed(tensor: torch.Tensor, group) -> list[torch.Tensor]:

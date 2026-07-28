@@ -3954,6 +3954,9 @@ class NPUModelRunner(GPUModelRunner):
                                 current_kv_cache_spec, kv_cache_config.num_blocks
                             ),
                             tp_size=self.vllm_config.parallel_config.tensor_parallel_size,
+                            debug=bool(
+                                (self.vllm_config.additional_config or {}).get("enable_c128_owner_debug", False)
+                            ),
                         )
                         # Preserve the normal DeepSeek-V4 cache container ABI:
                         # each layer contributes a one-element cache list, and
