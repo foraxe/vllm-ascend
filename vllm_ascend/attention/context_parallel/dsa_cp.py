@@ -1107,6 +1107,20 @@ class AscendDSACPImpl(DSAAttentionImpl):
                 )
 
         trace_c128_stage("enter")
+        if trace_c128:
+            # The compact owner cache and the compressor state historically
+            # shared a raw allocator bucket.  Record this before the
+            # compressor is queued: data_ptr() is host-side metadata and does
+            # not introduce an NPU stream synchronization.
+            print(
+                "DSA_OWNER_TRACE c128_cache_layout "
+                f"layer={layer_name} rank={self.tp_rank} "
+                f"compress_ptr={compress_kv_cache.data_ptr()} "
+                f"compress_shape={tuple(compress_kv_cache.shape)} "
+                f"state_ptr={state_cache.data_ptr()} "
+                f"state_shape={tuple(state_cache.shape)}",
+                flush=True,
+            )
 
         if (not isinstance(self.wq_b.quant_method, AscendUnquantizedLinearMethod)) and isinstance(
             self.wq_b.quant_method.quant_method, AscendW8A8DynamicLinearMethod
