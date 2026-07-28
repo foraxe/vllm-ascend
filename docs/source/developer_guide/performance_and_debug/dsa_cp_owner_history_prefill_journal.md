@@ -726,3 +726,17 @@ Raw evidence:
 /a3_inference/nyx/dsv4_dsa_cp/20260728_prefill_owner/flash_c128_owner/
   log_single_node_prefill_flash_tp8_c128_owner_r35_local_c128_static_a2a_fmc2.log
 ```
+
+### G19: static C128 output-buffer HCCL transport — PASS
+
+The r35 startup failure does not reproduce in the isolated TP8 HCCL gate.  On
+the target image, each rank writes its five local C128 rows into all eight
+equal-sized TP-major destination chunks, then `all_to_all_single` restores the
+40 rows in source-rank-major global-slot order.  The NPU test passed bit-exact
+on all eight ranks in 9.45 seconds with the Flash RoCE settings
+(`HCCL_INTRA_PCIE_ENABLE=0`, `HCCL_INTRA_ROCE_ENABLE=1`).
+
+This validates the static buffer's HCCL and NPU-copy semantics, but it does
+not validate the asynchronous compressor-to-buffer handoff or model output.
+The next model gate may therefore use this implementation; it must retain the
+existing 8K/one-output correctness-first smoke criterion before any TTFT run.

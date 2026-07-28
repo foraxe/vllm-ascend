@@ -122,3 +122,59 @@ def test_c128_owner_scatter_and_stage_hccl() -> None:
 def test_c128_owner_scatter_and_selective_stage_hccl() -> None:
     """Page-level all-to-all stages only the receiving rank's local pages."""
     _run_owner_hccl_gate(selective_stage=True)
+
+
+def _static_collective_worker(rank: int, port: int, result_queue) -> None:
+    """Exercise the fixed C128 local-compressor result exchange on HCCL."""
+    try:
+        torch_npu.npu.set_device(rank)
+        dist.init_process_group(
+            backend="hccl",
+            rank=rank,
+            world_size=_WORLD_SIZE,
+            init_method=f"tcp://127.0.0.1:{port}",
+        )
+        rows, kv_dim = 5, 3
+        local = (
+            torch.arange(rank * rows * kv_dim, (rank + 1) * rows * kv_dim, dtype=torch.float32)
+            .reshape(rows, kv_dim)
+            .npu()
+        )
+
+        # Match ``AscendDSACPImpl.forward`` exactly: all destination chunks are
+        # allocated before the custom compressor result would be produced, then
+        # every equal-sized destination chunk receives the source's local rows.
+        send = torch.empty((_WORLD_SIZE * rows, kv_dim), dtype=local.dtype).npu()
+        recv = torch.empty_like(send)
+        send.view(_WORLD_SIZE, rows, kv_dim).copy_(local)
+        dist.all_to_all_single(recv, send, group=dist.group.WORLD)
+        torch.npu.synchronize()
+
+        expected = torch.arange(_WORLD_SIZE * rows * kv_dim, dtype=torch.float32).reshape(
+            _WORLD_SIZE * rows, kv_dim
+        )
+        torch.testing.assert_close(recv.cpu(), expected, rtol=0, atol=0)
+        result_queue.put((rank, "PASS"))
+    except Exception as error:  # pragma: no cover - failure is returned to parent
+        result_queue.put((rank, f"FAIL: {type(error).__name__}: {error}"))
+    finally:
+        if dist.is_available() and dist.is_initialized():
+            dist.destroy_process_group()
+
+
+def test_c128_static_local_compressor_result_hccl() -> None:
+    """TP8 HCCL restores rank-major C128 slots from the fixed output buffer."""
+    mp.set_start_method("fork", force=True)
+    result_queue = mp.SimpleQueue()
+    port = 39501 + random.randint(0, 10000)
+    workers = [mp.Process(target=_static_collective_worker, args=(rank, port, result_queue)) for rank in range(_WORLD_SIZE)]
+    for worker in workers:
+        worker.start()
+    results = [result_queue.get() for _ in workers]
+    for worker in workers:
+        worker.join(timeout=180)
+    failures = [result for result in results if result[1] != "PASS"]
+    deadlocked = [worker.pid for worker in workers if worker.is_alive()]
+    assert not deadlocked, f"static C128 HCCL workers did not terminate: {deadlocked}"
+    assert not failures, f"static C128 HCCL failures: {failures}"
+    assert all(worker.exitcode == 0 for worker in workers)
