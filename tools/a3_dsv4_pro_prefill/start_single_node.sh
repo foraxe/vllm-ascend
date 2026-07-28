@@ -264,6 +264,7 @@ ADDITIONAL_CONFIG=$(jq -cn \
       enable_c128_owner_shard:$c128_owner_shard,
       enable_c128_owner_compact_allocation:$c128_owner_compact_allocation,
       enable_c128_owner_debug:$c128_owner_debug,
+      enable_c128_owner_oracle:$c128_owner_oracle,
       enable_fused_mc2:$fused_mc2
     } + if $dsa_layer_sharding == 1 then {layer_sharding:["q_b_proj", "o_proj"]} else {} end)')
 
