@@ -258,6 +258,18 @@ disabled). Raw evidence:
   source_sha256.txt
 ```
 
+The r6 retry added a rank-0 warning at the DSA-CP handoff and again reached
+health after 70/70 shards. Its 128-token request exited without a text delta
+and without the handoff warning; rank/device logs show normal HCCL teardown,
+not an attributable HCCL or kernel failure. Static inspection then found the
+concrete ABI violation: ordinary DeepSeek-V4 cache entries are a one-element
+`[Tensor]` list, while the first owner implementation replaced that list with
+a bare Tensor. `static_forward_context` wraps the value once more, so this
+changes the nesting consumed by the model before DSA-CP. The next retry
+restores `kv_caches[layer_name] = [persistent_tensor]` while retaining the
+out-of-band owner registry. This is a code-derived root-cause hypothesis until
+the next feature-on request returns a handoff trace or text.
+
 In parallel, B1 isolated the existing implementation's
 `prefill_comm_compute_overlap` switch. It retained TP8/EP8, Flash, 8K input,
 one output token, FusedMC2, lazy weight loading, no Mooncake, and the

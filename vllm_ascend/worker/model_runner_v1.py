@@ -3696,7 +3696,10 @@ class NPUModelRunner(GPUModelRunner):
                     if is_c128_owner_tensor:
                         current_kv_cache_spec = layer_kv_cache_spec[layer_name]
                         assert isinstance(current_kv_cache_spec, MLAAttentionSpec)
-                        owner_blocks = cdiv(kv_cache_config.num_blocks, self.vllm_config.parallel_config.tensor_parallel_size)
+                        owner_blocks = cdiv(
+                            kv_cache_config.num_blocks,
+                            self.vllm_config.parallel_config.tensor_parallel_size,
+                        )
                         tensor = torch.zeros(
                             owner_blocks * current_kv_cache_spec.page_size_bytes,
                             dtype=torch.int8,
@@ -3945,10 +3948,12 @@ class NPUModelRunner(GPUModelRunner):
                             ),
                             tp_size=self.vllm_config.parallel_config.tensor_parallel_size,
                         )
-                        # Keep static_forward_context ABI-compatible: upstream
-                        # layers receive the Tensor they expect, while DSACP
-                        # resolves owner metadata through the registry.
-                        kv_caches[layer_name] = register_c128_owner_cache(owner_cache)
+                        # Preserve the normal DeepSeek-V4 cache container ABI:
+                        # each layer contributes a one-element cache list, and
+                        # static_forward_context wraps that list once more.
+                        # Owner metadata stays out-of-band; DSACP resolves it
+                        # from the Tensor inside this unchanged container.
+                        kv_caches[layer_name] = [register_c128_owner_cache(owner_cache)]
                     else:
                         kv_caches[layer_name] = kv_cache
                 elif isinstance(current_kv_cache_spec, AttentionSpec):

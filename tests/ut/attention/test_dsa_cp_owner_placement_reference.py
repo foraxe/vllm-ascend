@@ -147,11 +147,12 @@ def test_owner_cache_registry_preserves_tensor_static_forward_abi() -> None:
     stage = torch.empty(6, 2, 4)
     owner_cache = C128OwnerShardCache(persistent, stage, tp_size=2)
 
-    static_forward_cache = register_c128_owner_cache(owner_cache)
+    layer_cache = [register_c128_owner_cache(owner_cache)]
+    static_forward_cache = [layer_cache]
 
-    assert static_forward_cache is persistent
-    assert isinstance(static_forward_cache, torch.Tensor)
-    assert get_c128_owner_cache(static_forward_cache) is owner_cache
+    assert static_forward_cache[0][0] is persistent
+    assert isinstance(static_forward_cache[0][0], torch.Tensor)
+    assert get_c128_owner_cache(static_forward_cache[0][0]) is owner_cache
     assert get_c128_owner_cache(torch.empty_like(persistent)) is None
 
 
