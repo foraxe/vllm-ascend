@@ -57,6 +57,48 @@ def test_direct_placement_rejects_colliding_slots() -> None:
         _place_kv(cache, torch.tensor([2, 2]), torch.ones(2, 3))
 
 
+def _materialize_owner_rows(
+    owner_shards: list[torch.Tensor], selected_rows: torch.Tensor, page_size: int
+) -> torch.Tensor:
+    """Read logical selected rows from rank-major owner-page shards.
+
+    This models the prefill-only consumer contract.  The returned tensor is a
+    bounded local workspace for dequantize/attention, not another persistent
+    cache replica.  Transport is deliberately abstract: HCCL staging and a
+    VMM peer view must both preserve this mapping.
+    """
+    world_size = len(owner_shards)
+    rows = []
+    for row in selected_rows.tolist():
+        logical_page, in_page = divmod(row, page_size)
+        owner = logical_page % world_size
+        owner_page = logical_page // world_size
+        rows.append(owner_shards[owner][owner_page, in_page])
+    return torch.stack(rows)
+
+
+def test_owner_sharded_c128_materialization_matches_replicated_history() -> None:
+    """Frozen C128 rows need one owner copy and a local selected-row workspace.
+
+    This gate starts *after* compression has emitted its history rows.  It
+    proves the #49741-style consumer contract independently from the ordered
+    compressor-state production problem covered by the next test.
+    """
+    torch.manual_seed(19)
+    world_size, page_size, pages_per_owner, kv_dim = 4, 2, 3, 5
+    total_pages = world_size * pages_per_owner
+    replicated_history = torch.randn(total_pages, page_size, kv_dim)
+
+    owner_shards = [
+        replicated_history[owner::world_size].clone() for owner in range(world_size)
+    ]
+    selected_rows = torch.tensor([0, 3, 4, 7, 10, 17, 22])
+
+    materialized = _materialize_owner_rows(owner_shards, selected_rows, page_size)
+    expected = replicated_history.flatten(0, 1)[selected_rows]
+    torch.testing.assert_close(materialized, expected)
+
+
 def _stateful_compressor(tokens: torch.Tensor, initial_state: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
     """Minimal ordered recurrence standing in for compressor state dependence."""
     state = initial_state.clone()

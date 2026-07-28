@@ -297,7 +297,7 @@ For immediate TTFT, use HCCL staged owner/fan-out experiments first. VMM is
 the enabling path for the later owner-direct-placement prototype, not for MoE
 `alltoallv` dispatch/return.
 
-### 2026-07-28 capability result: VMM/SHMEM `BLOCKED` on the iTask image
+### 2026-07-28 old-iTask capability result: VMM/SHMEM `BLOCKED`
 
 The exact two-process NPU0/NPU1 probe passes
 `aclrtDeviceCanAccessPeer` and `aclrtDeviceEnablePeerAccess`, but the corrected
@@ -321,6 +321,27 @@ importer TGID and HCCS access link, but
 returns `207000 feature not support`. Thus this result is a driver/runtime
 boundary, not a conclusion that IPC cannot replace VMM on HDK 25.5/CANN 9;
 rerun the same gates there before selecting a direct-pointer transport.
+
+### 2026-07-28 HDK 25.5 / CANN 9 result: VMM `PASS`
+
+The later dedicated pod `dsv4-dsa-prefill-204-nyx` on `33.215.119.204`, using
+the `release_0.20.2_0601_202607271124_aarch64` image, reports `npu-smi
+25.5.1`. The same corrected V2 probe passes NPU0/NPU1 peer enable, V2 export,
+PID authorization, import, map, and bidirectional pattern roundtrip. Its
+durable artifacts are under:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/20260728_prefill_owner/g1_vmm/
+```
+
+This proves the VMM transport gate only. It does not prove that a PyTorch
+tensor, AscendC kernel, or the stock sparse-attention operator can consume a
+remote pointer. The current C128 prefill contract and all remaining gates are
+recorded in `dsa_cp_owner_history_prefill_journal.md`.
+
+The IPC rerun on this image is `INVALID`, not blocked: its old 1024-byte key
+buffer violates CANN's fixed 65-byte IPC-key contract at `aclrtIpcMemSetAttr`.
+Rerun after that probe correction before choosing IPC as an alternative.
 
 The companion HCCL semantic gate passed at `[320, 1024] -> [320, 512]`:
 `local WKV -> all-gather(KV) -> shuffled cache slots` matches the current
