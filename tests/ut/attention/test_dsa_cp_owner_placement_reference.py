@@ -13,8 +13,11 @@ import pytest
 import torch
 
 from vllm_ascend.attention.context_parallel.c128_owner_cache import (
+    C128OwnerShardCache,
     c128_local_page,
     c128_owner,
+    get_c128_owner_cache,
+    register_c128_owner_cache,
     remap_c128_block_table,
 )
 
@@ -136,6 +139,20 @@ def test_c128_owner_page_map_and_compact_stage_block_table() -> None:
 def test_c128_stage_block_table_rejects_missing_page() -> None:
     with pytest.raises(ValueError, match="absent from the staged set"):
         remap_c128_block_table(torch.tensor([[3]], dtype=torch.int32), torch.tensor([1, 2], dtype=torch.int32))
+
+
+def test_owner_cache_registry_preserves_tensor_static_forward_abi() -> None:
+    """Owner metadata must not replace the Tensor model layers receive."""
+    persistent = torch.zeros(3, 2, 4)
+    stage = torch.empty(6, 2, 4)
+    owner_cache = C128OwnerShardCache(persistent, stage, tp_size=2)
+
+    static_forward_cache = register_c128_owner_cache(owner_cache)
+
+    assert static_forward_cache is persistent
+    assert isinstance(static_forward_cache, torch.Tensor)
+    assert get_c128_owner_cache(static_forward_cache) is owner_cache
+    assert get_c128_owner_cache(torch.empty_like(persistent)) is None
 
 
 @pytest.mark.parametrize("world_size", [2, 4, 16])

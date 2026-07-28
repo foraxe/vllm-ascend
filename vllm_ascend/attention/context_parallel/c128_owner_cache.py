@@ -29,6 +29,14 @@ from vllm.logger import init_logger
 logger = init_logger(__name__)
 
 
+# A DSV4 layer's static-forward cache slot must remain a Tensor.  Inserting a
+# Python wrapper there makes the first model execution leave the normal eager
+# cache contract before DSACP gets a chance to consume it.  Keep ownership
+# metadata out-of-band and resolve it from the persistent Tensor at the DSA
+# seam instead.
+_OWNER_CACHES_BY_DATA_PTR: dict[int, "C128OwnerShardCache"] = {}
+
+
 def c128_owner(page_ids: torch.Tensor, world_size: int) -> torch.Tensor:
     """Return the canonical TP owner of each logical cache page."""
     if world_size <= 0:
@@ -222,3 +230,19 @@ class C128OwnerShardCache:
             union_pages.numel(),
         )
         return self.stage_cache[: union_pages.numel()], remapped_block_table
+
+
+def register_c128_owner_cache(cache: C128OwnerShardCache) -> torch.Tensor:
+    """Register owner metadata while preserving the model's Tensor cache ABI."""
+    persistent_cache = cache.persistent_cache
+    _OWNER_CACHES_BY_DATA_PTR[persistent_cache.data_ptr()] = cache
+    return persistent_cache
+
+
+def get_c128_owner_cache(kv_cache: object) -> C128OwnerShardCache | None:
+    """Return owner metadata for a static-forward cache tensor, if enabled."""
+    if isinstance(kv_cache, C128OwnerShardCache):
+        return kv_cache
+    if isinstance(kv_cache, torch.Tensor):
+        return _OWNER_CACHES_BY_DATA_PTR.get(kv_cache.data_ptr())
+    return None

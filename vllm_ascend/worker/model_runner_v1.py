@@ -103,7 +103,10 @@ from vllm.v1.worker.utils import AttentionGroup
 # yapf: enable
 from vllm_ascend.ascend_config import get_ascend_config
 from vllm_ascend.attention.attention_v1 import AscendAttentionBackend, AscendAttentionState
-from vllm_ascend.attention.context_parallel.c128_owner_cache import C128OwnerShardCache
+from vllm_ascend.attention.context_parallel.c128_owner_cache import (
+    C128OwnerShardCache,
+    register_c128_owner_cache,
+)
 from vllm_ascend.attention.context_parallel.dsa_cp import AscendDSACPMetadataBuilder
 from vllm_ascend.attention.dsa_v1 import AscendDSAMetadataBuilder
 from vllm_ascend.attention.mla_v1 import AscendMLABackend
@@ -3935,13 +3938,17 @@ class NPUModelRunner(GPUModelRunner):
 
                     if is_c128_owner_cache:
                         assert len(kv_cache) == 1, "C128 owner-shard does not support quantized scale pages yet"
-                        kv_caches[layer_name] = C128OwnerShardCache(
+                        owner_cache = C128OwnerShardCache(
                             persistent_cache=kv_cache[0],
                             stage_cache=self._get_c128_owner_stage_cache(
                                 current_kv_cache_spec, kv_cache_config.num_blocks
                             ),
                             tp_size=self.vllm_config.parallel_config.tensor_parallel_size,
                         )
+                        # Keep static_forward_context ABI-compatible: upstream
+                        # layers receive the Tensor they expect, while DSACP
+                        # resolves owner metadata through the registry.
+                        kv_caches[layer_name] = register_c128_owner_cache(owner_cache)
                     else:
                         kv_caches[layer_name] = kv_cache
                 elif isinstance(current_kv_cache_spec, AttentionSpec):

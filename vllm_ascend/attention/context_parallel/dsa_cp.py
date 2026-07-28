@@ -16,7 +16,7 @@ from vllm.v1.kv_cache_interface import AttentionSpec, MLAAttentionSpec
 from vllm_ascend.ascend_config import get_ascend_config
 from vllm_ascend.attention.abstract import DSAAttentionImpl
 from vllm_ascend.attention.attention_v1 import AscendAttentionState
-from vllm_ascend.attention.context_parallel.c128_owner_cache import C128OwnerShardCache
+from vllm_ascend.attention.context_parallel.c128_owner_cache import get_c128_owner_cache
 from vllm_ascend.attention.utils import AscendCommonAttentionMetadata, split_decodes_and_prefills
 from vllm_ascend.ops.linear import AscendUnquantizedLinearMethod
 from vllm_ascend.ops.rope_dsv4 import get_cos_and_sin_dsa
@@ -1200,12 +1200,13 @@ class AscendDSACPImpl(DSAAttentionImpl):
 
             if compressed_kv.numel() == 0:
                 compressed_kv = None
-            if isinstance(compress_kv_cache, C128OwnerShardCache):
+            c128_owner_cache = get_c128_owner_cache(compress_kv_cache)
+            if c128_owner_cache is not None:
                 # Keep the existing gathered-hidden compressor and its state
                 # cache unchanged.  Only persistent C128 page placement is
                 # owner-only; the attention consumer stages its own local view
                 # below.
-                compress_kv_cache.scatter_owned(
+                c128_owner_cache.scatter_owned(
                     compressor_attn_metadata.req_metadata.slot_mapping,
                     compressed_kv,
                     self.tp_rank,
@@ -1256,11 +1257,11 @@ class AscendDSACPImpl(DSAAttentionImpl):
             assert compressor_attn_metadata.req_metadata is not None
             cmp_kv = compress_kv_cache
             cmp_block_table = compressor_attn_metadata.req_metadata.block_table
-            c128_owner_cache = isinstance(compress_kv_cache, C128OwnerShardCache)
-            if c128_owner_cache:
+            owner_cache = get_c128_owner_cache(compress_kv_cache)
+            if owner_cache is not None:
                 if not has_prefill:
                     raise RuntimeError("C128 owner-shard is prefill-only; decode requires the replicated cache path")
-                cmp_kv, cmp_block_table = compress_kv_cache.materialize_for_attention(
+                cmp_kv, cmp_block_table = owner_cache.materialize_for_attention(
                     cmp_block_table,
                     tp_rank=self.tp_rank,
                     group=self.tp_group.device_group,
@@ -1282,7 +1283,7 @@ class AscendDSACPImpl(DSAAttentionImpl):
                 cmp_mask_mode=3,
                 **common_attn_kwargs,
             )[0]
-            if c128_owner_cache:
+            if owner_cache is not None:
                 logger.info("C128 owner sparse attention complete: rank=%d", self.tp_rank)
         return attn_output
 
