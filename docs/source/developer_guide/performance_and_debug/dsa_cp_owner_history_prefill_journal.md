@@ -230,10 +230,64 @@ with explicit lifetime/capacity accounting, followed by a true selected-row
 or VMM peer-read kernel path. Do not run another 8K TTFT comparison until the
 feature-on request returns an output and its allocator accounting is proven.
 
+### G7: tensor-ABI retry and overlap-only B1
+
+The r3/r4 feature-on runs had put a Python `C128OwnerShardCache` wrapper into
+the model's `static_forward_context` cache slot. That slot is consumed by the
+model as a Tensor before `AscendDSACPImpl._forward()` executes. Commit
+`dbdea8f93fbfb5380ee8e79179067290b50056cb` keeps the model-visible cache as
+the persistent Tensor and resolves owner metadata through an out-of-band
+Tensor-data-pointer registry at the DSA-CP seam. The updated reference suite
+on the `.204` image passed `11 passed`.
+
+The r5 Flash TP8 service loaded 70/70 shards and reached `GET /health = 200`,
+but its first 128-token, one-output request again ended without a text SSE
+delta and the service exited. The service log contains no C128 scatter, stage,
+or sparse-attention trace; CANN device/PLOG searches did not expose a Python,
+HCCL, or kernel exception. Therefore r5 is **INVALID** and establishes only a
+fault boundary: failure is before the instrumented C128 DSA-CP scatter/stage
+seam. It is not evidence against HCCL staging, VMM, or Mooncake (which was
+disabled). Raw evidence:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/20260728_prefill_owner/flash_c128_owner/
+  log_single_node_prefill_flash_tp8_c128_owner_r5_tensorabi_fmc2_8k.log
+  bench_r5_smoke.out
+  bench_r5_smoke.rc
+  test_owner_stage_r5.log
+  source_sha256.txt
+```
+
+In parallel, B1 isolated the existing implementation's
+`prefill_comm_compute_overlap` switch. It retained TP8/EP8, Flash, 8K input,
+one output token, FusedMC2, lazy weight loading, no Mooncake, and the
+replicated C128 path; the only change from B0 was
+`ENABLE_PREFILL_COMM_COMPUTE_OVERLAP=1`. It passed correctness (5/5 timed
+requests delivered nonempty text), but did not improve TTFT:
+
+| Run | Median TTFT | Relative to B0 |
+|---|---:|---:|
+| B0 overlap=0 | 597.932 ms | baseline |
+| B1 overlap=1 | 601.532 ms | -0.60% |
+
+The >8% target is at most 550.097 ms against this B0. B1 is consequently a
+valid negative result, not a production optimization. Raw evidence:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/20260728_prefill_owner/flash_overlap/
+  experiment_b1.txt
+  log_single_node_prefill_flash_tp8_overlap_fmc2_8k.log
+  bench_b1_smoke.out
+  bench_b1_8k.out
+  results/flash_tp8_overlap_b1_fmc2_8k_ttft.json
+```
+
 ## Next implementation gate
 
-Implement a feature-off-by-default C128-only allocation and page-translation
-layer. It must retain the existing replicated path, expose the above mapping,
-and materialize selected owner rows into a local buffer before attention. Do
-not wire C4 or SWA into this gate; first prove compressor prefix-state
-equivalence and a tensor/kernel consumer for the VMM view.
+Before another owner-shard e2e attempt, instrument the model-to-DSA-CP cache
+handoff at warning level with cache Tensor shape, data pointer, and owner
+registry resolution. The gate is a 128-token prefill that reaches either the
+owner scatter or a captured exception. Keep C4/SWA and Mooncake out of this
+gate. Only after a feature-on request returns text may the implementation
+replace the full local stage with a bounded selected-page workspace and make a
+capacity or TTFT claim.

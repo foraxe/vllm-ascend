@@ -931,6 +931,9 @@ class AscendDSACPImpl(DSAAttentionImpl):
         self.multistream_dsa_preprocess = ascend_config.multistream_dsa_preprocess
 
         self.vllm_config = get_current_vllm_config()
+        self.enable_c128_owner_shard = bool(
+            (self.vllm_config.additional_config or {}).get("enable_c128_owner_shard", False)
+        )
 
         # indexer param
         if self.indexer is not None:
@@ -1048,6 +1051,20 @@ class AscendDSACPImpl(DSAAttentionImpl):
         else:
             (_, swa_kv_cache, _, _, _, _) = kv_cache
             (swa_metadata,) = attn_metadata
+        c128_owner_cache = None
+        if self.compress_ratio == 128:
+            c128_owner_cache = get_c128_owner_cache(compress_kv_cache)
+            if self.enable_c128_owner_shard and self.tp_rank == 0:
+                cache_shape = tuple(compress_kv_cache.shape) if isinstance(compress_kv_cache, torch.Tensor) else None
+                cache_data_ptr = compress_kv_cache.data_ptr() if isinstance(compress_kv_cache, torch.Tensor) else None
+                logger.warning(
+                    "C128 owner cache handoff: layer=%s cache_type=%s shape=%s data_ptr=%s registered=%s",
+                    layer_name,
+                    type(compress_kv_cache).__name__,
+                    cache_shape,
+                    cache_data_ptr,
+                    c128_owner_cache is not None,
+                )
         common_attn_metadata = attn_metadata[0]
 
         overlap_hidden_states_allgather = self.multistream_dsa_preprocess and need_gather_q_kv
@@ -1200,7 +1217,6 @@ class AscendDSACPImpl(DSAAttentionImpl):
 
             if compressed_kv.numel() == 0:
                 compressed_kv = None
-            c128_owner_cache = get_c128_owner_cache(compress_kv_cache)
             if c128_owner_cache is not None:
                 # Keep the existing gathered-hidden compressor and its state
                 # cache unchanged.  Only persistent C128 page placement is
@@ -1257,11 +1273,10 @@ class AscendDSACPImpl(DSAAttentionImpl):
             assert compressor_attn_metadata.req_metadata is not None
             cmp_kv = compress_kv_cache
             cmp_block_table = compressor_attn_metadata.req_metadata.block_table
-            owner_cache = get_c128_owner_cache(compress_kv_cache)
-            if owner_cache is not None:
+            if c128_owner_cache is not None:
                 if not has_prefill:
                     raise RuntimeError("C128 owner-shard is prefill-only; decode requires the replicated cache path")
-                cmp_kv, cmp_block_table = owner_cache.materialize_for_attention(
+                cmp_kv, cmp_block_table = c128_owner_cache.materialize_for_attention(
                     cmp_block_table,
                     tp_rank=self.tp_rank,
                     group=self.tp_group.device_group,
@@ -1283,7 +1298,7 @@ class AscendDSACPImpl(DSAAttentionImpl):
                 cmp_mask_mode=3,
                 **common_attn_kwargs,
             )[0]
-            if owner_cache is not None:
+            if c128_owner_cache is not None:
                 logger.info("C128 owner sparse attention complete: rank=%d", self.tp_rank)
         return attn_output
 
