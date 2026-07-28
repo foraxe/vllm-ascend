@@ -29,9 +29,6 @@ ENABLE_C128_OWNER_COMPACT_ALLOCATION=${ENABLE_C128_OWNER_COMPACT_ALLOCATION:-1}
 # Emits per-layer direct DSA custom-op boundary markers. Keep this off for
 # performance experiments; it exists only to localize feature-on failures.
 ENABLE_C128_OWNER_DEBUG=${ENABLE_C128_OWNER_DEBUG:-0}
-# Synchronizing per-row C128 stage oracle. Debug-only: this must remain off
-# for all TTFT measurements.
-ENABLE_C128_OWNER_ORACLE=${ENABLE_C128_OWNER_ORACLE:-0}
 # `layer_sharding` is accepted only by a PD-disaggregated prefill (P) role in
 # this vLLM release. Keep the historical P-side default, but set this to 0 for
 # a direct standalone service such as the DSV4-Flash single-node baseline.
@@ -71,7 +68,7 @@ NUM_GPU_BLOCKS_OVERRIDE=${NUM_GPU_BLOCKS_OVERRIDE:-}
 SYNTHETIC_ROUTED_EXPERTS=${SYNTHETIC_ROUTED_EXPERTS:-0}
 ALLOW_SYNTHETIC_WEIGHTS=${ALLOW_SYNTHETIC_WEIGHTS:-0}
 
-for boolean_name in ENABLE_PREFILL_COMM_COMPUTE_OVERLAP ENABLE_C128_OWNER_SHARD ENABLE_C128_OWNER_COMPACT_ALLOCATION ENABLE_C128_OWNER_DEBUG ENABLE_C128_OWNER_ORACLE \
+for boolean_name in ENABLE_PREFILL_COMM_COMPUTE_OVERLAP ENABLE_C128_OWNER_SHARD ENABLE_C128_OWNER_COMPACT_ALLOCATION ENABLE_C128_OWNER_DEBUG \
     ENABLE_DSA_LAYER_SHARDING ENABLE_FUSED_MC2 ENABLE_MTP \
     ENABLE_TORCH_PROFILER ENABLE_MOONCAKE_KV_CONNECTOR; do
     boolean_value=${!boolean_name}
@@ -253,7 +250,6 @@ ADDITIONAL_CONFIG=$(jq -cn \
     --argjson c128_owner_shard "${ENABLE_C128_OWNER_SHARD}" \
     --argjson c128_owner_compact_allocation "${ENABLE_C128_OWNER_COMPACT_ALLOCATION}" \
     --argjson c128_owner_debug "${ENABLE_C128_OWNER_DEBUG}" \
-    --argjson c128_owner_oracle "${ENABLE_C128_OWNER_ORACLE}" \
     --argjson dsa_layer_sharding "${ENABLE_DSA_LAYER_SHARDING}" \
     --argjson fused_mc2 "${ENABLE_FUSED_MC2}" \
     '({
@@ -264,7 +260,6 @@ ADDITIONAL_CONFIG=$(jq -cn \
       enable_c128_owner_shard:$c128_owner_shard,
       enable_c128_owner_compact_allocation:$c128_owner_compact_allocation,
       enable_c128_owner_debug:$c128_owner_debug,
-      enable_c128_owner_oracle:$c128_owner_oracle,
       enable_fused_mc2:$fused_mc2
     } + if $dsa_layer_sharding == 1 then {layer_sharding:["q_b_proj", "o_proj"]} else {} end)')
 
@@ -394,8 +389,8 @@ ENV_KEYS=(
 
 print_effective_config() {
     local key
-    printf 'role=%s local_ip=%s prefill_comm_compute_overlap=%s c128_owner_shard=%s c128_owner_compact_allocation=%s c128_owner_debug=%s c128_owner_oracle=%s dsa_layer_sharding=%s enable_fused_mc2=%s enable_mtp=%s mooncake_kv_connector=%s synthetic_routed_experts=%s torch_profiler=%s\n' \
-        "${ROLE_NAME}" "${LOCAL_IP}" "${ENABLE_PREFILL_COMM_COMPUTE_OVERLAP}" "${ENABLE_C128_OWNER_SHARD}" "${ENABLE_C128_OWNER_COMPACT_ALLOCATION}" "${ENABLE_C128_OWNER_DEBUG}" "${ENABLE_C128_OWNER_ORACLE}" "${ENABLE_DSA_LAYER_SHARDING}" "${ENABLE_FUSED_MC2}" "${ENABLE_MTP}" "${ENABLE_MOONCAKE_KV_CONNECTOR}" "${SYNTHETIC_ROUTED_EXPERTS}" "${ENABLE_TORCH_PROFILER}"
+    printf 'role=%s local_ip=%s prefill_comm_compute_overlap=%s c128_owner_shard=%s c128_owner_compact_allocation=%s c128_owner_debug=%s dsa_layer_sharding=%s enable_fused_mc2=%s enable_mtp=%s mooncake_kv_connector=%s synthetic_routed_experts=%s torch_profiler=%s\n' \
+        "${ROLE_NAME}" "${LOCAL_IP}" "${ENABLE_PREFILL_COMM_COMPUTE_OVERLAP}" "${ENABLE_C128_OWNER_SHARD}" "${ENABLE_C128_OWNER_COMPACT_ALLOCATION}" "${ENABLE_C128_OWNER_DEBUG}" "${ENABLE_DSA_LAYER_SHARDING}" "${ENABLE_FUSED_MC2}" "${ENABLE_MTP}" "${ENABLE_MOONCAKE_KV_CONNECTOR}" "${SYNTHETIC_ROUTED_EXPERTS}" "${ENABLE_TORCH_PROFILER}"
     printf 'dp_size=%s dp_rank=%s tp_size=%s api_port=%s\n' \
         "${DP_SIZE}" "${DP_RANK}" "${TP_SIZE}" "${VLLM_PORT}"
     printf 'safetensors_load_strategy=%s gpu_memory_utilization=%s max_model_len=%s max_num_batched_tokens=%s num_gpu_blocks_override=%s\n' \

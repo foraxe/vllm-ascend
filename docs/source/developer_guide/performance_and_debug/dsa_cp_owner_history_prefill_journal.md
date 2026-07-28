@@ -535,21 +535,23 @@ Raw evidence:
 
 ### G13: current-row cache oracle — in progress
 
-The branch adds a debug-only oracle for the direct producer/consumer
-invariant: after HCCL materialization, every current
-`compressed_kv` row must exactly equal the staged row addressed by its
-compressor slot mapping. It uses no replicated persistent cache and is off by
-default; the launcher exposes `ENABLE_C128_OWNER_ORACLE=1`.
+The branch experimentally added a debug-only in-forward oracle for the direct
+producer/consumer invariant: after HCCL materialization, every current
+`compressed_kv` row would equal the staged row addressed by its compressor
+slot mapping. It used no replicated persistent cache.
 
 r25 was **INVALID** because the launcher passed the oracle value to `jq` but
 omitted the key from `additional-config`; no oracle code ran. That launcher
 bug is fixed. r26 carried the flag correctly but exited at the first
 `materialize_begin`, before an oracle result or an attributable runtime error.
-The only semantic distinction was an optional third return value from the
-staging helper, so that control-flow change has been removed: staging now
-retains its original two-value return ABI and stores selected pages as
-diagnostic metadata for the oracle to read afterwards. The next retry must
-use this fixed ABI; neither r25 nor r26 is correctness evidence.
+The optional third staging return was then removed and the original two-value
+ABI restored. r27 was still **INVALID** at the same boundary. r28 also made
+the materialize call common to the debug and production branches and added a
+debug-only NPU synchronization before verification; it failed identically.
+Therefore an NPU verifier containing dynamic gathers cannot currently share
+this model forward graph on the target CANN stack. These runs do not implicate
+the placement protocol, and no additional internal-oracle retry is justified
+without a different graph-isolation mechanism.
 
 Raw evidence:
 
@@ -559,4 +561,44 @@ Raw evidence:
   log_single_node_prefill_flash_tp8_c128_owner_r17_fullalloc_256blk_fmc2_8k.log
   log_single_node_prefill_flash_tp8_c128_owner_r18_fullalloc_64blk_fmc2_8k.log
   log_single_node_prefill_flash_tp8_c128_owner_r19_fullalloc_2blk_fmc2_smoke.log
+  log_single_node_prefill_flash_tp8_c128_owner_r27_oracle_fixedabi_fmc2_8k.log
+  bench_flash_tp8_c128_owner_r27_oracle_fixedabi_fmc2_8k.out
+  log_single_node_prefill_flash_tp8_c128_owner_r28_oracle_sync_fmc2_8k.log
+  bench_flash_tp8_c128_owner_r28_oracle_sync_fmc2_8k.out
+```
+
+### G14: isolated production HCCL placement gate — PASS
+
+`tests/e2e/attention/test_dsa_cp_owner_hccl.py` runs the production
+`prepare_owned_scatter`, `scatter_prepared`, and
+`materialize_for_attention` methods under a real single-node TP8 HCCL process
+group. Each rank owns only 3 of 24 persistent C128 pages. Every rank requests
+a distinct three-page local block table; the global union contains all 24
+pages. The staged cache reconstructed all 24 producer pages bit-exactly on
+all eight ranks, and the remapped local block tables matched their original
+logical pages.
+
+The first invocation was **INVALID** because inherited
+`HCCL_INTRA_PCIE_ENABLE=1` conflicted with the required
+`HCCL_INTRA_ROCE_ENABLE=1` (`EI0001`). The valid command explicitly sets
+`HCCL_INTRA_PCIE_ENABLE=0`, matching the Flash launcher:
+
+```bash
+ASCEND_RT_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 \\
+HCCL_IF_IP=33.215.119.204 HCCL_INTRA_PCIE_ENABLE=0 \\
+HCCL_INTRA_ROCE_ENABLE=1 HCCL_BUFFSIZE=1024 VLLM_VERSION=0.20.2 \\
+python3 -m pytest -q -s tests/e2e/attention/test_dsa_cp_owner_hccl.py
+```
+
+This proves the real NPU/HCCL owner-scatter and full-stage transport
+mechanism. It does not prove the model's stateful compressor history or
+attention/logit equivalence, and it does not make full-union staging a viable
+TTFT optimization.
+
+Raw evidence:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/20260728_prefill_owner/flash_c128_owner/
+  hccl_owner_tp8_r2_pass.out
+  hccl_owner_tp8_r2_pass.rc
 ```

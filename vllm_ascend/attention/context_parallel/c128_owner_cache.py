@@ -89,7 +89,6 @@ class C128OwnerShardCache:
     stage_cache: torch.Tensor
     tp_size: int
     debug: bool = False
-    last_selected_pages: torch.Tensor | None = None
 
     def _trace(self, message: str) -> None:
         if self.debug:
@@ -305,9 +304,6 @@ class C128OwnerShardCache:
             tp_rank,
             union_pages.numel(),
         )
-        # Diagnostic metadata only; keeping the method return ABI fixed avoids
-        # a distinct eager/graph path for the HCCL staging operation.
-        self.last_selected_pages = union_pages
         staged_cache = self.stage_cache[: union_pages.numel()]
         return staged_cache, remapped_block_table
 
