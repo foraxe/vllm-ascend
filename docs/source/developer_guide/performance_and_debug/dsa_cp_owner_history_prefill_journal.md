@@ -429,6 +429,27 @@ only whether the separated full-layout compressor state and owner-placement
 ABI can reach the owner-write trace. It is never a TTFT or 8K capacity
 candidate. Mooncake stays disabled for every G10 run.
 
+r19 executed the 256-token/2-block full-layout gate before the launcher batch
+envelope parameterization was deployed (the command still showed the
+irrelevant hard-coded `--max-num-batched-tokens 5120`). It is nevertheless
+decisively **INVALID** on the capacity gate: after full-layout initialization,
+only 0.01 GiB remained, while one request at `max_model_len=256` requires
+0.15 GiB. There is no full-layout request size that is useful for this pod;
+do not spend another launch attempting to prove owner placement through that
+layout.
+
+The launcher now exposes and validates `MAX_NUM_BATCHED_TOKENS`, and its
+remote `PRINT_CONFIG_ONLY=1` expansion verified `256` for both model and
+batch envelopes. That is a reproducibility improvement, not a performance
+change.
+
+The implementation gate returns to compact allocation: determine the exact
+compressor state/attention raw-storage alias required by the CANN compressor,
+then retain that state layout while allocating only the canonical owner pages
+for persistent attention. The existing compact-path stop after
+`compressor_ready` is the next causal target. HCCL staging, VMM, and TTFT
+remain out of scope until that gate returns one response.
+
 Raw evidence:
 
 ```text
@@ -436,4 +457,5 @@ Raw evidence:
   log_single_node_prefill_flash_tp8_c128_owner_r16_fullalloc_u88_fmc2_8k.log
   log_single_node_prefill_flash_tp8_c128_owner_r17_fullalloc_256blk_fmc2_8k.log
   log_single_node_prefill_flash_tp8_c128_owner_r18_fullalloc_64blk_fmc2_8k.log
+  log_single_node_prefill_flash_tp8_c128_owner_r19_fullalloc_2blk_fmc2_smoke.log
 ```
