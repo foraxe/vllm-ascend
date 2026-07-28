@@ -398,3 +398,34 @@ The corresponding raw log is:
 /a3_inference/nyx/dsv4_dsa_cp/20260728_prefill_owner/flash_c128_owner/
   log_single_node_prefill_flash_tp8_c128_owner_r15_fullalloc_layout_fmc2_8k.log
 ```
+
+### G10: bounded full-layout admission gate — in progress
+
+r16 increased no feature setting; it only lowered `gpu_memory_utilization` to
+`0.88` while retaining the full C128 allocation. It remained **INVALID**:
+the additional C128 state bucket requested 474 MiB and the ranks had only
+29--266 MiB free. This does not alter the G9 conclusion.
+
+r17 instead used the new launcher controls with full C128 allocation,
+`MAX_MODEL_LEN=32768`, and `NUM_GPU_BLOCKS_OVERRIDE=256`. It was also
+**INVALID**, but for the upstream planner admission check rather than an NPU
+allocation or owner-path operation: the 32K request requires 2.9 GiB of KV
+cache while the forced 256-block cache exposes 0.77 GiB (estimated maximum
+length 1432). No prefill ran, and r17 must not be used to assess compact
+allocation or owner placement.
+
+The next single-variable layout gate fixes the serving envelope to exactly
+the intended workload: `MAX_MODEL_LEN=8192` and
+`NUM_GPU_BLOCKS_OVERRIDE=64`, still with full allocation and owner placement.
+An 8K prefill occupies exactly 64 128-token blocks. The pass condition is a
+health endpoint followed by one nonempty 8K/one-output response reaching the
+owner-write trace. It remains a correctness gate, never a TTFT candidate.
+Mooncake stays disabled for every G10 run.
+
+Raw evidence:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/20260728_prefill_owner/flash_c128_owner/
+  log_single_node_prefill_flash_tp8_c128_owner_r16_fullalloc_u88_fmc2_8k.log
+  log_single_node_prefill_flash_tp8_c128_owner_r17_fullalloc_256blk_fmc2_8k.log
+```
