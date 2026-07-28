@@ -19,6 +19,16 @@ task map are in
 The test scripts are path-performance tooling: synthetic 64-routed-expert
 results are not DeepSeek-V4-Pro 384-expert production results.
 
+Mooncake KV transfer is disabled by default. The single-node cold-prefill
+benchmark does not save or restore external KV, so starting its master would
+introduce a separate process and port without exercising the measured path.
+Use `ENABLE_MOONCAKE_KV_CONNECTOR=1` only for an explicit KV-transfer test.
+
+`layer_sharding` is a PD-disaggregated prefill-role option in this vLLM
+release. The historical Pro P-side reproduction leaves it enabled by default;
+a direct standalone DSV4-Flash service must use
+`ENABLE_DSA_LAYER_SHARDING=0`.
+
 ## Deploy to an A3 iTask pod
 
 Run these commands from the repository root after resolving the role directory
@@ -65,6 +75,45 @@ python3 bench_ttft_stream.py \
   --words 8192 --warmup 1 --runs 10 --timeout 600 \
   --output results/fmc2_8k_ttft_stream.json
 ```
+
+## Real DSV4-Flash standalone B0
+
+This is the valid 8-NPU, TP8/EP8 cold-prefill baseline for the current Flash
+proxy experiment. Flash has `o_groups=8`; TP16 produces zero local output
+groups and fails in the Ascend `wo_a` loader. It uses real Flash W8A8 weights
+and measures one 8K-input / one-output request. It is not a replacement for a
+final DSV4-Pro claim.
+
+```bash
+cd "${A3_ROLE_DIR}"
+RUN_ID=flash_b0_nomooncake_fmc2_8k \
+A3_MODEL_PATH=/mnt/deepseek/models/DeepSeek-V4-Flash-w8a8-mtp \
+TP_SIZE=8 \
+A3_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 \
+ENABLE_DSA_LAYER_SHARDING=0 \
+ENABLE_MOONCAKE_KV_CONNECTOR=0 \
+ENABLE_PREFILL_COMM_COMPUTE_OVERLAP=0 \
+ENABLE_FUSED_MC2=1 \
+ENABLE_MTP=0 \
+ENABLE_TORCH_PROFILER=0 \
+bash ./start_single_node.sh
+
+python3 bench_ttft_stream.py \
+  --endpoint http://127.0.0.1:7100/v1/chat/completions \
+  --words 8192 --warmup 1 --runs 5 --timeout 600 \
+  --output results/flash_b0_nomooncake_fmc2_8k_ttft.json
+```
+
+This run is valid only after `GET /health` returns `200`, the launcher log
+contains `dsa_layer_sharding=0`, `mooncake_kv_connector=0`, and every recorded
+request has a nonzero TTFT and a first text token. Keep its JSON next to the
+launch log; do not compare it with a synthetic 64-expert row.
+
+The historical Pro role uses `SAFETENSORS_LOAD_STRATEGY=prefetch`. If that
+specific NFS prefetch path fails before any shard loads, rerun the identical
+configuration once with `SAFETENSORS_LOAD_STRATEGY=lazy`; this is a model-load
+gate, not a DSA-CP performance A/B. Record the selected strategy in the
+launch log and do not compare load time with TTFT.
 
 Before measuring, verify `health_http=200` and that the launch log contains
 `"enable_fused_mc2": 1`. Do not enable an OTLP endpoint unless intentionally

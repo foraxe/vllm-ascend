@@ -93,6 +93,69 @@ VLLM_VERSION=0.20.2 python3 -m pytest -q test_dsa_cp_owner_placement_reference.p
 8 passed
 ```
 
+### G4: real DSV4-Flash cold-prefill B0 — PASS
+
+On `2026-07-28`, the same pod ran the actual checkpoint
+`/mnt/deepseek/models/DeepSeek-V4-Flash-w8a8-mtp` with DSA-CP enabled,
+FusedMC2 enabled, no Mooncake connector, no prefix caching, and a direct
+standalone service. Flash has `o_groups=8`; TP16 is invalid because
+`wo_a` would compute `n_local_groups = 8 // 16 = 0`. The launcher now rejects
+that topology before model load. The valid B0 was TP8/EP8 on NPU 0--7:
+
+```text
+TP_SIZE=8
+A3_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
+ENABLE_DSA_LAYER_SHARDING=0
+ENABLE_MOONCAKE_KV_CONNECTOR=0
+ENABLE_PREFILL_COMM_COMPUTE_OVERLAP=0
+ENABLE_FUSED_MC2=1
+SAFETENSORS_LOAD_STRATEGY=lazy
+```
+
+`lazy` was selected only after the historical forced-NFS `prefetch` run failed
+before a shard completed. It is a load-path choice, not a TTFT A/B. The valid
+run loaded all 70 files in 271.62 s, created the cache/warmed the engine in
+15.81 s, and reached `GET /health = 200`.
+
+The fixed streaming client sent 8192 repetitions of `" hello"`, a unique
+suffix per request, `max_tokens=1`, one warmup, and five timed samples. Its
+metric is time to the first nonempty streamed text delta:
+
+| Metric | Result |
+|---|---:|
+| TTFT median | 597.93 ms |
+| TTFT mean | 599.89 ms |
+| TTFT p90 | 606.02 ms |
+| Timed requests with a first text token | 5 / 5 |
+| Warmup TTFT | 20.337 s |
+
+The live allocator reported 12.68--12.69 GiB current KV-cache memory per
+NPU, or about 101.5 GiB across TP8. This is the service's total current KV
+cache allocation, not a C128-only owner-shard saving. The C128 oracle remains
+the capacity proof: for a CP8 owner shard, persistent quantized C128 pages
+plus scales are `1/8` (12.5%) of eight replicated copies; the selected-row
+BF16 workspace is transient and excluded.
+
+Durable raw evidence is on NFS:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/20260728_prefill_owner/flash_b0/
+  log_single_node_prefill_flash_tp8_lazy_nomooncake_fmc2_8k.log
+  results/flash_tp8_lazy_nomooncake_fmc2_8k_ttft.json
+  results/flash_tp8_lazy_nomooncake_fmc2_8k_kv_and_load.txt
+  results/flash_tp8_lazy_nomooncake_fmc2_8k_vllm_server.log
+```
+
+Artifact checksums are respectively
+`f66a465447d7025db3dd185a605caf8b65923f0fda007bfe6c98b8831447416f`
+(TTFT JSON) and
+`17b8d3e8f6189deb3d02c804a1bb32484ec0c99de154a27bb358c73c908f6634`
+(KV/load excerpt).
+
+This is a valid Flash B0 and a correctness/capacity gate for C128. It is not
+yet an owner-sharded allocator implementation, a DSA-CP TTFT comparison, or
+a DeepSeek-V4-Pro result.
+
 ## Current blocker
 
 The old cloudide iTask pod holding

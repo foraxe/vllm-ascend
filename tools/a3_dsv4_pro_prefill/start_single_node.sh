@@ -15,9 +15,12 @@ OTLP_TRACES_ENDPOINT=${OTLP_TRACES_ENDPOINT:-}
 RUN_ID=${RUN_ID:-$(date +%Y%m%d_%H%M%S)}
 LOG_FILE=${ROLE_DIR}/log_single_node_prefill_${RUN_ID}.log
 PID_FILE=${ROLE_DIR}/.vllm_pids_single_node
-# Pure-prefill DSA-CP optimization gate.  This is intentionally independent
-# from the mandatory P-side layer sharding used to fit the model.
+# Pure-prefill DSA-CP optimization gate. This is intentionally independent
+# from layer sharding.
 ENABLE_PREFILL_COMM_COMPUTE_OVERLAP=${ENABLE_PREFILL_COMM_COMPUTE_OVERLAP:-0}
+# `layer_sharding` is accepted only by a PD-disaggregated prefill (P) role in
+# this vLLM release. Keep the historical P-side default, but set this to 0 for
+# a direct standalone service such as the DSV4-Flash single-node baseline.
 ENABLE_DSA_LAYER_SHARDING=${ENABLE_DSA_LAYER_SHARDING:-1}
 # A3 fused-MC2 prefill experiment.  At 8K, mode 0 selects the three-stage
 # alltoallv MoE path; mode 1 selects the existing W4A8 dispatch_ffn_combine
@@ -31,11 +34,37 @@ TORCH_PROFILER_DIR=${TORCH_PROFILER_DIR:-${ROLE_DIR}/profiling/${RUN_ID}}
 # MTP is a decode-time draft model.  Keep it out of the single-node,
 # prefill-only experiment so it does not consume one extra MoE layer of HBM.
 ENABLE_MTP=${ENABLE_MTP:-0}
+# A single-node cold-prefill benchmark neither saves nor restores external KV.
+# Keep Mooncake out of the default process tree so its master, ports, and
+# connector initialization cannot affect TTFT.  Set this only when explicitly
+# exercising KV-transfer behavior.
+ENABLE_MOONCAKE_KV_CONNECTOR=${ENABLE_MOONCAKE_KV_CONNECTOR:-0}
+# The historical Pro role prefetches safetensors on NFS. Keep that default,
+# but make the policy explicit so a standalone model-load failure can be
+# isolated without changing any DSA-CP or serving setting.
+SAFETENSORS_LOAD_STRATEGY=${SAFETENSORS_LOAD_STRATEGY:-prefetch}
 # Explicit synthetic-model gate for capacity and DSA-CP path experiments.
 # A reduced routed-expert count changes gate/hash tensor shapes, so it must
 # never be paired with the production checkpoint weights.
 SYNTHETIC_ROUTED_EXPERTS=${SYNTHETIC_ROUTED_EXPERTS:-0}
 ALLOW_SYNTHETIC_WEIGHTS=${ALLOW_SYNTHETIC_WEIGHTS:-0}
+
+for boolean_name in ENABLE_PREFILL_COMM_COMPUTE_OVERLAP \
+    ENABLE_DSA_LAYER_SHARDING ENABLE_FUSED_MC2 ENABLE_MTP \
+    ENABLE_TORCH_PROFILER ENABLE_MOONCAKE_KV_CONNECTOR; do
+    boolean_value=${!boolean_name}
+    [[ "${boolean_value}" == 0 || "${boolean_value}" == 1 ]] || {
+        echo "${boolean_name} must be 0 or 1, got ${boolean_value}" >&2
+        exit 2
+    }
+done
+case "${SAFETENSORS_LOAD_STRATEGY}" in
+    lazy|eager|prefetch) ;;
+    *)
+        echo "SAFETENSORS_LOAD_STRATEGY must be lazy, eager, or prefetch, got ${SAFETENSORS_LOAD_STRATEGY}" >&2
+        exit 2
+        ;;
+esac
 
 resolve_local_ip() {
     python3 - "${NETWORK_INTERFACE}" <<'PY'
@@ -69,13 +98,47 @@ LOCAL_IP=$(resolve_local_ip)
     echo "Unable to resolve IPv4 address on ${NETWORK_INTERFACE}" >&2
     exit 1
 }
-# Prefill process placement.
-VISIBLE_DEVICES=0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
+# Prefill process placement. Keep the Pro P-side default, while allowing a
+# checkpoint whose attention output groups require a smaller TP width.
+VISIBLE_DEVICES=${A3_VISIBLE_DEVICES:-0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15}
 VLLM_PORT=7100
 DP_SIZE=1
 DP_ADDRESS="${LOCAL_IP}"
 DP_RPC_PORT=14435
-TP_SIZE=16
+TP_SIZE=${TP_SIZE:-16}
+
+[[ "${TP_SIZE}" =~ ^[0-9]+$ ]] && (( TP_SIZE > 0 )) || {
+    echo "TP_SIZE must be a positive integer, got ${TP_SIZE}" >&2
+    exit 2
+}
+IFS=',' read -r -a visible_device_array <<<"${VISIBLE_DEVICES}"
+(( ${#visible_device_array[@]} == TP_SIZE )) || {
+    echo "A3_VISIBLE_DEVICES has ${#visible_device_array[@]} entries but TP_SIZE=${TP_SIZE}" >&2
+    exit 2
+}
+
+validate_model_parallelism() {
+    python3 - "${A3_MODEL_PATH}" "${TP_SIZE}" <<'PY'
+import json
+import pathlib
+import sys
+
+model_path = pathlib.Path(sys.argv[1])
+tp_size = int(sys.argv[2])
+config_path = model_path / "config.json"
+if not config_path.is_file():
+    raise SystemExit(0)
+with config_path.open() as config_file:
+    config = json.load(config_file)
+o_groups = config.get("o_groups")
+if o_groups is not None and (o_groups < tp_size or o_groups % tp_size):
+    raise SystemExit(
+        f"checkpoint o_groups={o_groups} requires a positive integral local group count; "
+        f"TP_SIZE={tp_size} is invalid"
+    )
+PY
+}
+validate_model_parallelism
 
 # Environment copied from the prefill role in deepseek-pro-kvpool.yaml.
 export MODEL_PATH="${A3_MODEL_PATH}"
@@ -152,19 +215,21 @@ ADDITIONAL_CONFIG=$(jq -cn \
       enable_shared_expert_dp:true,
       prefill_comm_compute_overlap:$prefill_overlap,
       enable_fused_mc2:$fused_mc2
-    } + if $dsa_layer_sharding then {layer_sharding:["q_b_proj", "o_proj"]} else {} end)')
+    } + if $dsa_layer_sharding == 1 then {layer_sharding:["q_b_proj", "o_proj"]} else {} end)')
 
-KV_TRANSFER_CONFIG=$(jq -cn --arg engine_id "${LOCAL_IP}" '
-  {
-    kv_connector:"MooncakeHybridConnector",
-    kv_role:"kv_producer",
-    engine_id:$engine_id,
-    kv_port:"30100",
-    kv_connector_extra_config:{
-      prefill:{dp_size:1,tp_size:16},
-      decode:{dp_size:1,tp_size:16}
-    }
-  }')
+if [[ "${ENABLE_MOONCAKE_KV_CONNECTOR}" == 1 ]]; then
+    KV_TRANSFER_CONFIG=$(jq -cn --arg engine_id "${LOCAL_IP}" '
+      {
+        kv_connector:"MooncakeHybridConnector",
+        kv_role:"kv_producer",
+        engine_id:$engine_id,
+        kv_port:"30100",
+        kv_connector_extra_config:{
+          prefill:{dp_size:1,tp_size:16},
+          decode:{dp_size:1,tp_size:16}
+        }
+      }')
+fi
 
 if [[ "${ENABLE_TORCH_PROFILER}" == 1 ]]; then
     PROFILER_CONFIG=$(jq -cn --arg trace_dir "${TORCH_PROFILER_DIR}" '
@@ -233,7 +298,7 @@ VLLM_CMD=(
     --gpu-memory-utilization 0.9
     --no-disable-hybrid-kv-cache-manager
     --no-enable-prefix-caching
-    --safetensors-load-strategy prefetch
+    --safetensors-load-strategy "${SAFETENSORS_LOAD_STRATEGY}"
     # Omit all explicit DP rendezvous flags: defaults are DP=1 without the
     # external load-balancer mode inherited by the original 4P2D launcher.
     --tensor-parallel-size "${TP_SIZE}"
@@ -246,8 +311,10 @@ VLLM_CMD=(
     --tokenizer-mode deepseek_v4
     --reasoning-parser deepseek_v4
     --additional-config "${ADDITIONAL_CONFIG}"
-    --kv-transfer-config "${KV_TRANSFER_CONFIG}"
 )
+if [[ "${ENABLE_MOONCAKE_KV_CONNECTOR}" == 1 ]]; then
+    VLLM_CMD+=(--kv-transfer-config "${KV_TRANSFER_CONFIG}")
+fi
 if [[ "${SYNTHETIC_ROUTED_EXPERTS}" == 0 ]]; then
     VLLM_CMD+=(--model-loader-extra-config "${MODEL_LOADER_CONFIG}")
 else
@@ -273,17 +340,22 @@ ENV_KEYS=(
 
 print_effective_config() {
     local key
-    printf 'role=%s local_ip=%s prefill_comm_compute_overlap=%s dsa_layer_sharding=%s enable_fused_mc2=%s enable_mtp=%s synthetic_routed_experts=%s torch_profiler=%s\n' \
-        "${ROLE_NAME}" "${LOCAL_IP}" "${ENABLE_PREFILL_COMM_COMPUTE_OVERLAP}" "${ENABLE_DSA_LAYER_SHARDING}" "${ENABLE_FUSED_MC2}" "${ENABLE_MTP}" "${SYNTHETIC_ROUTED_EXPERTS}" "${ENABLE_TORCH_PROFILER}"
+    printf 'role=%s local_ip=%s prefill_comm_compute_overlap=%s dsa_layer_sharding=%s enable_fused_mc2=%s enable_mtp=%s mooncake_kv_connector=%s synthetic_routed_experts=%s torch_profiler=%s\n' \
+        "${ROLE_NAME}" "${LOCAL_IP}" "${ENABLE_PREFILL_COMM_COMPUTE_OVERLAP}" "${ENABLE_DSA_LAYER_SHARDING}" "${ENABLE_FUSED_MC2}" "${ENABLE_MTP}" "${ENABLE_MOONCAKE_KV_CONNECTOR}" "${SYNTHETIC_ROUTED_EXPERTS}" "${ENABLE_TORCH_PROFILER}"
     printf 'dp_size=%s dp_rank=%s tp_size=%s api_port=%s\n' \
         "${DP_SIZE}" "${DP_RANK}" "${TP_SIZE}" "${VLLM_PORT}"
+    printf 'safetensors_load_strategy=%s\n' "${SAFETENSORS_LOAD_STRATEGY}"
     printf '\nEnvironment:\n'
     for key in "${ENV_KEYS[@]}"; do
         printf '%s=%q\n' "${key}" "${!key-}"
     done
     printf 'VLLM_ASCEND_PER_REQUEST_SAVE_WAIT=<unset>\n'
-    printf '\n--kv-transfer-config:\n'
-    jq . <<<"${KV_TRANSFER_CONFIG}"
+    if [[ "${ENABLE_MOONCAKE_KV_CONNECTOR}" == 1 ]]; then
+        printf '\n--kv-transfer-config:\n'
+        jq . <<<"${KV_TRANSFER_CONFIG}"
+    else
+        printf '\n--kv-transfer-config: disabled for isolated prefill\n'
+    fi
     printf '\nCommand:\n'
     printf '%q ' "${VLLM_CMD[@]}"
     printf '\n'
@@ -298,7 +370,9 @@ ensure_not_running
 cd "${ROLE_DIR}"
 mkdir -p /home/admin/logs/vllm "${ASCEND_PROCESS_LOG_PATH}" \
     "${ROLE_DIR}/logs/runtime" "${ROLE_DIR}/logs/vllm" "${MC_LOG_DIR}"
-ensure_mooncake_master
+if [[ "${ENABLE_MOONCAKE_KV_CONNECTOR}" == 1 ]]; then
+    ensure_mooncake_master
+fi
 ulimit -c unlimited
 ulimit -n 1048576
 
