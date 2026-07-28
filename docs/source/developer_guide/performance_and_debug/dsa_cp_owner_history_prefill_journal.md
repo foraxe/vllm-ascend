@@ -620,3 +620,39 @@ rank. It passed bit-exact reconstruction: every rank reported
 would contain all 24 pages. The launcher gate is
 `ENABLE_C128_OWNER_SELECTIVE_STAGE=1`; it is off by default until Flash
 model-output and TTFT gates pass.
+
+### G16: selective-stage Flash 8K candidate — FAIL / correctness not proven
+
+r29 proved the selected-page path executes in the actual Flash model: 64-word
+and 8K/one-output debug smoke requests completed, with C128 traces reaching
+`materialize_ready` and `sparse_attn_ready` through multiple layers. r30 then
+ran the clean paired workload (Flash TP8/EP8, FusedMC2 on, Mooncake off,
+overlap off, 8K words, one output, warmup 1, runs 5). It is a valid candidate
+but not an improvement:
+
+| Run | Median TTFT | Relative to r23 B0 |
+|---|---:|---:|
+| r23 B0 feature-off | 593.847 ms | baseline |
+| r24 full-union owner stage | 940.926 ms | -58.45% |
+| r30 selected-page all-to-all stage | 967.903 ms | -62.99% |
+
+The selected payload optimization alone is insufficient. Variable request
+metadata, variable-split HCCL, and per-layer staging/reassembly remain on the
+critical prefill path. r30 also produced `"Hello"` for repetition 2 while r23
+produced `"你好"`, the same unresolved output mismatch seen in r24. Therefore
+neither owner candidate establishes model-output equivalence or qualifies for
+TTFT comparison claims.
+
+Raw evidence:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/20260728_prefill_owner/flash_c128_owner/
+  log_single_node_prefill_flash_tp8_c128_owner_r29_selective_smoke_fmc2.log
+  bench_flash_tp8_c128_owner_r29_selective_smoke_fmc2_64.out
+  bench_flash_tp8_c128_owner_r29_selective_smoke_fmc2_8k.out
+  results/flash_tp8_c128_owner_r29_selective_smoke_fmc2_64.json
+  results/flash_tp8_c128_owner_r29_selective_smoke_fmc2_8k.json
+  log_single_node_prefill_flash_tp8_c128_owner_r30_selective_clean_fmc2_8k.log
+  bench_flash_tp8_c128_owner_r30_selective_clean_fmc2_8k.out
+  results/flash_tp8_c128_owner_r30_selective_clean_fmc2_8k.json
+```
