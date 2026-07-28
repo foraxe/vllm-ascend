@@ -31,7 +31,7 @@ _PAGE_SIZE = 4
 _KV_SHAPE = (1, 2)
 
 
-def _worker(rank: int, port: int, result_queue) -> None:
+def _worker(rank: int, port: int, result_queue, selective_stage: bool) -> None:
     """Execute the production owner cache path for one rank."""
     try:
         torch_npu.npu.set_device(rank)
@@ -64,7 +64,12 @@ def _worker(rank: int, port: int, result_queue) -> None:
         local_pages = torch.arange(rank, total_pages, _WORLD_SIZE, dtype=torch.int64).npu()
         block_table = torch.full((_PAGES_PER_OWNER, _PAGES_PER_OWNER), -1, dtype=torch.int64).npu()
         block_table[:, 0] = local_pages
-        staged, remapped = owner_cache.materialize_for_attention(
+        materialize = (
+            owner_cache.materialize_selected_for_attention
+            if selective_stage
+            else owner_cache.materialize_for_attention
+        )
+        staged, remapped = materialize(
             block_table,
             tp_rank=rank,
             group=dist.group.WORLD,
@@ -72,8 +77,14 @@ def _worker(rank: int, port: int, result_queue) -> None:
         torch.npu.synchronize()
 
         expected = compressed_kv.reshape(total_pages, _PAGE_SIZE, *_KV_SHAPE)
-        torch.testing.assert_close(staged.cpu(), expected.cpu(), rtol=0, atol=0)
-        torch.testing.assert_close(remapped[:, 0].cpu(), local_pages.cpu(), rtol=0, atol=0)
+        if selective_stage:
+            torch.testing.assert_close(staged.cpu(), expected[local_pages].cpu(), rtol=0, atol=0)
+            torch.testing.assert_close(
+                remapped[:, 0].cpu(), torch.arange(_PAGES_PER_OWNER), rtol=0, atol=0
+            )
+        else:
+            torch.testing.assert_close(staged.cpu(), expected.cpu(), rtol=0, atol=0)
+            torch.testing.assert_close(remapped[:, 0].cpu(), local_pages.cpu(), rtol=0, atol=0)
         result_queue.put((rank, "PASS"))
     except Exception as error:  # pragma: no cover - failure is returned to parent
         result_queue.put((rank, f"FAIL: {type(error).__name__}: {error}"))
@@ -82,12 +93,15 @@ def _worker(rank: int, port: int, result_queue) -> None:
             dist.destroy_process_group()
 
 
-def test_c128_owner_scatter_and_stage_hccl() -> None:
+def _run_owner_hccl_gate(selective_stage: bool) -> None:
     """HCCL staging exactly reconstructs the producer's compressed C128 cache."""
     mp.set_start_method("fork", force=True)
     result_queue = mp.SimpleQueue()
     port = 29501 + random.randint(0, 10000)
-    workers = [mp.Process(target=_worker, args=(rank, port, result_queue)) for rank in range(_WORLD_SIZE)]
+    workers = [
+        mp.Process(target=_worker, args=(rank, port, result_queue, selective_stage))
+        for rank in range(_WORLD_SIZE)
+    ]
     for worker in workers:
         worker.start()
     results = [result_queue.get() for _ in workers]
@@ -98,3 +112,13 @@ def test_c128_owner_scatter_and_stage_hccl() -> None:
     assert not deadlocked, f"owner HCCL workers did not terminate: {deadlocked}"
     assert not failures, f"owner HCCL failures: {failures}"
     assert all(worker.exitcode == 0 for worker in workers)
+
+
+def test_c128_owner_scatter_and_stage_hccl() -> None:
+    """The full-union fallback reconstructs every globally requested page."""
+    _run_owner_hccl_gate(selective_stage=False)
+
+
+def test_c128_owner_scatter_and_selective_stage_hccl() -> None:
+    """Page-level all-to-all stages only the receiving rank's local pages."""
+    _run_owner_hccl_gate(selective_stage=True)

@@ -218,18 +218,29 @@ class C128OwnerShardCache:
         return gathered
 
     @classmethod
-    def _all_gather_pages_union(cls, local_pages: torch.Tensor, group) -> torch.Tensor:
-        """Return sorted page union required by any rank's local block table."""
+    def _all_gather_page_requests(cls, local_pages: torch.Tensor, group) -> list[torch.Tensor]:
+        """Collect each rank's variable-length sorted local-page request list."""
         device = local_pages.device
         count = torch.tensor([local_pages.numel()], dtype=torch.int64, device=device)
         counts = torch.cat(cls._all_gather_fixed(count, group=group))
         max_count = int(counts.max().item())
         if max_count == 0:
-            return local_pages
+            return [local_pages for _ in range(dist.get_world_size(group=group))]
         padded = torch.full((max_count,), -1, dtype=local_pages.dtype, device=device)
         padded[: local_pages.numel()] = local_pages
         all_pages = torch.cat(cls._all_gather_fixed(padded, group=group))
-        return torch.unique(all_pages[all_pages >= 0], sorted=True)
+        return [
+            all_pages[rank * max_count : (rank + 1) * max_count][: count.item()]
+            for rank, count in enumerate(counts)
+        ]
+
+    @classmethod
+    def _all_gather_pages_union(cls, local_pages: torch.Tensor, group) -> torch.Tensor:
+        """Return sorted page union required by any rank's local block table."""
+        requests = cls._all_gather_page_requests(local_pages, group=group)
+        if not requests:
+            return local_pages
+        return torch.unique(torch.cat(requests), sorted=True)
 
     def materialize_for_attention(
         self,
@@ -306,6 +317,82 @@ class C128OwnerShardCache:
         )
         staged_cache = self.stage_cache[: union_pages.numel()]
         return staged_cache, remapped_block_table
+
+    def materialize_selected_for_attention(
+        self,
+        block_table: torch.Tensor,
+        *,
+        tp_rank: int,
+        group,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Stage only this rank's requested C128 pages via HCCL all-to-all.
+
+        Request-page metadata is all-gathered because it is tiny. Each owner
+        then sends page payloads only to ranks whose local sparse-attention
+        block table references those pages. The receiving rank reconstructs a
+        compact stage cache in its own sorted-page order. This avoids the
+        full-union broadcast performed by :meth:`materialize_for_attention`.
+        """
+        if self.tp_size != dist.get_world_size(group=group):
+            raise RuntimeError("C128 owner-shard TP size does not match its HCCL group")
+        if not 0 <= tp_rank < self.tp_size:
+            raise ValueError(f"tp_rank={tp_rank} is outside TP size {self.tp_size}")
+
+        local_pages = torch.unique(block_table[block_table >= 0], sorted=True)
+        if local_pages.numel() > self.stage_capacity_pages:
+            raise RuntimeError(
+                f"C128 stage capacity {self.stage_capacity_pages} pages is smaller than "
+                f"the local request of {local_pages.numel()} pages"
+            )
+        requests_by_rank = self._all_gather_page_requests(local_pages, group=group)
+        page_shape = self.persistent_cache.shape[1:]
+        page_elements = self.persistent_cache[0].numel()
+
+        send_chunks: list[torch.Tensor] = []
+        input_splits: list[int] = []
+        for requested_pages in requests_by_rank:
+            owner_pages = requested_pages[c128_owner(requested_pages, self.tp_size) == tp_rank]
+            if owner_pages.numel():
+                payload = self.persistent_cache[c128_local_page(owner_pages, self.tp_size)].reshape(-1)
+            else:
+                payload = self.persistent_cache.new_empty((0,))
+            send_chunks.append(payload)
+            input_splits.append(owner_pages.numel() * page_elements)
+
+        receive_pages_by_owner = [
+            local_pages[c128_owner(local_pages, self.tp_size) == owner]
+            for owner in range(self.tp_size)
+        ]
+        output_splits = [pages.numel() * page_elements for pages in receive_pages_by_owner]
+        send_payload = torch.cat(send_chunks) if send_chunks else self.persistent_cache.new_empty((0,))
+        recv_payload = self.persistent_cache.new_empty((sum(output_splits),))
+        dist.all_to_all_single(
+            recv_payload,
+            send_payload,
+            output_split_sizes=output_splits,
+            input_split_sizes=input_splits,
+            group=group,
+        )
+
+        self.stage_cache[: local_pages.numel()].zero_()
+        offset = 0
+        for owner, owner_pages in enumerate(receive_pages_by_owner):
+            count = output_splits[owner]
+            if count:
+                page_values = recv_payload[offset : offset + count].view(-1, *page_shape)
+                stage_slots = torch.searchsorted(local_pages, owner_pages)
+                self.stage_cache[stage_slots] = page_values
+            offset += count
+
+        remapped_block_table = remap_c128_block_table(block_table, local_pages)
+        logger.info(
+            "C128 owner selective stage complete: rank=%d local_pages=%d sent_pages=%d received_pages=%d",
+            tp_rank,
+            local_pages.numel(),
+            sum(split // page_elements for split in input_splits),
+            sum(split // page_elements for split in output_splits),
+        )
+        return self.stage_cache[: local_pages.numel()], remapped_block_table
 
 
 def register_c128_owner_cache(cache: C128OwnerShardCache) -> torch.Tensor:

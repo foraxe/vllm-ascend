@@ -940,6 +940,11 @@ class AscendDSACPImpl(DSAAttentionImpl):
         self.enable_c128_owner_debug = bool(
             (self.vllm_config.additional_config or {}).get("enable_c128_owner_debug", False)
         )
+        # Default to the established full-union HCCL stage. The selective
+        # all-to-all path is gated until it passes the same cache/output gates.
+        self.enable_c128_owner_selective_stage = bool(
+            (self.vllm_config.additional_config or {}).get("enable_c128_owner_selective_stage", False)
+        )
         # indexer param
         if self.indexer is not None:
             self.indexer_heads: int = self.indexer.n_heads
@@ -1323,7 +1328,12 @@ class AscendDSACPImpl(DSAAttentionImpl):
                 if not has_prefill:
                     raise RuntimeError("C128 owner-shard is prefill-only; decode requires the replicated cache path")
                 trace_c128_stage("materialize_begin")
-                cmp_kv, cmp_block_table = c128_owner_cache.materialize_for_attention(
+                materialize = (
+                    c128_owner_cache.materialize_selected_for_attention
+                    if self.enable_c128_owner_selective_stage
+                    else c128_owner_cache.materialize_for_attention
+                )
+                cmp_kv, cmp_block_table = materialize(
                     cmp_block_table,
                     tp_rank=self.tp_rank,
                     group=self.tp_group.device_group,

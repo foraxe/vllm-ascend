@@ -604,3 +604,19 @@ Raw evidence:
   hccl_owner_tp8_final_8ea73c42.out
   hccl_owner_tp8_final_8ea73c42.rc
 ```
+
+### G15: selected-page HCCL all-to-all transport — PASS
+
+The full-union stage is functionally correct but sent every rank the union of
+all ranks' requested C128 pages. A gated `materialize_selected_for_attention`
+path now first all-gathers only variable-length page-id requests, then uses
+HCCL `all_to_all_single` with variable splits to send each owner page only to
+the rank that requested it. Each receiver stages its own sorted local-page
+view and remaps only its own block table.
+
+The TP8 NPU test uses 24 logical pages with three distinct local requests per
+rank. It passed bit-exact reconstruction: every rank reported
+`local_pages=3 sent_pages=3 received_pages=3`, whereas its full-union stage
+would contain all 24 pages. The launcher gate is
+`ENABLE_C128_OWNER_SELECTIVE_STAGE=1`; it is off by default until Flash
+model-output and TTFT gates pass.
