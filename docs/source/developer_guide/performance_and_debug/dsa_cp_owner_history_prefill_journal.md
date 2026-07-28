@@ -785,3 +785,26 @@ Raw evidence:
 /a3_inference/nyx/dsv4_dsa_cp/20260728_prefill_owner/flash_c128_owner/
   log_single_node_prefill_flash_tp8_c128_owner_r38_local_c128_ropepad_static_a2a_fmc2.log
 ```
+
+### G22: feature-off B0 bootstrap control — BLOCKED, environment confirmed
+
+r39 is an otherwise identical Flash TP8/EP8 control with every C128 owner,
+selective-stage, and local-compressor gate disabled.  It also loaded all 70
+checkpoint shards, emitted the same three `rope_parameters` warnings, and
+then never opened port 7100.  Its post-load log stopped at 19,226 bytes; no
+DSA-CP request-path code can run in this configuration.  After the diagnostic
+comparison, it was stopped with `SIGTERM` and `npu-smi` confirmed no residual
+VLLM workers.
+
+The r38 pre-API failure is therefore not attributable to the local C128
+RoPE/static-HCCL changes.  The current pod/image cannot produce a new valid
+B0 or candidate TTFT result until its generic vLLM bootstrap reaches API
+readiness.  The previously valid r23 B0 measurement remains the only valid
+baseline; r39 is launcher diagnosis only.
+
+Raw evidence:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/20260728_prefill_owner/flash_c128_owner/
+  log_single_node_prefill_flash_tp8_b0_r39_bootstrap_fmc2.log
+```
