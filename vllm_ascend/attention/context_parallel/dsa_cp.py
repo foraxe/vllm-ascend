@@ -8,6 +8,7 @@ import torch.nn.functional as F
 import torch_npu
 from vllm.config import VllmConfig, get_current_vllm_config
 from vllm.distributed import get_tp_group
+from vllm.logger import init_logger
 from vllm.triton_utils import HAS_TRITON
 from vllm.v1.attention.backend import AttentionCGSupport, AttentionMetadataBuilder
 from vllm.v1.kv_cache_interface import AttentionSpec, MLAAttentionSpec
@@ -32,6 +33,9 @@ if HAS_TRITON:
     from vllm_ascend.ops.triton.rms_norm import triton_q_rms  # noqa: F811
 else:
     triton_q_rms = None  # type: ignore
+
+
+logger = init_logger(__name__)
 
 
 def hadamard_transform_ref(
@@ -1252,13 +1256,20 @@ class AscendDSACPImpl(DSAAttentionImpl):
             assert compressor_attn_metadata.req_metadata is not None
             cmp_kv = compress_kv_cache
             cmp_block_table = compressor_attn_metadata.req_metadata.block_table
-            if isinstance(compress_kv_cache, C128OwnerShardCache):
+            c128_owner_cache = isinstance(compress_kv_cache, C128OwnerShardCache)
+            if c128_owner_cache:
                 if not has_prefill:
                     raise RuntimeError("C128 owner-shard is prefill-only; decode requires the replicated cache path")
                 cmp_kv, cmp_block_table = compress_kv_cache.materialize_for_attention(
                     cmp_block_table,
                     tp_rank=self.tp_rank,
                     group=self.tp_group.device_group,
+                )
+                logger.info(
+                    "C128 owner sparse attention: rank=%d cache_shape=%s block_table_shape=%s",
+                    self.tp_rank,
+                    tuple(cmp_kv.shape),
+                    tuple(cmp_block_table.shape),
                 )
             attn_output = torch.ops._C_ascend.npu_sparse_attn_sharedkv(
                 q,
@@ -1271,6 +1282,8 @@ class AscendDSACPImpl(DSAAttentionImpl):
                 cmp_mask_mode=3,
                 **common_attn_kwargs,
             )[0]
+            if c128_owner_cache:
+                logger.info("C128 owner sparse attention complete: rank=%d", self.tp_rank)
         return attn_output
 
     def _restore_tp_head_layout(

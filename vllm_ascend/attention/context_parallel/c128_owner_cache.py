@@ -23,6 +23,10 @@ from dataclasses import dataclass
 
 import torch
 import torch.distributed as dist
+from vllm.logger import init_logger
+
+
+logger = init_logger(__name__)
 
 
 def c128_owner(page_ids: torch.Tensor, world_size: int) -> torch.Tensor:
@@ -108,6 +112,12 @@ class C128OwnerShardCache:
 
         page_ids = slot_mapping[:, 0]
         owner_mask = c128_owner(page_ids, self.tp_size) == tp_rank
+        logger.info(
+            "C128 owner scatter: rank=%d rows=%d owned_rows=%d",
+            tp_rank,
+            slot_mapping.shape[0],
+            int(owner_mask.sum().item()),
+        )
         if not bool(owner_mask.any()):
             return
         local_slot_mapping = slot_mapping[owner_mask].clone()
@@ -160,6 +170,13 @@ class C128OwnerShardCache:
 
         local_pages = torch.unique(block_table[block_table >= 0], sorted=True)
         union_pages = self._all_gather_pages_union(local_pages, group=group)
+        logger.info(
+            "C128 owner stage: rank=%d local_pages=%d union_pages=%d capacity=%d",
+            tp_rank,
+            local_pages.numel(),
+            union_pages.numel(),
+            self.stage_capacity_pages,
+        )
         if union_pages.numel() > self.stage_capacity_pages:
             raise RuntimeError(
                 f"C128 stage capacity {self.stage_capacity_pages} pages is smaller than "
@@ -180,6 +197,13 @@ class C128OwnerShardCache:
                 self.persistent_cache[c128_local_page(owned_union_pages, self.tp_size)]
             )
         gathered_pages = self._all_gather_fixed(padded_owned_pages, group=group)
+        logger.info(
+            "C128 owner stage pages: rank=%d local_owned=%d max_owned=%d page_shape=%s",
+            tp_rank,
+            owned_union_pages.numel(),
+            max_owned_count,
+            tuple(page_shape),
+        )
 
         # ``union_pages`` is sorted.  Per-owner filtering preserves that order,
         # so rank-major gathered chunks reconstruct the canonical logical view.
@@ -191,4 +215,10 @@ class C128OwnerShardCache:
             stage_slots = torch.searchsorted(union_pages, owner_pages)
             self.stage_cache[stage_slots] = gathered_pages[owner][:owner_count]
 
-        return self.stage_cache[: union_pages.numel()], remap_c128_block_table(block_table, union_pages)
+        remapped_block_table = remap_c128_block_table(block_table, union_pages)
+        logger.info(
+            "C128 owner stage complete: rank=%d staged_pages=%d",
+            tp_rank,
+            union_pages.numel(),
+        )
+        return self.stage_cache[: union_pages.numel()], remapped_block_table
