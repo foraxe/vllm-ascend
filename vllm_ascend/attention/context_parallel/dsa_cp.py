@@ -16,7 +16,11 @@ from vllm.v1.kv_cache_interface import AttentionSpec, MLAAttentionSpec
 from vllm_ascend.ascend_config import get_ascend_config
 from vllm_ascend.attention.abstract import DSAAttentionImpl
 from vllm_ascend.attention.attention_v1 import AscendAttentionState
-from vllm_ascend.attention.context_parallel.c128_owner_cache import get_c128_owner_cache
+from vllm_ascend.attention.context_parallel.c128_owner_cache import (
+    C128LocalCompressorPlan,
+    get_c128_owner_cache,
+    make_c128_local_compressor_plan,
+)
 from vllm_ascend.attention.utils import AscendCommonAttentionMetadata, split_decodes_and_prefills
 from vllm_ascend.ops.linear import AscendUnquantizedLinearMethod
 from vllm_ascend.ops.rope_dsv4 import get_cos_and_sin_dsa
@@ -79,6 +83,7 @@ class DSACPMetadata:
     num_tokens_pad: int
     local_sin: torch.Tensor = None
     local_cos: torch.Tensor = None
+    c128_local_compressor_plan: C128LocalCompressorPlan | None = None
 
 
 @dataclass
@@ -617,6 +622,19 @@ class AscendDSACPMetadataBuilder(AttentionMetadataBuilder[AscendDSAMetadata]):
             num_reqs=num_reqs,
         )
 
+        c128_local_compressor_plan = None
+        if self.compressor_ratio == 128 and num_reqs == 1:
+            sequence_start_pos = int(
+                (self.seq_lens_cpu[0] - (query_start_loc_cpu[1] - query_start_loc_cpu[0])).item()
+            )
+            c128_local_compressor_plan = make_c128_local_compressor_plan(
+                input_positions_cpu[:num_input_tokens],
+                local_start=local_start,
+                local_end=local_end_with_pad,
+                tp_size=get_tp_group().world_size,
+                sequence_start_pos=sequence_start_pos,
+            )
+
         cp_metadata = DSACPMetadata(
             local_query_start_loc=local_query_start_loc,
             local_seq_lens=local_seq_lens,
@@ -626,6 +644,7 @@ class AscendDSACPMetadataBuilder(AttentionMetadataBuilder[AscendDSAMetadata]):
             num_tokens_pad=num_tokens_pad,
             local_sin=local_sin,
             local_cos=local_cos,
+            c128_local_compressor_plan=c128_local_compressor_plan,
         )
 
         return AscendDSAReqMetadata(
@@ -945,6 +964,9 @@ class AscendDSACPImpl(DSAAttentionImpl):
         self.enable_c128_owner_selective_stage = bool(
             (self.vllm_config.additional_config or {}).get("enable_c128_owner_selective_stage", False)
         )
+        self.enable_c128_owner_local_compressor = bool(
+            (self.vllm_config.additional_config or {}).get("enable_c128_owner_local_compressor", False)
+        )
         # indexer param
         if self.indexer is not None:
             self.indexer_heads: int = self.indexer.n_heads
@@ -1102,6 +1124,14 @@ class AscendDSACPImpl(DSAAttentionImpl):
         local_seq_lengths_key = cp_metadata.local_seq_lens
         has_prefill = _has_prefill(common_attn_metadata.attn_state)
         trace_c128 = self.enable_c128_owner_debug and c128_owner_cache is not None and has_prefill
+        c128_local_compressor_plan = cp_metadata.c128_local_compressor_plan
+        use_c128_local_compressor = (
+            self.enable_c128_owner_local_compressor
+            and c128_owner_cache is not None
+            and has_prefill
+            and self.compress_ratio == 128
+            and c128_local_compressor_plan is not None
+        )
 
         def trace_c128_stage(stage: str) -> None:
             if trace_c128:
@@ -1117,6 +1147,10 @@ class AscendDSACPImpl(DSAAttentionImpl):
             # it intentionally synchronizes small metadata tensors only.
             state_block_table = compressor_kv_state_metadata.req_metadata.block_table
             compressor_slot_mapping = compressor_attn_metadata.req_metadata.slot_mapping
+            sample_count = min(8, compressor_slot_mapping.shape[0])
+            compressor_slot_sample = compressor_slot_mapping[:sample_count].cpu().tolist()
+            compressor_slot_tail = compressor_slot_mapping[-sample_count:].cpu().tolist()
+            state_block_sample = state_block_table[:, :min(8, state_block_table.shape[1])].cpu().tolist()
             print(
                 "DSA_OWNER_TRACE c128_cp_layout "
                 f"layer={layer_name} rank={self.tp_rank} need_gather={need_gather_q_kv} "
@@ -1124,7 +1158,16 @@ class AscendDSACPImpl(DSAAttentionImpl):
                 f"global_qsl={actual_seq_lengths_query.cpu().tolist()} "
                 f"local_qsl={local_seq_lengths_query.cpu().tolist()} "
                 f"state_block_shape={tuple(state_block_table.shape)} "
-                f"compress_slot_shape={tuple(compressor_slot_mapping.shape)}",
+                f"state_block_sample={state_block_sample} "
+                f"compress_slot_shape={tuple(compressor_slot_mapping.shape)} "
+                f"compress_slot_first={compressor_slot_sample} "
+                f"compress_slot_last={compressor_slot_tail}",
+                flush=True,
+            )
+            print(
+                "DSA_OWNER_TRACE c128_local_compressor "
+                f"layer={layer_name} rank={self.tp_rank} enabled={use_c128_local_compressor} "
+                f"plan={c128_local_compressor_plan}",
                 flush=True,
             )
             # The compact owner cache and the compressor state historically
@@ -1256,8 +1299,16 @@ class AscendDSACPImpl(DSAAttentionImpl):
 
             coff = 2 if self.compressor_overlap else 1
             trace_c128_stage("compressor_begin")
+            compressor_hidden_states = hidden_states_local if use_c128_local_compressor else hidden_states
+            compressor_cu_seqlens = local_seq_lengths_query if use_c128_local_compressor else actual_seq_lengths_query
+            compressor_start_pos = req_metadata.start_pos
+            if use_c128_local_compressor:
+                assert c128_local_compressor_plan is not None
+                compressor_start_pos = compressor_start_pos + cp_metadata.local_start
+                compress_sin = compress_sin[c128_local_compressor_plan.slot_start : c128_local_compressor_plan.slot_end]
+                compress_cos = compress_cos[c128_local_compressor_plan.slot_start : c128_local_compressor_plan.slot_end]
             compressed_kv = torch.ops._C_ascend.compressor(
-                hidden_states,
+                compressor_hidden_states,
                 self.compressor_wkv.weight,
                 self.compressor_wgate.weight,
                 state_cache.squeeze(-2),
@@ -1266,9 +1317,9 @@ class AscendDSACPImpl(DSAAttentionImpl):
                 compress_sin.view(-1, compress_sin.shape[-1]),
                 compress_cos.view(-1, compress_cos.shape[-1]),
                 state_block_table=compressor_kv_state_metadata.req_metadata.block_table,
-                cu_seqlens=actual_seq_lengths_query,
+                cu_seqlens=compressor_cu_seqlens,
                 seqused=None,
-                start_pos=req_metadata.start_pos,
+                start_pos=compressor_start_pos,
                 rope_head_dim=self.rope_head_dim,
                 cmp_ratio=self.compress_ratio,
                 coff=coff,
@@ -1277,6 +1328,15 @@ class AscendDSACPImpl(DSAAttentionImpl):
                 cache_mode=1,
             )
             trace_c128_stage("compressor_ready")
+
+            if use_c128_local_compressor:
+                # This is 1/TP of the C128 output (five rows at the validated
+                # 5120-token TP8 shape), not the hidden-state AllGather.  It
+                # restores the established full-slot owner-scatter ABI while
+                # the next gate replaces this fixed small gather with alltoallv.
+                gathered_compressed_kv = [torch.empty_like(compressed_kv) for _ in range(self.tp_size)]
+                dist.all_gather(gathered_compressed_kv, compressed_kv, group=self.tp_group.device_group)
+                compressed_kv = torch.cat(gathered_compressed_kv, dim=0)
 
             if compressed_kv.numel() == 0:
                 compressed_kv = None

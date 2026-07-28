@@ -3,7 +3,9 @@
 
 """C128 canonical-owner storage with a staged local attention view.
 
-The DeepSeek-V4 C128 compressor is stateful.  The first production gate keeps
+The DeepSeek-V4 C128 compressor stores page-addressed per-token intermediate
+state.  A CP-local producer is therefore valid only when every internal CP
+boundary is aligned to a complete C128 group.  The first production gate keeps
 the existing gathered-hidden/compressor execution intact, but changes the
 placement contract after compression:
 
@@ -27,6 +29,65 @@ import torch_npu
 from vllm.logger import init_logger
 
 logger = init_logger(__name__)
+
+
+@dataclass(frozen=True)
+class C128LocalCompressorPlan:
+    """Static row slice for a CP-local C128 compressor invocation.
+
+    The plan is deliberately restricted to one request.  Mixed requests need
+    per-request boundary handling, so they retain the established gathered
+    producer path until a separate metadata adapter is validated.
+    """
+
+    slot_start: int
+    slot_end: int
+
+    @property
+    def rows(self) -> int:
+        return self.slot_end - self.slot_start
+
+
+def make_c128_local_compressor_plan(
+    input_positions_cpu: torch.Tensor,
+    *,
+    local_start: int,
+    local_end: int,
+    tp_size: int,
+    sequence_start_pos: int = 0,
+    compress_ratio: int = 128,
+) -> C128LocalCompressorPlan | None:
+    """Return a local C128 plan only for a fully group-aligned CP partition.
+
+    ``compressor`` emits one row for every global input position whose
+    one-based sequence position is divisible by ``compress_ratio``.  Splitting
+    at another position would make a rank construct a partial group; this is
+    not a state-handoff problem and must use the gathered fallback instead.
+    """
+    if input_positions_cpu.ndim != 1 or tp_size <= 0 or compress_ratio <= 0:
+        return None
+    total_tokens = input_positions_cpu.numel()
+    if not (0 <= local_start < local_end <= total_tokens):
+        return None
+
+    positions = input_positions_cpu.to(device="cpu", dtype=torch.int64)
+    # The compressor's grouping uses the sequence offset supplied as
+    # ``start_pos``. Tokenizer input positions can have a BOS-dependent origin
+    # and must only be used below to recover the pre-existing slot row order.
+    if (sequence_start_pos + local_start) % compress_ratio:
+        return None
+    if local_end < total_tokens and (sequence_start_pos + local_end) % compress_ratio:
+        return None
+
+    emitted_rows = torch.remainder(positions + 1, compress_ratio).eq(0)
+    total_rows = int(emitted_rows.sum().item())
+    if total_rows == 0 or total_rows % tp_size:
+        return None
+    slot_start = int(emitted_rows[:local_start].sum().item())
+    slot_end = int(emitted_rows[:local_end].sum().item())
+    if slot_end - slot_start != total_rows // tp_size:
+        return None
+    return C128LocalCompressorPlan(slot_start=slot_start, slot_end=slot_end)
 
 
 # A DSV4 layer's static-forward cache slot must remain a Tensor.  Inserting a

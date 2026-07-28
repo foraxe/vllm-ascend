@@ -656,3 +656,43 @@ Raw evidence:
   bench_flash_tp8_c128_owner_r30_selective_clean_fmc2_8k.out
   results/flash_tp8_c128_owner_r30_selective_clean_fmc2_8k.json
 ```
+
+### G17: CP-local C128 producer alignment and output-collective gate — BLOCKED
+
+The Flash TP8 layout probe (Mooncake disabled) established that the first
+5,120-token prefill chunk is CP-aligned for C128: every rank receives 640
+tokens, exactly five C128 groups. The global compressed slot rows are
+contiguous per rank (`[0:5]` through `[35:40]`); for the observed request all
+40 rows address logical page 11. The following 3,080-token chunk splits to
+385 tokens per rank, which is not C128-aligned and must retain the
+gathered-hidden/compressor fallback.
+
+The gated local-producer implementation computes the aligned chunk from
+`hidden_states_local`, uses `start_pos + CP-local offset` (not tokenizer
+positions) to certify alignment, and keeps the existing WKV/SWA path
+unchanged. CPU reference tests passed (13 tests): the 5,120 / TP8 plan yields
+eight five-row slices and the 3,080 tail is rejected.
+
+r33 was **INVALID**: the first planner used tokenizer position origins and
+therefore never enabled the local branch. r34 confirmed the corrected plan on
+all eight ranks, then terminated without a Python or HCCL error after the
+first local `compressor` launch and before `c128_compressor_ready`; the client
+stream ended before a text token and the API/worker processes exited. This is
+the same target-runtime class of restriction already seen for dynamic work
+after `compressor`: a host-side distributed collective over the asynchronous
+local output is not a viable bridge. Do not repeat the list-based dynamic
+`dist.all_gather` variant. The next viable implementation must consume the
+compressor output in a graph-safe fused/direct-placement operator or an
+explicitly validated static HCCL output buffer.
+
+Raw evidence:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/20260728_prefill_owner/flash_c128_owner/
+  c128_cp_layout_r31.log
+  log_single_node_prefill_flash_tp8_c128_owner_r32_cp_slots_fmc2.log
+  log_single_node_prefill_flash_tp8_c128_owner_r33_local_c128_fmc2.log
+  bench_flash_tp8_c128_owner_r33_local_c128_fmc2_smoke_8k.out
+  log_single_node_prefill_flash_tp8_c128_owner_r34_local_c128_alignment_fmc2.log
+  bench_flash_tp8_c128_owner_r34_local_c128_alignment_fmc2_smoke_8k.out
+```

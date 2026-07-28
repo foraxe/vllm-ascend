@@ -17,6 +17,7 @@ from vllm_ascend.attention.context_parallel.c128_owner_cache import (
     c128_local_page,
     c128_owner,
     get_c128_owner_cache,
+    make_c128_local_compressor_plan,
     register_c128_owner_cache,
     remap_c128_block_table,
 )
@@ -226,24 +227,38 @@ def test_owner_sharded_quantized_c128_dequantizes_only_selected_rows(world_size:
     assert owner_persistent_bytes * world_size == replicated_persistent_bytes
 
 
-def _stateful_compressor(tokens: torch.Tensor, initial_state: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-    """Minimal ordered recurrence standing in for compressor state dependence."""
-    state = initial_state.clone()
-    outputs = []
-    for token in tokens:
-        state = state * 2 + token
-        outputs.append(state)
-    return torch.stack(outputs), state
+def test_c128_local_compressor_plan_accepts_aligned_tp8_chunk() -> None:
+    """A 5120-token TP8 chunk splits into eight independent 5-row C128 slices."""
+    positions = torch.arange(5120, dtype=torch.int64)
+    plans = [
+        make_c128_local_compressor_plan(
+            positions,
+            local_start=rank * 640,
+            local_end=(rank + 1) * 640,
+            tp_size=8,
+        )
+        for rank in range(8)
+    ]
+    assert all(plan is not None for plan in plans)
+    assert [(plan.slot_start, plan.slot_end) for plan in plans if plan] == [
+        (0, 5),
+        (5, 10),
+        (10, 15),
+        (15, 20),
+        (20, 25),
+        (25, 30),
+        (30, 35),
+        (35, 40),
+    ]
 
 
-def test_stateful_compressor_needs_prefix_state_handoff() -> None:
-    """C4/C128 state cannot use the stateless owner-placement shortcut."""
-    tokens = torch.tensor([1.0, 2.0, 3.0, 4.0])
-    global_output, _ = _stateful_compressor(tokens, torch.tensor(0.0))
-
-    first_output, first_final_state = _stateful_compressor(tokens[:2], torch.tensor(0.0))
-    naive_second_output, _ = _stateful_compressor(tokens[2:], torch.tensor(0.0))
-    handed_off_second_output, _ = _stateful_compressor(tokens[2:], first_final_state)
-
-    assert not torch.equal(torch.cat([first_output, naive_second_output]), global_output)
-    torch.testing.assert_close(torch.cat([first_output, handed_off_second_output]), global_output)
+def test_c128_local_compressor_plan_rejects_unaligned_tp8_tail() -> None:
+    """The 3080-token TP8 tail has 385-token rank shards and must fall back."""
+    positions = torch.arange(5120, 8200, dtype=torch.int64)
+    assert make_c128_local_compressor_plan(
+        positions,
+        local_start=0,
+        local_end=385,
+        tp_size=8,
+        sequence_start_pos=5120,
+    ) is None
