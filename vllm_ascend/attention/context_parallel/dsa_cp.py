@@ -940,6 +940,12 @@ class AscendDSACPImpl(DSAAttentionImpl):
         self.enable_c128_owner_debug = bool(
             (self.vllm_config.additional_config or {}).get("enable_c128_owner_debug", False)
         )
+        # Debug-only device oracle. It validates that the selected-row stage
+        # reconstructs the current compressor output exactly, without adding
+        # a replicated persistent cache to a production run.
+        self.enable_c128_owner_oracle = bool(
+            (self.vllm_config.additional_config or {}).get("enable_c128_owner_oracle", False)
+        )
 
         # indexer param
         if self.indexer is not None:
@@ -1208,6 +1214,7 @@ class AscendDSACPImpl(DSAAttentionImpl):
             trace_c128_stage("owner_prepare_ready")
 
         compress_topk_idxs = None
+        compressed_kv = None
         if self.compress_ratio > 1:
             assert compressor_attn_metadata.req_metadata is not None
             assert compressor_kv_state_metadata.req_metadata is not None
@@ -1323,11 +1330,27 @@ class AscendDSACPImpl(DSAAttentionImpl):
                 if not has_prefill:
                     raise RuntimeError("C128 owner-shard is prefill-only; decode requires the replicated cache path")
                 trace_c128_stage("materialize_begin")
-                cmp_kv, cmp_block_table = c128_owner_cache.materialize_for_attention(
-                    cmp_block_table,
-                    tp_rank=self.tp_rank,
-                    group=self.tp_group.device_group,
-                )
+                if self.enable_c128_owner_oracle:
+                    cmp_kv, cmp_block_table, selected_pages = c128_owner_cache.materialize_for_attention(
+                        cmp_block_table,
+                        tp_rank=self.tp_rank,
+                        group=self.tp_group.device_group,
+                        return_selected_pages=True,
+                    )
+                    assert compressed_kv is not None
+                    self._verify_c128_owner_current_rows(
+                        layer_name,
+                        cmp_kv,
+                        selected_pages,
+                        compressor_attn_metadata.req_metadata.slot_mapping,
+                        compressed_kv,
+                    )
+                else:
+                    cmp_kv, cmp_block_table = c128_owner_cache.materialize_for_attention(
+                        cmp_block_table,
+                        tp_rank=self.tp_rank,
+                        group=self.tp_group.device_group,
+                    )
                 trace_c128_stage("materialize_ready")
                 logger.info(
                     "C128 owner sparse attention: rank=%d cache_shape=%s block_table_shape=%s",
@@ -1351,6 +1374,35 @@ class AscendDSACPImpl(DSAAttentionImpl):
             if c128_owner_cache is not None:
                 logger.info("C128 owner sparse attention complete: rank=%d", self.tp_rank)
         return attn_output
+
+    def _verify_c128_owner_current_rows(
+        self,
+        layer_name: str,
+        staged_kv: torch.Tensor,
+        selected_pages: torch.Tensor,
+        slot_mapping: torch.Tensor,
+        compressed_kv: torch.Tensor,
+    ) -> None:
+        """Check current compressed rows survived owner scatter and staging.
+
+        ``compressed_kv`` is the authoritative producer result for the current
+        prefill. The owner cache must return the identical row at the logical
+        page/offset supplied by the compressor metadata. This runs only under
+        the explicit oracle flag and intentionally synchronizes to report a
+        measurable error rather than affecting serving behavior.
+        """
+        valid = (slot_mapping[:, 0] >= 0) & (slot_mapping[:, 1] >= 0)
+        page_ids = slot_mapping[valid, 0]
+        offsets = slot_mapping[valid, 1]
+        stage_rows = torch.searchsorted(selected_pages, page_ids)
+        expected = compressed_kv[valid]
+        actual = staged_kv[stage_rows, offsets]
+        max_abs = (actual.float() - expected.float()).abs().max().item()
+        print(
+            "DSA_OWNER_ORACLE current_rows "
+            f"layer={layer_name} rank={self.tp_rank} rows={expected.shape[0]} max_abs={max_abs:.8g}",
+            flush=True,
+        )
 
     def _restore_tp_head_layout(
         self,

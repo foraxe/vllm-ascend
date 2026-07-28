@@ -237,7 +237,8 @@ class C128OwnerShardCache:
         *,
         tp_rank: int,
         group,
-    ) -> tuple[torch.Tensor, torch.Tensor]:
+        return_selected_pages: bool = False,
+    ) -> tuple[torch.Tensor, torch.Tensor] | tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """HCCL-stage the pages required by ``block_table`` into local memory.
 
         All ranks first form the union of pages required by any CP-local query
@@ -304,7 +305,10 @@ class C128OwnerShardCache:
             tp_rank,
             union_pages.numel(),
         )
-        return self.stage_cache[: union_pages.numel()], remapped_block_table
+        staged_cache = self.stage_cache[: union_pages.numel()]
+        if return_selected_pages:
+            return staged_cache, remapped_block_table, union_pages
+        return staged_cache, remapped_block_table
 
 
 def register_c128_owner_cache(cache: C128OwnerShardCache) -> torch.Tensor:
