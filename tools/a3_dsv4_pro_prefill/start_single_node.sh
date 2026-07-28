@@ -57,6 +57,10 @@ SAFETENSORS_LOAD_STRATEGY=${SAFETENSORS_LOAD_STRATEGY:-prefetch}
 # Keep B0's 0.9 by default. A lower value is a correctness-only allocator
 # capacity gate and must never be compared as a TTFT candidate.
 GPU_MEMORY_UTILIZATION=${GPU_MEMORY_UTILIZATION:-0.9}
+# These two controls form an explicit reduced-capacity correctness gate. Keep
+# both unset for B0/candidate TTFT measurements.
+MAX_MODEL_LEN=${MAX_MODEL_LEN:-1048576}
+NUM_GPU_BLOCKS_OVERRIDE=${NUM_GPU_BLOCKS_OVERRIDE:-}
 # Explicit synthetic-model gate for capacity and DSA-CP path experiments.
 # A reduced routed-expert count changes gate/hash tensor shapes, so it must
 # never be paired with the production checkpoint weights.
@@ -86,6 +90,16 @@ value = float(sys.argv[1])
 if not 0 < value <= 1:
     raise SystemExit(f"GPU_MEMORY_UTILIZATION must be in (0, 1], got {value}")
 PY
+[[ "${MAX_MODEL_LEN}" =~ ^[1-9][0-9]*$ ]] || {
+    echo "MAX_MODEL_LEN must be a positive integer, got ${MAX_MODEL_LEN}" >&2
+    exit 2
+}
+if [[ -n "${NUM_GPU_BLOCKS_OVERRIDE}" ]]; then
+    [[ "${NUM_GPU_BLOCKS_OVERRIDE}" =~ ^[1-9][0-9]*$ ]] || {
+        echo "NUM_GPU_BLOCKS_OVERRIDE must be a positive integer when set" >&2
+        exit 2
+    }
+fi
 
 resolve_local_ip() {
     python3 - "${NETWORK_INTERFACE}" <<'PY'
@@ -319,7 +333,7 @@ VLLM_CMD=(
     --distributed-executor-backend mp
     --enable-log-requests
     --enable-prompt-tokens-details
-    --max-model-len 1048576
+    --max-model-len "${MAX_MODEL_LEN}"
     --max-num-batched-tokens 5120
     --block-size 128
     --gpu-memory-utilization "${GPU_MEMORY_UTILIZATION}"
@@ -339,6 +353,9 @@ VLLM_CMD=(
     --reasoning-parser deepseek_v4
     --additional-config "${ADDITIONAL_CONFIG}"
 )
+if [[ -n "${NUM_GPU_BLOCKS_OVERRIDE}" ]]; then
+    VLLM_CMD+=(--num-gpu-blocks-override "${NUM_GPU_BLOCKS_OVERRIDE}")
+fi
 if [[ "${ENABLE_MOONCAKE_KV_CONNECTOR}" == 1 ]]; then
     VLLM_CMD+=(--kv-transfer-config "${KV_TRANSFER_CONFIG}")
 fi
@@ -371,7 +388,8 @@ print_effective_config() {
         "${ROLE_NAME}" "${LOCAL_IP}" "${ENABLE_PREFILL_COMM_COMPUTE_OVERLAP}" "${ENABLE_C128_OWNER_SHARD}" "${ENABLE_C128_OWNER_COMPACT_ALLOCATION}" "${ENABLE_C128_OWNER_DEBUG}" "${ENABLE_DSA_LAYER_SHARDING}" "${ENABLE_FUSED_MC2}" "${ENABLE_MTP}" "${ENABLE_MOONCAKE_KV_CONNECTOR}" "${SYNTHETIC_ROUTED_EXPERTS}" "${ENABLE_TORCH_PROFILER}"
     printf 'dp_size=%s dp_rank=%s tp_size=%s api_port=%s\n' \
         "${DP_SIZE}" "${DP_RANK}" "${TP_SIZE}" "${VLLM_PORT}"
-    printf 'safetensors_load_strategy=%s gpu_memory_utilization=%s\n' "${SAFETENSORS_LOAD_STRATEGY}" "${GPU_MEMORY_UTILIZATION}"
+    printf 'safetensors_load_strategy=%s gpu_memory_utilization=%s max_model_len=%s num_gpu_blocks_override=%s\n' \
+        "${SAFETENSORS_LOAD_STRATEGY}" "${GPU_MEMORY_UTILIZATION}" "${MAX_MODEL_LEN}" "${NUM_GPU_BLOCKS_OVERRIDE:-<unset>}"
     printf '\nEnvironment:\n'
     for key in "${ENV_KEYS[@]}"; do
         printf '%s=%q\n' "${key}" "${!key-}"
