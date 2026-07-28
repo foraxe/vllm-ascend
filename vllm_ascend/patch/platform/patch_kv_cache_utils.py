@@ -228,6 +228,18 @@ def _get_kv_cache_config_deepseek_v4(
     num_blocks = available_memory // (layer_tuple_page_bytes * num_layer_tuples)
     num_blocks = may_override_num_blocks(vllm_config, num_blocks)
 
+    # C128 attention and compressor-state layers can land in the same
+    # page-size bucket.  The normal allocator intentionally aliases a raw
+    # tensor across such layers.  Canonical C128 ownership needs an independent
+    # raw allocation while preserving the state cache, so split only this
+    # feature-gated family before the worker performs its owner-shard reshape.
+    additional_config = vllm_config.additional_config or {}
+    enable_c128_owner_shard = bool(additional_config.get("enable_c128_owner_shard", False))
+
+    def _append_tensor(page_size: int, names: list[str]) -> None:
+        if names:
+            kv_cache_tensors.append(KVCacheTensor(size=page_size * num_blocks, shared_by=names))
+
     kv_cache_tensors: list[KVCacheTensor] = []
     for tuple_idx in range(num_layer_tuples - len(mtp_layer_names)):
         for ps in page_sizes:
@@ -236,7 +248,18 @@ def _get_kv_cache_config_deepseek_v4(
                 bucket = b.get(ps)
                 if bucket is not None and tuple_idx < len(bucket):
                     shared_by.append(bucket[tuple_idx])
-            kv_cache_tensors.append(KVCacheTensor(size=ps * num_blocks, shared_by=shared_by))
+            if enable_c128_owner_shard:
+                c128_layers = [
+                    name
+                    for name in shared_by
+                    if isinstance(full_mla_c128_spec.kv_cache_specs.get(name), MLAAttentionSpec)
+                    and full_mla_c128_spec.kv_cache_specs[name].compress_ratio == 128
+                ]
+                non_c128_layers = [name for name in shared_by if name not in c128_layers]
+                _append_tensor(ps, non_c128_layers)
+                _append_tensor(ps, c128_layers)
+            else:
+                _append_tensor(ps, shared_by)
     for i in range(len(mtp_layer_names)):
         kv_cache_tensors.append(KVCacheTensor(size=mtp_page_size * num_blocks, shared_by=[mtp_layer_names[i]]))
 
