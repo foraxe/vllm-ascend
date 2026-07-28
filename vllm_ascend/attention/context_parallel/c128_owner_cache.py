@@ -149,6 +149,59 @@ class C128OwnerShardCache:
         )
         print(f"DSA_OWNER_TRACE owner_cache_scatter_queued rank={tp_rank}", flush=True)
 
+    def prepare_owned_scatter(
+        self,
+        slot_mapping: torch.Tensor,
+        tp_rank: int,
+    ) -> tuple[torch.Tensor, torch.Tensor, int]:
+        """Prepare compact owner rows before the stateful compressor launches.
+
+        The compressor returns an asynchronous NPU tensor.  Constructing the
+        boolean ownership mask after that launch is the first dependent device
+        work in the compact path and is the observed hang boundary.  These
+        indices depend only on request metadata, so prepare them before the
+        compressor without changing which compressed rows are persisted.
+        """
+        if slot_mapping.ndim != 2 or slot_mapping.shape[-1] != 2:
+            raise ValueError("C128 slot_mapping must have shape [rows, 2]")
+        if not 0 <= tp_rank < self.tp_size:
+            raise ValueError(f"tp_rank={tp_rank} is outside TP size {self.tp_size}")
+
+        page_ids = slot_mapping[:, 0]
+        valid_mask = (page_ids >= 0) & (slot_mapping[:, 1] >= 0)
+        owner_mask = valid_mask & (c128_owner(page_ids, self.tp_size) == tp_rank)
+        owner_rows = torch.nonzero(owner_mask, as_tuple=False).flatten()
+        local_slot_mapping = slot_mapping.index_select(0, owner_rows).clone()
+        local_slot_mapping[:, 0] = c128_local_page(local_slot_mapping[:, 0], self.tp_size)
+        page_size = self.persistent_cache.shape[1]
+        flat_slots = (
+            local_slot_mapping[:, 0] * page_size + local_slot_mapping[:, 1]
+        ).view(-1, 1)
+        return owner_rows, flat_slots, slot_mapping.shape[0]
+
+    def scatter_prepared(
+        self,
+        compressed_kv: torch.Tensor | None,
+        owner_rows: torch.Tensor,
+        flat_slots: torch.Tensor,
+        expected_rows: int,
+        tp_rank: int,
+    ) -> None:
+        """Persist a precomputed owner subset of the compressor output."""
+        if compressed_kv is None:
+            return
+        if compressed_kv.shape[0] != expected_rows:
+            raise ValueError("compressed_kv and prepared C128 owner rows differ")
+        print(f"DSA_OWNER_TRACE owner_cache_prepared_select_begin rank={tp_rank}", flush=True)
+        owned_kv = compressed_kv.index_select(0, owner_rows)
+        print(f"DSA_OWNER_TRACE owner_cache_prepared_select_queued rank={tp_rank}", flush=True)
+        torch_npu.npu_scatter_nd_update_(
+            self.persistent_cache.view(-1, *self.persistent_cache.shape[2:]),
+            flat_slots,
+            owned_kv,
+        )
+        print(f"DSA_OWNER_TRACE owner_cache_prepared_scatter_queued rank={tp_rank}", flush=True)
+
     @staticmethod
     def _all_gather_fixed(tensor: torch.Tensor, group) -> list[torch.Tensor]:
         gathered = [torch.empty_like(tensor) for _ in range(dist.get_world_size(group=group))]

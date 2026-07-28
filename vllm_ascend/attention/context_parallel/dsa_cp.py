@@ -1198,6 +1198,15 @@ class AscendDSACPImpl(DSAAttentionImpl):
         torch.ops._C_ascend.npu_scatter_nd_update_v2(swa_kv_cache, swa_metadata.req_metadata.slot_mapping, kv)
         trace_c128_stage("swa_ready")
 
+        owner_scatter_plan = None
+        if c128_owner_cache is not None:
+            trace_c128_stage("owner_prepare_begin")
+            owner_scatter_plan = c128_owner_cache.prepare_owned_scatter(
+                compressor_attn_metadata.req_metadata.slot_mapping,
+                self.tp_rank,
+            )
+            trace_c128_stage("owner_prepare_ready")
+
         compress_topk_idxs = None
         if self.compress_ratio > 1:
             assert compressor_attn_metadata.req_metadata is not None
@@ -1257,9 +1266,10 @@ class AscendDSACPImpl(DSAAttentionImpl):
                 # owner-only; the attention consumer stages its own local view
                 # below.
                 trace_c128_stage("owner_scatter_begin")
-                c128_owner_cache.scatter_owned(
-                    compressor_attn_metadata.req_metadata.slot_mapping,
+                assert owner_scatter_plan is not None
+                c128_owner_cache.scatter_prepared(
                     compressed_kv,
+                    *owner_scatter_plan,
                     self.tp_rank,
                 )
                 trace_c128_stage("owner_scatter_ready")

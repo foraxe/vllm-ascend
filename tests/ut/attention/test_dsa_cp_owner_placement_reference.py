@@ -156,6 +156,32 @@ def test_owner_cache_registry_preserves_tensor_static_forward_abi() -> None:
     assert get_c128_owner_cache(torch.empty_like(persistent)) is None
 
 
+def test_owner_scatter_plan_preserves_rows_and_compact_addresses() -> None:
+    """Pre-compress planning selects the same owner rows as final placement."""
+    # Two owners, three pages per owner, and two tokens per page.
+    owner_cache = C128OwnerShardCache(
+        persistent_cache=torch.empty(3, 2, 1, 4),
+        stage_cache=torch.empty(6, 2, 1, 4),
+        tp_size=2,
+    )
+    slot_mapping = torch.tensor(
+        [
+            [0, 1],  # rank 0, ignored by rank 1
+            [1, 0],  # rank 1 -> compact page 0, flat row 0
+            [4, 1],  # rank 0, ignored by rank 1
+            [5, 1],  # rank 1 -> compact page 2, flat row 5
+            [-1, -1],  # padding
+        ],
+        dtype=torch.int64,
+    )
+
+    owner_rows, flat_slots, expected_rows = owner_cache.prepare_owned_scatter(slot_mapping, tp_rank=1)
+
+    torch.testing.assert_close(owner_rows, torch.tensor([1, 3]))
+    torch.testing.assert_close(flat_slots, torch.tensor([[0], [5]]))
+    assert expected_rows == slot_mapping.shape[0]
+
+
 @pytest.mark.parametrize("world_size", [2, 4, 16])
 def test_owner_sharded_quantized_c128_dequantizes_only_selected_rows(world_size: int) -> None:
     """The #49741-style prefill consumer reads quantized owner rows locally.
