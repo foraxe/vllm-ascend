@@ -414,13 +414,20 @@ cache while the forced 256-block cache exposes 0.77 GiB (estimated maximum
 length 1432). No prefill ran, and r17 must not be used to assess compact
 allocation or owner placement.
 
-The next single-variable layout gate fixes the serving envelope to exactly
-the intended workload: `MAX_MODEL_LEN=8192` and
-`NUM_GPU_BLOCKS_OVERRIDE=64`, still with full allocation and owner placement.
-An 8K prefill occupies exactly 64 128-token blocks. The pass condition is a
-health endpoint followed by one nonempty 8K/one-output response reaching the
-owner-write trace. It remains a correctness gate, never a TTFT candidate.
-Mooncake stays disabled for every G10 run.
+The first G10 retry, r18, set `MAX_MODEL_LEN=8192` and
+`NUM_GPU_BLOCKS_OVERRIDE=64` while retaining full allocation and owner
+placement. It was **INVALID** at the same upstream planner admission gate:
+an 8K request needs 2.75 GiB of KV cache while the process has 0.19 GiB after
+model and cache-layout initialization. That is a capacity result, not an
+owner-write result. Full layout cannot be the 8K correctness gate on this
+image.
+
+The next single-variable layout gate is intentionally reduced to
+`MAX_MODEL_LEN=256`, `MAX_NUM_BATCHED_TOKENS=256`, and
+`NUM_GPU_BLOCKS_OVERRIDE=2`. It admits one sub-128-token request and tests
+only whether the separated full-layout compressor state and owner-placement
+ABI can reach the owner-write trace. It is never a TTFT or 8K capacity
+candidate. Mooncake stays disabled for every G10 run.
 
 Raw evidence:
 
@@ -428,4 +435,5 @@ Raw evidence:
 /a3_inference/nyx/dsv4_dsa_cp/20260728_prefill_owner/flash_c128_owner/
   log_single_node_prefill_flash_tp8_c128_owner_r16_fullalloc_u88_fmc2_8k.log
   log_single_node_prefill_flash_tp8_c128_owner_r17_fullalloc_256blk_fmc2_8k.log
+  log_single_node_prefill_flash_tp8_c128_owner_r18_fullalloc_64blk_fmc2_8k.log
 ```
