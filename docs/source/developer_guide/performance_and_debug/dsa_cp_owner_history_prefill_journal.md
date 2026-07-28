@@ -495,6 +495,44 @@ Raw evidence:
   results/flash_tp8_c128_owner_r22_direct_select_smoke8k.json
 ```
 
+### G12: clean paired 8K TTFT — FAIL / correctness not proven
+
+The r23 feature-off control and r24 compact-owner candidate both used Flash
+TP8/EP8, FusedMC2, no Mooncake, overlap off, 8K words, one output token,
+warmup 1, and five timed requests. r24 additionally disabled every owner
+debug print, so this is the first comparable owner candidate. Its result is a
+clear regression:
+
+| Run | Median TTFT | Relative to r23 B0 |
+|---|---:|---:|
+| r23 B0 feature-off | 593.847 ms | baseline |
+| r24 compact owner | 940.926 ms | -58.45% |
+
+The >8% threshold against r23 is at most 546.339 ms. r24 is not a candidate.
+The current HCCL implementation materializes a full selected-page execution
+view at every C128 layer, so it adds synchronization and copy work before
+sparse attention; it is a correctness prototype, not a TTFT optimization.
+
+The initial single repetition text check used identical prompt/output
+(`"你好"`). However, r24 timed repetition 2 emitted `"Hello"` while r23
+emitted `"你好"` for its corresponding deterministic prompt. Treat this as a
+correctness failure until a logits/cache oracle resolves whether it is a model
+nondeterminism artifact or a C128 placement error. Do not run a sweep or
+report capacity/TTFT gains from the owner feature. The next implementation
+task is a per-layer persistent-cache and attention-output numerical oracle;
+only then may the materialization path be optimized to a bounded selected-row
+workspace or direct peer placement.
+
+Raw evidence:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/20260728_prefill_owner/flash_c128_owner/
+  bench_b0_r23_8k.out
+  bench_r24_clean_8k.out
+  results/flash_tp8_b0_r23_fmc2_8k_ttft.json
+  results/flash_tp8_c128_owner_r24_clean_fmc2_8k_ttft.json
+```
+
 Raw evidence:
 
 ```text
