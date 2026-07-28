@@ -313,3 +313,52 @@ owner scatter or a captured exception. Keep C4/SWA and Mooncake out of this
 gate. Only after a feature-on request returns text may the implementation
 replace the full local stage with a bounded selected-page workspace and make a
 capacity or TTFT claim.
+
+### G8: C128 owner-write localization — in progress
+
+The model/executor trace corrected the earlier fault boundary. In r9, every
+rank completed C4 and entered C128 layer 3 with the compact persistent tensor
+shape `[524, 128, 1, 512]`, where `524 = ceil(4190 / 8)`. It then completed Q,
+SWA KV write, and the stateful C128 compressor. Thus neither the cache
+container ABI, current-KV path, nor compressor prefix-state execution is the
+immediate failure point.
+
+r10 was **INVALID** before model loading because the command accidentally
+omitted `ENABLE_DSA_LAYER_SHARDING=0`; the inherited P-only layer-sharding
+configuration is rejected by a single-node run. r11 restored that B0 setting.
+The one-request, 128-word smoke test reached `scatter_owned` on all eight
+ranks, but no rank completed it. HCCL materialization and sparse attention
+were never entered. Mooncake remained disabled, so this is neither a Mooncake
+nor a VMM result.
+
+r12 replaced the masked two-dimensional CANN-9 `npu_scatter_nd_update_v2`
+write with a flattened `torch_npu.npu_scatter_nd_update_` address:
+
+```text
+compact_row = (logical_page // TP) * page_size + in_page
+```
+
+The single-NPU flattened write and empty-write probes both passed. The full
+model still stopped in `scatter_owned`, but all worker processes remained
+alive. That showed the remaining failure was the host scalar synchronization
+in diagnostics (`owner_mask.sum().item()` / `bool(owner_mask.any())`), not a
+new device exception. Commit `0f751cdf` removes those synchronizations and
+always invokes the device scatter, including a zero-row owner subset; it also
+filters negative padded page/offset entries before ownership calculation.
+The owner-placement reference suite still passes `11 passed` on the A3 image.
+
+The active r13 gate is deliberately only a 128-word, one-output smoke test
+with TP8/EP8, FusedMC2 on, overlap off, layer sharding off, and Mooncake off.
+It must show `c128_owner_scatter_ready` on all ranks before any statement
+about HCCL stage, selected-row materialization, capacity, or TTFT can be made.
+Raw evidence and launch output remain under:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/20260728_prefill_owner/flash_c128_owner/
+  log_single_node_prefill_flash_tp8_c128_owner_r9_customop_trace_fmc2_8k.log
+  log_single_node_prefill_flash_tp8_c128_owner_r11_c128_stages_fmc2_8k.log
+  log_single_node_prefill_flash_tp8_c128_owner_r12_flat_scatter_fmc2_8k.log
+  launch_r10.out
+  launch_r11.out
+  launch_r12.out
+```
