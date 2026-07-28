@@ -304,6 +304,14 @@ cache placement are unavailable on this runtime. Keep the first owner-current
 SWA implementation as staged HCCL KV placement into ordinary local cache
 views; do not make VMM a prerequisite for the TTFT lane.
 
+IPC is independently `BLOCKED` on the same image. The two-process probe
+successfully creates a P2P HBM allocation, exports an IPC key, sets the
+importer TGID and HCCS access link, but
+`aclrtIpcMemImportByKey(..., ACL_RT_IPC_MEM_IMPORT_FLAG_ENABLE_PEER_ACCESS)`
+returns `207000 feature not support`. Thus this result is a driver/runtime
+boundary, not a conclusion that IPC cannot replace VMM on HDK 25.5/CANN 9;
+rerun the same gates there before selecting a direct-pointer transport.
+
 The companion HCCL semantic gate passed at `[320, 1024] -> [320, 512]`:
 `local WKV -> all-gather(KV) -> shuffled cache slots` matches the current
 `all-gather(hidden) -> WKV` reference. This is an oracle result only, not a
