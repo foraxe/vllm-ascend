@@ -156,6 +156,27 @@ This is a valid Flash B0 and a correctness/capacity gate for C128. It is not
 yet an owner-sharded allocator implementation, a DSA-CP TTFT comparison, or
 a DeepSeek-V4-Pro result.
 
+### G5: production C128 DSA-CP seam — identified
+
+The current runtime cannot turn G3 into a feature flag by changing only cache
+allocation. `vllm_ascend/attention/context_parallel/dsa_cp.py` explicitly
+asserts `compressor_ratio <= 1` in its DSA metadata builder, so its CP path is
+SWA-only. In parallel, `model_runner_v1.py::_allocate_kv_cache_tensors` still
+allocates a full local compressed-attention tensor for every rank. Therefore a
+correct feature-on C128 implementation must add all of the following together:
+
+1. C128 owner-page allocation plus logical-page-to-owner metadata in the
+   worker allocator.
+2. Compressor prefix-state handoff/scan before a rank publishes its owned
+   C128 pages.
+3. HCCL-staged selected-row materialization into a bounded local workspace;
+   the existing sparse-attention kernel must continue to receive local rows.
+4. C128-capable DSA metadata and a feature-off replicated fallback, followed
+   by an identical Flash TP8 8K/one-output candidate measurement.
+
+VMM remote pointers remain an R&D transport alternative after the staged path
+is correct; they are not required for this next feature-on gate.
+
 ## Current blocker
 
 The old cloudide iTask pod holding
