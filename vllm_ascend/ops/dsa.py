@@ -109,6 +109,9 @@ class AscendDeepseekSparseAttention(MultiHeadLatentAttentionWrapper):
         self.indexer_rotary_emb = dsa_modules.indexer_rotary_emb
         self.skip_topk = dsa_modules.skip_topk
         self.prefix = prefix
+        self.enable_c128_owner_debug = bool(
+            (get_current_vllm_config().additional_config or {}).get("enable_c128_owner_debug", False)
+        )
 
         ascend_device_type = get_ascend_device_type()
         k_dtype = torch.fp8 if ascend_device_type == AscendDeviceType.A5 else torch.bfloat16
@@ -188,9 +191,7 @@ def dsa_forward(
 ) -> None:
     forward_context: ForwardContext = get_forward_context()
     self = forward_context.no_compile_layers[layer_name]
-    owner_debug = bool(
-        (get_current_vllm_config().additional_config or {}).get("enable_c128_owner_debug", False)
-    )
+    owner_debug = self.enable_c128_owner_debug
     if owner_debug:
         print(
             "DSA_OWNER_TRACE enter "
