@@ -89,6 +89,7 @@ class C128OwnerShardCache:
     stage_cache: torch.Tensor
     tp_size: int
     debug: bool = False
+    last_selected_pages: torch.Tensor | None = None
 
     def _trace(self, message: str) -> None:
         if self.debug:
@@ -237,8 +238,7 @@ class C128OwnerShardCache:
         *,
         tp_rank: int,
         group,
-        return_selected_pages: bool = False,
-    ) -> tuple[torch.Tensor, torch.Tensor] | tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """HCCL-stage the pages required by ``block_table`` into local memory.
 
         All ranks first form the union of pages required by any CP-local query
@@ -305,9 +305,10 @@ class C128OwnerShardCache:
             tp_rank,
             union_pages.numel(),
         )
+        # Diagnostic metadata only; keeping the method return ABI fixed avoids
+        # a distinct eager/graph path for the HCCL staging operation.
+        self.last_selected_pages = union_pages
         staged_cache = self.stage_cache[: union_pages.numel()]
-        if return_selected_pages:
-            return staged_cache, remapped_block_table, union_pages
         return staged_cache, remapped_block_table
 
 

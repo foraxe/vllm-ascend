@@ -1331,17 +1331,17 @@ class AscendDSACPImpl(DSAAttentionImpl):
                     raise RuntimeError("C128 owner-shard is prefill-only; decode requires the replicated cache path")
                 trace_c128_stage("materialize_begin")
                 if self.enable_c128_owner_oracle:
-                    cmp_kv, cmp_block_table, selected_pages = c128_owner_cache.materialize_for_attention(
+                    cmp_kv, cmp_block_table = c128_owner_cache.materialize_for_attention(
                         cmp_block_table,
                         tp_rank=self.tp_rank,
                         group=self.tp_group.device_group,
-                        return_selected_pages=True,
                     )
                     assert compressed_kv is not None
+                    assert c128_owner_cache.last_selected_pages is not None
                     self._verify_c128_owner_current_rows(
                         layer_name,
                         cmp_kv,
-                        selected_pages,
+                        c128_owner_cache.last_selected_pages,
                         compressor_attn_metadata.req_metadata.slot_mapping,
                         compressed_kv,
                     )
