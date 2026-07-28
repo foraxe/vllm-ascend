@@ -601,4 +601,6 @@ Raw evidence:
 /a3_inference/nyx/dsv4_dsa_cp/20260728_prefill_owner/flash_c128_owner/
   hccl_owner_tp8_r2_pass.out
   hccl_owner_tp8_r2_pass.rc
+  hccl_owner_tp8_final_8ea73c42.out
+  hccl_owner_tp8_final_8ea73c42.rc
 ```
