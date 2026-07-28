@@ -235,6 +235,12 @@ def _get_kv_cache_config_deepseek_v4(
     # feature-gated family before the worker performs its owner-shard reshape.
     additional_config = vllm_config.additional_config or {}
     enable_c128_owner_shard = bool(additional_config.get("enable_c128_owner_shard", False))
+    c128_attention_layers = {
+        layer_name
+        for group in kv_cache_groups
+        for layer_name, layer_spec in group.kv_cache_spec.kv_cache_specs.items()
+        if isinstance(layer_spec, MLAAttentionSpec) and layer_spec.compress_ratio == 128
+    }
 
     def _append_tensor(page_size: int, names: list[str]) -> None:
         if names:
@@ -249,12 +255,7 @@ def _get_kv_cache_config_deepseek_v4(
                 if bucket is not None and tuple_idx < len(bucket):
                     shared_by.append(bucket[tuple_idx])
             if enable_c128_owner_shard:
-                c128_layers = [
-                    name
-                    for name in shared_by
-                    if isinstance(full_mla_c128_spec.kv_cache_specs.get(name), MLAAttentionSpec)
-                    and full_mla_c128_spec.kv_cache_specs[name].compress_ratio == 128
-                ]
+                c128_layers = [name for name in shared_by if name in c128_attention_layers]
                 non_c128_layers = [name for name in shared_by if name not in c128_layers]
                 _append_tensor(ps, non_c128_layers)
                 _append_tensor(ps, c128_layers)
