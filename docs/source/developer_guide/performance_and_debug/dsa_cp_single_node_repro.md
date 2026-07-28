@@ -38,7 +38,10 @@ Remote role directory:
 
 The root can instead be under `/a3_inference/shared/...`; resolve it first on
 the target pod. Preserve `P0/start.sh`; use the independent
-`start_single_node.sh` launcher.
+`tools/a3_dsv4_pro_prefill/start_single_node.sh` launcher. Its launcher and
+both fixed clients are versioned in this repository on
+`codex/a3-dsv4-pro-prefill-019fa36a`, owned by Codex session
+`019fa36a-956a-7372-aceb-19d91f08f990`.
 
 For disposable iTask capability gates, preserve the evidence outside the pod
 workdir. The 2026-07-28 DSA owner/VMM run uses:
@@ -64,14 +67,21 @@ rtk proxy env KUBECONFIG=/Users/nyx/.kube/wulan-htest4.yaml \
 
 ## Deploy the launcher and the test-only compatibility fix
 
-From the local experiment root, set the current pod name once and copy the two
-artifacts. The `rtk` prefix is required in this environment.
+From the repository root, set the current pod name once and copy the launcher,
+both benchmark clients, and the test-only compatibility fix. The `rtk`
+prefix is required in this environment.
 
 ```bash
 DSA_POD=ide-run-task-nyx-vllm-a3-20260727-16npu-vllm-dsa-cp-hx0248w2rk7
 rtk proxy env KUBECONFIG=/Users/nyx/.kube/wulan-htest4.yaml kubectl --context=a3 -n cloudide cp \
-  start_single_node.sh \
+  tools/a3_dsv4_pro_prefill/start_single_node.sh \
   "${DSA_POD}:/a3_inference/itask/workdir/shared/zhaomingchu/aiworker/codex/pro-debug/P0/start_single_node.sh"
+rtk proxy env KUBECONFIG=/Users/nyx/.kube/wulan-htest4.yaml kubectl --context=a3 -n cloudide cp \
+  tools/a3_dsv4_pro_prefill/bench_prefill_only.py \
+  "${DSA_POD}:/a3_inference/itask/workdir/shared/zhaomingchu/aiworker/codex/pro-debug/P0/bench_prefill_only.py"
+rtk proxy env KUBECONFIG=/Users/nyx/.kube/wulan-htest4.yaml kubectl --context=a3 -n cloudide cp \
+  tools/a3_dsv4_pro_prefill/bench_ttft_stream.py \
+  "${DSA_POD}:/a3_inference/itask/workdir/shared/zhaomingchu/aiworker/codex/pro-debug/P0/bench_ttft_stream.py"
 rtk proxy env KUBECONFIG=/Users/nyx/.kube/wulan-htest4.yaml kubectl --context=a3 -n cloudide cp \
   vllm-ascend/vllm_ascend/attention/context_parallel/dsa_cp.py \
   "${DSA_POD}:/usr/local/python3.11.15/lib/python3.11/site-packages/vllm_ascend/attention/context_parallel/dsa_cp.py"
