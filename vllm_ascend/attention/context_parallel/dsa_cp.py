@@ -934,6 +934,12 @@ class AscendDSACPImpl(DSAAttentionImpl):
         self.enable_c128_owner_shard = bool(
             (self.vllm_config.additional_config or {}).get("enable_c128_owner_shard", False)
         )
+        # Debugging must be read while the vLLM config context is installed.
+        # ``_forward`` is also reached by static memory profiling, where that
+        # context is deliberately absent.
+        self.enable_c128_owner_debug = bool(
+            (self.vllm_config.additional_config or {}).get("enable_c128_owner_debug", False)
+        )
 
         # indexer param
         if self.indexer is not None:
@@ -1091,6 +1097,16 @@ class AscendDSACPImpl(DSAAttentionImpl):
         local_seq_lengths_query = cp_metadata.local_query_start_loc
         local_seq_lengths_key = cp_metadata.local_seq_lens
         has_prefill = _has_prefill(common_attn_metadata.attn_state)
+        trace_c128 = self.enable_c128_owner_debug and c128_owner_cache is not None and has_prefill
+
+        def trace_c128_stage(stage: str) -> None:
+            if trace_c128:
+                print(
+                    f"DSA_OWNER_TRACE c128_{stage} layer={layer_name} rank={self.tp_rank}",
+                    flush=True,
+                )
+
+        trace_c128_stage("enter")
 
         if (not isinstance(self.wq_b.quant_method, AscendUnquantizedLinearMethod)) and isinstance(
             self.wq_b.quant_method.quant_method, AscendW8A8DynamicLinearMethod
@@ -1149,6 +1165,7 @@ class AscendDSACPImpl(DSAAttentionImpl):
             rotary_mode="interleave",
             partial_slice=[self.nope_head_dim, self.head_dim],
         )
+        trace_c128_stage("q_ready")
 
         if wait_hidden_states_allgather_event:
             torch.npu.current_stream().wait_event(wait_hidden_states_allgather_event)
@@ -1165,6 +1182,7 @@ class AscendDSACPImpl(DSAAttentionImpl):
             partial_slice=[self.nope_head_dim, self.head_dim],
         )
         torch.ops._C_ascend.npu_scatter_nd_update_v2(swa_kv_cache, swa_metadata.req_metadata.slot_mapping, kv)
+        trace_c128_stage("swa_ready")
 
         compress_topk_idxs = None
         if self.compress_ratio > 1:
@@ -1194,6 +1212,7 @@ class AscendDSACPImpl(DSAAttentionImpl):
                 )
 
             coff = 2 if self.compressor_overlap else 1
+            trace_c128_stage("compressor_begin")
             compressed_kv = torch.ops._C_ascend.compressor(
                 hidden_states,
                 self.compressor_wkv.weight,
@@ -1214,6 +1233,7 @@ class AscendDSACPImpl(DSAAttentionImpl):
                 rotary_mode=2,
                 cache_mode=1,
             )
+            trace_c128_stage("compressor_ready")
 
             if compressed_kv.numel() == 0:
                 compressed_kv = None
@@ -1222,11 +1242,13 @@ class AscendDSACPImpl(DSAAttentionImpl):
                 # cache unchanged.  Only persistent C128 page placement is
                 # owner-only; the attention consumer stages its own local view
                 # below.
+                trace_c128_stage("owner_scatter_begin")
                 c128_owner_cache.scatter_owned(
                     compressor_attn_metadata.req_metadata.slot_mapping,
                     compressed_kv,
                     self.tp_rank,
                 )
+                trace_c128_stage("owner_scatter_ready")
             else:
                 torch.ops._C_ascend.npu_scatter_nd_update_v2(
                     compress_kv_cache, compressor_attn_metadata.req_metadata.slot_mapping, compressed_kv
@@ -1276,17 +1298,20 @@ class AscendDSACPImpl(DSAAttentionImpl):
             if c128_owner_cache is not None:
                 if not has_prefill:
                     raise RuntimeError("C128 owner-shard is prefill-only; decode requires the replicated cache path")
+                trace_c128_stage("materialize_begin")
                 cmp_kv, cmp_block_table = c128_owner_cache.materialize_for_attention(
                     cmp_block_table,
                     tp_rank=self.tp_rank,
                     group=self.tp_group.device_group,
                 )
+                trace_c128_stage("materialize_ready")
                 logger.info(
                     "C128 owner sparse attention: rank=%d cache_shape=%s block_table_shape=%s",
                     self.tp_rank,
                     tuple(cmp_kv.shape),
                     tuple(cmp_block_table.shape),
                 )
+            trace_c128_stage("sparse_attn_begin")
             attn_output = torch.ops._C_ascend.npu_sparse_attn_sharedkv(
                 q,
                 ori_kv=swa_kv_cache,
@@ -1298,6 +1323,7 @@ class AscendDSACPImpl(DSAAttentionImpl):
                 cmp_mask_mode=3,
                 **common_attn_kwargs,
             )[0]
+            trace_c128_stage("sparse_attn_ready")
             if c128_owner_cache is not None:
                 logger.info("C128 owner sparse attention complete: rank=%d", self.tp_rank)
         return attn_output
