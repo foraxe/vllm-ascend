@@ -762,3 +762,26 @@ is still pending.
 r36 (full capacity) and r37 (`MAX_MODEL_LEN=8192`, correctness-only) both
 stopped at the pre-API DSA warmup/initialization boundary before a request and
 without a new Ascend error.  They do not test this fix and have no TTFT result.
+
+### G21: r38 real-Flash integration launch — BLOCKED before request dispatch
+
+r38 used the corrected six-row local RoPE adapter, static TP8 C128 result
+exchange, owner compact allocation, selected staging, FusedMC2, Mooncake off,
+and the unchanged 1M-capacity / 8K-one-output workload.  It loaded all 70
+checkpoint shards, then remained pre-API for more than 12 minutes: port 7100
+never served `/health`, the vLLM log stopped at 104,170 bytes at
+`2026-07-28T22:25:23Z`, and no `c128_local_compressor`,
+`c128_compressor_ready`, or `c128_static_collective_*` marker was emitted.
+There was no new Python, HCCL, or Ascend error in this run.
+
+The service and all workers were stopped with `SIGTERM`; `npu-smi` confirmed
+no remaining VLLM workers.  Thus r38 does not validate compressor handoff,
+model output, cache equivalence, capacity reduction, or TTFT.  It is a
+bootstrap blocker distinct from the r34 Compressor shape failure fixed in G20.
+
+Raw evidence:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/20260728_prefill_owner/flash_c128_owner/
+  log_single_node_prefill_flash_tp8_c128_owner_r38_local_c128_ropepad_static_a2a_fmc2.log
+```
