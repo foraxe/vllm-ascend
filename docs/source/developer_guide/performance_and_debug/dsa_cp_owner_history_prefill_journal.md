@@ -270,6 +270,16 @@ restores `kv_caches[layer_name] = [persistent_tensor]` while retaining the
 out-of-band owner registry. This is a code-derived root-cause hypothesis until
 the next feature-on request returns a handoff trace or text.
 
+The r7 retry at `cb8577b749892a8948c21f0287e149bed818e623` applied that
+container fix, passed the same 11 reference tests, loaded 70/70 shards, and
+reached health. Its first 128-token request still ended without a text SSE and
+again emitted no handoff warning or attributable CANN error. The container
+fix is therefore a necessary ABI correction but not the sole fault. Do not
+continue treating the failed path as a HCCL/VMM experiment: no instrumented
+DSA-CP seam has run. The next diagnostic must instrument the model/executor
+boundary before `AscendDSACPImpl.forward()`, or split compact allocation from
+owner-placement execution, rather than repeat another cold feature-on smoke.
+
 In parallel, B1 isolated the existing implementation's
 `prefill_comm_compute_overlap` switch. It retained TP8/EP8, Flash, 8K input,
 one output token, FusedMC2, lazy weight loading, no Mooncake, and the
