@@ -362,3 +362,39 @@ Raw evidence and launch output remain under:
   launch_r11.out
   launch_r12.out
 ```
+
+### G9: allocation-layout dependency — confirmed
+
+r13 and r14 retained the compact owner allocation and both reached C128
+compressor submission on all ranks, but no rank reached the first
+`owner_cache_mask_ready` marker. Since `compressor_ready` means only that the
+asynchronous NPU compressor was queued, the next dependent NPU operation is
+blocked before any owner-mask, scatter, HCCL, or sparse-attention operation.
+It is therefore incorrect to attribute that behavior to the masked scatter.
+
+Commit `c97a8c0b` introduced the explicit
+`enable_c128_owner_compact_allocation` gate so owner placement can be tested
+with a full tensor independently of the `1/TP` allocator. The r15 command
+used that gate (`0`) and otherwise retained the B0 topology/workload options.
+It is **INVALID** at engine initialization: separating the C128 attention
+cache from the state-cache bucket and retaining all 4190 pages needs an
+additional 524 MiB per NPU. At fixed B0 `gpu_memory_utilization=0.9`, the
+workers had only 111--347 MiB free, and every rank raised `torch_npu.memory:
+NPU out of memory. Tried to allocate 524.00 MiB`.
+
+This establishes a real coupling, not a Mooncake/HCCL/VMM blocker: the old
+aliasing layout is needed to fit Flash at B0 capacity, while the compact
+allocation avoids that 524 MiB cost but changes the asynchronous compressor
+execution contract. The next valid experiment is a reduced allocator capacity
+that still admits the 128-word request, with full allocation and owner
+placement enabled. It is a correctness/layout gate only; it must not be
+compared against B0 TTFT. After it proves the owner path, restore the B0
+capacity and repair the compact-cache/compressor ABI before attempting a TTFT
+candidate.
+
+The corresponding raw log is:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/20260728_prefill_owner/flash_c128_owner/
+  log_single_node_prefill_flash_tp8_c128_owner_r15_fullalloc_layout_fmc2_8k.log
+```
