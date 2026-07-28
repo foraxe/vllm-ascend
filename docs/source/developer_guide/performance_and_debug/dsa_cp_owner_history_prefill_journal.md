@@ -192,6 +192,44 @@ The old cloudide iTask pod holding
 exists, and that checkpoint is not mounted in the `.204` pod. Therefore no
 Pro-model 8K/one-output baseline or TTFT claim has been made from this pod.
 
+### G6: feature-on C128 owner allocation — initialization PASS, request INVALID
+
+The opt-in implementation is on branch
+`codex/a3-dsv4-pro-prefill-019fa36a` (`fc82ac44533b055c36b37fd70eba3b87f8dbf36f`).
+It isolates C128 `MLAAttentionSpec(compress_ratio=128)` entries from the
+mixed C128-attention/compressor-state raw bucket, stores only owner pages
+(`page_id % TP`), and materializes a local attention view through HCCL.
+
+Two early attempts were invalid before model execution: the first exposed the
+mixed raw-storage bucket and the second had a planner `NameError`. The latter
+was fixed by deriving C128 names from all actual KV-cache specs, not by
+assuming a cache-group index. The fixed r3 run loaded 70/70 Flash shards and
+returned `GET /health = 200`; the owner-page reference unit passed on the
+image (`10 passed`).
+
+Its first real 8K/one-output request produced no text SSE delta and the
+service exited, so it is **INVALID** for correctness, capacity, and TTFT. No
+feature-on TTFT number exists. The raw run directory is:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/20260728_prefill_owner/flash_c128_owner/
+  log_single_node_prefill_flash_tp8_c128_owner_r3_fmc2_8k.log
+  bench_r3.out
+  bench_r3.rc
+  logs/ascend/run/
+```
+
+This failure also invalidates the current full-stage design as a performance
+candidate. A stage tensor sized to all allocator pages recreates a replicated
+C128 execution view; additionally, the baseline aliases C128 attention with
+compressor state in one raw bucket, so splitting the tensor adds a full state
+bucket before the owner shard is counted. Consequently the unit-oracle
+`1 / TP` persistent-C128 result must not be reported as total service KV
+reduction. The next implementation gate is a bounded per-request page stage
+with explicit lifetime/capacity accounting, followed by a true selected-row
+or VMM peer-read kernel path. Do not run another 8K TTFT comparison until the
+feature-on request returns an output and its allocator accounting is proven.
+
 ## Next implementation gate
 
 Implement a feature-off-by-default C128-only allocation and page-translation
