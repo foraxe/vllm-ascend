@@ -40,6 +40,28 @@ The root can instead be under `/a3_inference/shared/...`; resolve it first on
 the target pod. Preserve `P0/start.sh`; use the independent
 `start_single_node.sh` launcher.
 
+For disposable iTask capability gates, preserve the evidence outside the pod
+workdir. The 2026-07-28 DSA owner/VMM run uses:
+
+```text
+/a3_inference/itask/workdir/shared/nyx/dsv4_dsa_cp/20260728_owner_vmm_gates/
+```
+
+Create an otherwise idle 16-NPU gate pod with the same image family, then
+verify the resulting Pod before copying probes or starting a service:
+
+```bash
+rtk proxy env KUBECONFIG=/Users/nyx/.kube/wulan-htest4.yaml \
+  /Users/nyx/bin/itask -n cloudide create \
+  --name nyx-dsv4-dsa-struct-YYYYMMDD \
+  --user hx02481871 --type a3 --16card \
+  --image hcr.meta-wulan01.hw-wulan.local/antsys/vllm:release_0.20.2_0601_202607271124_aarch64 \
+  --skip-sync --no-model-download 'sleep infinity'
+
+rtk proxy env KUBECONFIG=/Users/nyx/.kube/wulan-htest4.yaml \
+  kubectl --context=a3 -n cloudide get pod <created-pod> -o wide
+```
+
 ## Deploy the launcher and the test-only compatibility fix
 
 From the local experiment root, set the current pod name once and copy the two
@@ -264,6 +286,28 @@ Run a separate two-process probe before modifying DSA-CP:
 For immediate TTFT, use HCCL staged owner/fan-out experiments first. VMM is
 the enabling path for the later owner-direct-placement prototype, not for MoE
 `alltoallv` dispatch/return.
+
+### 2026-07-28 capability result: VMM/SHMEM `BLOCKED` on the iTask image
+
+The exact two-process NPU0/NPU1 probe passes
+`aclrtDeviceCanAccessPeer` and `aclrtDeviceEnablePeerAccess`, but the corrected
+V2 ABI uses `aclrtMemFabricHandle` (128 bytes) and still receives
+`ACL_ERROR_RT_FEATURE_NOT_SUPPORT (207000)` from
+`aclrtMemImportFromShareableHandleV2`. The test intentionally omits HBM
+`aclrtMemSetAccess`, as CANN SHMEM's HBM path does.
+
+This is independently reproduced by CANN SHMEM commit `341b46e`: the isolated
+wheel builds and imports under CANN 9.0.0, but its two-rank symmetric HBM heap
+fails at `aclrtMemExportToShareableHandleV2` with `ret: 207000` on both ranks.
+Therefore `get_peer_buffer`, remote-pointer attention, and direct peer-tensor
+cache placement are unavailable on this runtime. Keep the first owner-current
+SWA implementation as staged HCCL KV placement into ordinary local cache
+views; do not make VMM a prerequisite for the TTFT lane.
+
+The companion HCCL semantic gate passed at `[320, 1024] -> [320, 512]`:
+`local WKV -> all-gather(KV) -> shuffled cache slots` matches the current
+`all-gather(hidden) -> WKV` reference. This is an oracle result only, not a
+collective timing measurement.
 
 ## Result labels
 
