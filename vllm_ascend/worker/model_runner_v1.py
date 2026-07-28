@@ -103,6 +103,7 @@ from vllm.v1.worker.utils import AttentionGroup
 # yapf: enable
 from vllm_ascend.ascend_config import get_ascend_config
 from vllm_ascend.attention.attention_v1 import AscendAttentionBackend, AscendAttentionState
+from vllm_ascend.attention.context_parallel.c128_owner_cache import C128OwnerShardCache
 from vllm_ascend.attention.context_parallel.dsa_cp import AscendDSACPMetadataBuilder
 from vllm_ascend.attention.dsa_v1 import AscendDSAMetadataBuilder
 from vllm_ascend.attention.mla_v1 import AscendMLABackend
@@ -261,6 +262,23 @@ class NPUModelRunner(GPUModelRunner):
         self.use_compress = (
             hf_config is not None and hasattr(hf_config, "compress_ratios")
         )
+        additional_config = vllm_config.additional_config or {}
+        # This first production gate is intentionally narrow: it changes only
+        # C128 placement in eager, single-engine DSA-CP prefill.  C4 has an
+        # indexer cache and external KV connectors need a different ownership
+        # protocol, so neither is silently included here.
+        self.enable_c128_owner_shard = bool(additional_config.get("enable_c128_owner_shard", False))
+        if self.enable_c128_owner_shard:
+            if vllm_config.kv_transfer_config is not None:
+                raise ValueError("enable_c128_owner_shard does not support a KV-transfer connector")
+            if vllm_config.parallel_config.tensor_parallel_size <= 1:
+                raise ValueError("enable_c128_owner_shard requires tensor parallel size > 1")
+            if not self.use_compress:
+                raise ValueError("enable_c128_owner_shard requires a DeepSeek-V4 compressed-cache model")
+        # One full local execution view is shared by sequential C128 layers;
+        # persistent owner shards remain per layer.  The key includes layout
+        # so incompatible cache families can never alias a workspace.
+        self._c128_owner_stage_caches: dict[tuple, torch.Tensor] = {}
 
         with _torch_cuda_wrapper():
             super().__init__(vllm_config, device)
@@ -3651,6 +3669,7 @@ class NPUModelRunner(GPUModelRunner):
                 if isinstance(layer_kv_cache_spec[layer_name], AttentionSpec):
                     use_attn = True
             self.hybrid_with_attn_and_mamba = self.hybrid_with_attn_and_mamba or (use_mamba and use_attn)
+            is_c128_owner_tensor = self._is_c128_owner_tensor(kv_cache_tensor.shared_by, layer_kv_cache_spec)
             for idx in range(len(kv_cache_tensor.shared_by)):
                 layer_name = kv_cache_tensor.shared_by[idx]
                 # Single tensor path for: mamba, hybrid attn-mamba, or cache_only_layers
@@ -3671,7 +3690,16 @@ class NPUModelRunner(GPUModelRunner):
                         # shared the kvcache for all shared layers
                         kv_cache_raw_tensors[layer_name_inner] = tensor
                 elif "attn" in layer_name and self.use_compress and layer_name not in kv_cache_raw_tensors:
-                    if self.vllm_config.kv_transfer_config is None:
+                    if is_c128_owner_tensor:
+                        current_kv_cache_spec = layer_kv_cache_spec[layer_name]
+                        assert isinstance(current_kv_cache_spec, MLAAttentionSpec)
+                        owner_blocks = cdiv(kv_cache_config.num_blocks, self.vllm_config.parallel_config.tensor_parallel_size)
+                        tensor = torch.zeros(
+                            owner_blocks * current_kv_cache_spec.page_size_bytes,
+                            dtype=torch.int8,
+                            device=self.device,
+                        )
+                    elif self.vllm_config.kv_transfer_config is None:
                         tensor = torch.zeros(kv_cache_tensor.size,
                                                 dtype=torch.int8,
                                                 device=self.device)
@@ -3776,6 +3804,37 @@ class NPUModelRunner(GPUModelRunner):
 
         return kv_cache_raw_tensors
 
+    def _is_c128_owner_tensor(self, shared_by: list[str], layer_kv_cache_spec: dict[str, KVCacheSpec]) -> bool:
+        """Whether this raw tensor is the opt-in C128 canonical owner store."""
+        if not self.enable_c128_owner_shard:
+            return False
+        specs = [layer_kv_cache_spec[layer_name] for layer_name in shared_by]
+        c128_specs = [
+            spec
+            for spec in specs
+            if isinstance(spec, MLAAttentionSpec) and getattr(spec, "compress_ratio", 0) == 128
+        ]
+        if not c128_specs:
+            return False
+        if len(c128_specs) != len(specs):
+            raise ValueError("C128 owner-shard cache tensor cannot share storage with a non-C128 layer")
+        return True
+
+    def _get_c128_owner_stage_cache(self, spec: MLAAttentionSpec, num_blocks: int) -> torch.Tensor:
+        """Allocate one reusable full-page execution view per C128 layout."""
+        key = (num_blocks, spec.block_size, spec.num_kv_heads, spec.head_size, spec.dtype)
+        stage_cache = self._c128_owner_stage_caches.get(key)
+        if stage_cache is None:
+            stage_shape = self.attn_backend.get_kv_cache_shape(
+                num_blocks, spec.block_size, spec.num_kv_heads, spec.head_size
+            )
+            stage_cache = torch.empty(stage_shape, dtype=spec.dtype, device=self.device)
+            self._c128_owner_stage_caches[key] = stage_cache
+            logger.info(
+                "Allocated shared C128 owner-shard stage cache: pages=%d shape=%s", num_blocks, stage_shape
+            )
+        return stage_cache
+
     def _adjust_kv_layout(
         self,
         raw_tensor: torch.Tensor,
@@ -3836,11 +3895,21 @@ class NPUModelRunner(GPUModelRunner):
                 # encounter OOM issue
                 if self.use_compress and isinstance(current_kv_cache_spec, (MLAAttentionSpec, SlidingWindowMLASpec)):
                     kv_tensor = kv_cache_raw_tensors[layer_name]
+                    is_c128_owner_cache = self._is_c128_owner_tensor([layer_name], layer_kv_cache_spec)
                     sum_page_size_bytes = kv_tensor.numel()
                     num_blocks = sum_page_size_bytes // current_kv_cache_spec.page_size_bytes
-                    assert num_blocks == kv_cache_config.num_blocks, \
-                        f"num_blocks: {num_blocks} should be equal to " \
-                        f"kv_cache_config.num_blocks: {kv_cache_config.num_blocks}"
+                    if is_c128_owner_cache:
+                        assert isinstance(current_kv_cache_spec, MLAAttentionSpec)
+                        expected_owner_blocks = cdiv(
+                            kv_cache_config.num_blocks, self.vllm_config.parallel_config.tensor_parallel_size
+                        )
+                        assert num_blocks == expected_owner_blocks, (
+                            f"owner blocks: {num_blocks} should be equal to {expected_owner_blocks}"
+                        )
+                    else:
+                        assert num_blocks == kv_cache_config.num_blocks, \
+                            f"num_blocks: {num_blocks} should be equal to " \
+                            f"kv_cache_config.num_blocks: {kv_cache_config.num_blocks}"
                     kv_cache_shape = self.attn_backend.get_kv_cache_shape(
                         num_blocks, current_kv_cache_spec.block_size,
                         current_kv_cache_spec.num_kv_heads,
@@ -3864,7 +3933,17 @@ class NPUModelRunner(GPUModelRunner):
                                            current_kv_cache_spec.page_size_bytes,
                                            )
 
-                    kv_caches[layer_name] = kv_cache
+                    if is_c128_owner_cache:
+                        assert len(kv_cache) == 1, "C128 owner-shard does not support quantized scale pages yet"
+                        kv_caches[layer_name] = C128OwnerShardCache(
+                            persistent_cache=kv_cache[0],
+                            stage_cache=self._get_c128_owner_stage_cache(
+                                current_kv_cache_spec, kv_cache_config.num_blocks
+                            ),
+                            tp_size=self.vllm_config.parallel_config.tensor_parallel_size,
+                        )
+                    else:
+                        kv_caches[layer_name] = kv_cache
                 elif isinstance(current_kv_cache_spec, AttentionSpec):
                     # cache_only_layers (extract_hidden_states) are allocated
                     # as a single tensor by the branch at the top of

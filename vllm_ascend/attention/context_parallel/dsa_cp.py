@@ -15,6 +15,7 @@ from vllm.v1.kv_cache_interface import AttentionSpec, MLAAttentionSpec
 from vllm_ascend.ascend_config import get_ascend_config
 from vllm_ascend.attention.abstract import DSAAttentionImpl
 from vllm_ascend.attention.attention_v1 import AscendAttentionState
+from vllm_ascend.attention.context_parallel.c128_owner_cache import C128OwnerShardCache
 from vllm_ascend.attention.utils import AscendCommonAttentionMetadata, split_decodes_and_prefills
 from vllm_ascend.ops.linear import AscendUnquantizedLinearMethod
 from vllm_ascend.ops.rope_dsv4 import get_cos_and_sin_dsa
@@ -1195,9 +1196,20 @@ class AscendDSACPImpl(DSAAttentionImpl):
 
             if compressed_kv.numel() == 0:
                 compressed_kv = None
-            torch.ops._C_ascend.npu_scatter_nd_update_v2(
-                compress_kv_cache, compressor_attn_metadata.req_metadata.slot_mapping, compressed_kv
-            )
+            if isinstance(compress_kv_cache, C128OwnerShardCache):
+                # Keep the existing gathered-hidden compressor and its state
+                # cache unchanged.  Only persistent C128 page placement is
+                # owner-only; the attention consumer stages its own local view
+                # below.
+                compress_kv_cache.scatter_owned(
+                    compressor_attn_metadata.req_metadata.slot_mapping,
+                    compressed_kv,
+                    self.tp_rank,
+                )
+            else:
+                torch.ops._C_ascend.npu_scatter_nd_update_v2(
+                    compress_kv_cache, compressor_attn_metadata.req_metadata.slot_mapping, compressed_kv
+                )
 
         common_attn_kwargs = dict(
             cu_seqlens_q=local_seq_lengths_query,
@@ -1238,12 +1250,22 @@ class AscendDSACPImpl(DSAAttentionImpl):
             )[0]
         else:
             assert compressor_attn_metadata.req_metadata is not None
+            cmp_kv = compress_kv_cache
+            cmp_block_table = compressor_attn_metadata.req_metadata.block_table
+            if isinstance(compress_kv_cache, C128OwnerShardCache):
+                if not has_prefill:
+                    raise RuntimeError("C128 owner-shard is prefill-only; decode requires the replicated cache path")
+                cmp_kv, cmp_block_table = compress_kv_cache.materialize_for_attention(
+                    cmp_block_table,
+                    tp_rank=self.tp_rank,
+                    group=self.tp_group.device_group,
+                )
             attn_output = torch.ops._C_ascend.npu_sparse_attn_sharedkv(
                 q,
                 ori_kv=swa_kv_cache,
-                cmp_kv=compress_kv_cache,
+                cmp_kv=cmp_kv,
                 ori_block_table=swa_metadata.req_metadata.block_table,
-                cmp_block_table=compressor_attn_metadata.req_metadata.block_table,
+                cmp_block_table=cmp_block_table,
                 cu_seqlens_cmp_kv=req_metadata.cu_cmp_seqlen_list,
                 metadata=compressor_attn_metadata.req_metadata.sas_metadata,
                 cmp_mask_mode=3,

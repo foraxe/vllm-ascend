@@ -12,6 +12,12 @@ hidden-state AllGather path.
 import pytest
 import torch
 
+from vllm_ascend.attention.context_parallel.c128_owner_cache import (
+    c128_local_page,
+    c128_owner,
+    remap_c128_block_table,
+)
+
 pytestmark = pytest.mark.cpu_test
 
 
@@ -109,6 +115,27 @@ def test_owner_sharded_c128_materialization_matches_replicated_history() -> None
     materialized = _materialize_owner_rows(owner_shards, selected_rows, page_size)
     expected = replicated_history.flatten(0, 1)[selected_rows]
     torch.testing.assert_close(materialized, expected)
+
+
+def test_c128_owner_page_map_and_compact_stage_block_table() -> None:
+    """The production owner map preserves every logical page exactly once."""
+    pages = torch.arange(12, dtype=torch.int64)
+    owners = c128_owner(pages, world_size=4)
+    local_pages = c128_local_page(pages, world_size=4)
+    torch.testing.assert_close(owners, torch.tensor([0, 1, 2, 3] * 3))
+    torch.testing.assert_close(local_pages, torch.tensor([0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2]))
+
+    # A rank needs a compact local stage view for only its referenced pages;
+    # padding must remain -1 so the kernel does not consume a stale stage row.
+    selected_pages = torch.tensor([1, 4, 7, 10], dtype=torch.int32)
+    block_table = torch.tensor([[10, 4, -1, 1], [7, -1, -1, -1]], dtype=torch.int32)
+    remapped = remap_c128_block_table(block_table, selected_pages)
+    torch.testing.assert_close(remapped, torch.tensor([[3, 1, -1, 0], [2, -1, -1, -1]], dtype=torch.int32))
+
+
+def test_c128_stage_block_table_rejects_missing_page() -> None:
+    with pytest.raises(ValueError, match="absent from the staged set"):
+        remap_c128_block_table(torch.tensor([[3]], dtype=torch.int32), torch.tensor([1, 2], dtype=torch.int32))
 
 
 @pytest.mark.parametrize("world_size", [2, 4, 16])

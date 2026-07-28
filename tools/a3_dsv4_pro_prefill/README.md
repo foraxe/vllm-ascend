@@ -24,6 +24,13 @@ benchmark does not save or restore external KV, so starting its master would
 introduce a separate process and port without exercising the measured path.
 Use `ENABLE_MOONCAKE_KV_CONNECTOR=1` only for an explicit KV-transfer test.
 
+`ENABLE_C128_OWNER_SHARD=1` is a separate, prefill-only DSA-CP experiment. It
+keeps compressor state production unchanged, stores each C128 page on one TP
+owner, and HCCL-stages only the block-table pages required by attention into a
+temporary local view. It requires TP > 1, forbids a KV-transfer connector, and
+keeps the replicated C128 path as the default. Do not combine it with an
+unrelated DSA overlap or Mooncake A/B.
+
 `layer_sharding` is a PD-disaggregated prefill-role option in this vLLM
 release. The historical Pro P-side reproduction leaves it enabled by default;
 a direct standalone DSV4-Flash service must use
@@ -92,6 +99,7 @@ TP_SIZE=8 \
 A3_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 \
 ENABLE_DSA_LAYER_SHARDING=0 \
 ENABLE_MOONCAKE_KV_CONNECTOR=0 \
+ENABLE_C128_OWNER_SHARD=0 \
 ENABLE_PREFILL_COMM_COMPUTE_OVERLAP=0 \
 ENABLE_FUSED_MC2=1 \
 ENABLE_MTP=0 \
