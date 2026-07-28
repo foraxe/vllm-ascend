@@ -54,6 +54,9 @@ ENABLE_MOONCAKE_KV_CONNECTOR=${ENABLE_MOONCAKE_KV_CONNECTOR:-0}
 # but make the policy explicit so a standalone model-load failure can be
 # isolated without changing any DSA-CP or serving setting.
 SAFETENSORS_LOAD_STRATEGY=${SAFETENSORS_LOAD_STRATEGY:-prefetch}
+# Keep B0's 0.9 by default. A lower value is a correctness-only allocator
+# capacity gate and must never be compared as a TTFT candidate.
+GPU_MEMORY_UTILIZATION=${GPU_MEMORY_UTILIZATION:-0.9}
 # Explicit synthetic-model gate for capacity and DSA-CP path experiments.
 # A reduced routed-expert count changes gate/hash tensor shapes, so it must
 # never be paired with the production checkpoint weights.
@@ -76,6 +79,13 @@ case "${SAFETENSORS_LOAD_STRATEGY}" in
         exit 2
         ;;
 esac
+python3 - "${GPU_MEMORY_UTILIZATION}" <<'PY'
+import sys
+
+value = float(sys.argv[1])
+if not 0 < value <= 1:
+    raise SystemExit(f"GPU_MEMORY_UTILIZATION must be in (0, 1], got {value}")
+PY
 
 resolve_local_ip() {
     python3 - "${NETWORK_INTERFACE}" <<'PY'
@@ -312,7 +322,7 @@ VLLM_CMD=(
     --max-model-len 1048576
     --max-num-batched-tokens 5120
     --block-size 128
-    --gpu-memory-utilization 0.9
+    --gpu-memory-utilization "${GPU_MEMORY_UTILIZATION}"
     --no-disable-hybrid-kv-cache-manager
     --no-enable-prefix-caching
     --safetensors-load-strategy "${SAFETENSORS_LOAD_STRATEGY}"
@@ -361,7 +371,7 @@ print_effective_config() {
         "${ROLE_NAME}" "${LOCAL_IP}" "${ENABLE_PREFILL_COMM_COMPUTE_OVERLAP}" "${ENABLE_C128_OWNER_SHARD}" "${ENABLE_C128_OWNER_COMPACT_ALLOCATION}" "${ENABLE_C128_OWNER_DEBUG}" "${ENABLE_DSA_LAYER_SHARDING}" "${ENABLE_FUSED_MC2}" "${ENABLE_MTP}" "${ENABLE_MOONCAKE_KV_CONNECTOR}" "${SYNTHETIC_ROUTED_EXPERTS}" "${ENABLE_TORCH_PROFILER}"
     printf 'dp_size=%s dp_rank=%s tp_size=%s api_port=%s\n' \
         "${DP_SIZE}" "${DP_RANK}" "${TP_SIZE}" "${VLLM_PORT}"
-    printf 'safetensors_load_strategy=%s\n' "${SAFETENSORS_LOAD_STRATEGY}"
+    printf 'safetensors_load_strategy=%s gpu_memory_utilization=%s\n' "${SAFETENSORS_LOAD_STRATEGY}" "${GPU_MEMORY_UTILIZATION}"
     printf '\nEnvironment:\n'
     for key in "${ENV_KEYS[@]}"; do
         printf '%s=%q\n' "${key}" "${!key-}"
