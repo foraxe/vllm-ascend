@@ -23,8 +23,8 @@ from dataclasses import dataclass
 
 import torch
 import torch.distributed as dist
+import torch_npu
 from vllm.logger import init_logger
-
 
 logger = init_logger(__name__)
 
@@ -34,7 +34,7 @@ logger = init_logger(__name__)
 # cache contract before DSACP gets a chance to consume it.  Keep ownership
 # metadata out-of-band and resolve it from the persistent Tensor at the DSA
 # seam instead.
-_OWNER_CACHES_BY_DATA_PTR: dict[int, "C128OwnerShardCache"] = {}
+_OWNER_CACHES_BY_DATA_PTR: dict[int, C128OwnerShardCache] = {}
 
 
 def c128_owner(page_ids: torch.Tensor, world_size: int) -> torch.Tensor:
@@ -119,7 +119,11 @@ class C128OwnerShardCache:
             raise ValueError(f"tp_rank={tp_rank} is outside TP size {self.tp_size}")
 
         page_ids = slot_mapping[:, 0]
-        owner_mask = c128_owner(page_ids, self.tp_size) == tp_rank
+        # Negative page/offset entries are padding.  The regular C128 scatter
+        # treats them as non-writes; do that before computing the owner so a
+        # padded ``-1`` never aliases the final TP rank.
+        valid_mask = (page_ids >= 0) & (slot_mapping[:, 1] >= 0)
+        owner_mask = valid_mask & (c128_owner(page_ids, self.tp_size) == tp_rank)
         logger.info(
             "C128 owner scatter: rank=%d rows=%d owned_rows=%d",
             tp_rank,
@@ -130,10 +134,18 @@ class C128OwnerShardCache:
             return
         local_slot_mapping = slot_mapping[owner_mask].clone()
         local_slot_mapping[:, 0] = c128_local_page(local_slot_mapping[:, 0], self.tp_size)
-        torch.ops._C_ascend.npu_scatter_nd_update_v2(
-            self.persistent_cache,
-            local_slot_mapping,
-            compressed_kv[owner_mask],
+        # ``npu_scatter_nd_update_v2`` is the normal full-cache update, but
+        # its CANN 9.0 implementation is not safe with dynamically masked
+        # two-dimensional NPU indices.  Flatten the identical [page, offset]
+        # address into standard torch_npu scatter indices instead.
+        page_size = self.persistent_cache.shape[1]
+        flat_slots = (
+            local_slot_mapping[:, 0] * page_size + local_slot_mapping[:, 1]
+        ).view(-1, 1)
+        torch_npu.npu_scatter_nd_update_(
+            self.persistent_cache.view(-1, *self.persistent_cache.shape[2:]),
+            flat_slots,
+            compressed_kv[owner_mask].contiguous(),
         )
 
     @staticmethod
