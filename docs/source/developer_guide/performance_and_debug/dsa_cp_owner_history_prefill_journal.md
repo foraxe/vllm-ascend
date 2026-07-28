@@ -533,6 +533,24 @@ Raw evidence:
   results/flash_tp8_c128_owner_r24_clean_fmc2_8k_ttft.json
 ```
 
+### G13: current-row cache oracle — in progress
+
+The branch adds a debug-only oracle for the direct producer/consumer
+invariant: after HCCL materialization, every current
+`compressed_kv` row must exactly equal the staged row addressed by its
+compressor slot mapping. It uses no replicated persistent cache and is off by
+default; the launcher exposes `ENABLE_C128_OWNER_ORACLE=1`.
+
+r25 was **INVALID** because the launcher passed the oracle value to `jq` but
+omitted the key from `additional-config`; no oracle code ran. That launcher
+bug is fixed. r26 carried the flag correctly but exited at the first
+`materialize_begin`, before an oracle result or an attributable runtime error.
+The only semantic distinction was an optional third return value from the
+staging helper, so that control-flow change has been removed: staging now
+retains its original two-value return ABI and stores selected pages as
+diagnostic metadata for the oracle to read afterwards. The next retry must
+use this fixed ABI; neither r25 nor r26 is correctness evidence.
+
 Raw evidence:
 
 ```text
