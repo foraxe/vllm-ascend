@@ -1330,12 +1330,16 @@ class AscendDSACPImpl(DSAAttentionImpl):
                 if not has_prefill:
                     raise RuntimeError("C128 owner-shard is prefill-only; decode requires the replicated cache path")
                 trace_c128_stage("materialize_begin")
+                # Keep the materialization call itself identical for production
+                # and debug runs.  The oracle adds NPU gathers after the HCCL
+                # page exchange, so it must not change the staged-cache call
+                # graph or its return ABI.
+                cmp_kv, cmp_block_table = c128_owner_cache.materialize_for_attention(
+                    cmp_block_table,
+                    tp_rank=self.tp_rank,
+                    group=self.tp_group.device_group,
+                )
                 if self.enable_c128_owner_oracle:
-                    cmp_kv, cmp_block_table = c128_owner_cache.materialize_for_attention(
-                        cmp_block_table,
-                        tp_rank=self.tp_rank,
-                        group=self.tp_group.device_group,
-                    )
                     assert compressed_kv is not None
                     assert c128_owner_cache.last_selected_pages is not None
                     self._verify_c128_owner_current_rows(
@@ -1344,12 +1348,6 @@ class AscendDSACPImpl(DSAAttentionImpl):
                         c128_owner_cache.last_selected_pages,
                         compressor_attn_metadata.req_metadata.slot_mapping,
                         compressed_kv,
-                    )
-                else:
-                    cmp_kv, cmp_block_table = c128_owner_cache.materialize_for_attention(
-                        cmp_block_table,
-                        tp_rank=self.tp_rank,
-                        group=self.tp_group.device_group,
                     )
                 trace_c128_stage("materialize_ready")
                 logger.info(
@@ -1391,6 +1389,11 @@ class AscendDSACPImpl(DSAAttentionImpl):
         the explicit oracle flag and intentionally synchronizes to report a
         measurable error rather than affecting serving behavior.
         """
+        # HCCL all-gather and scatter are asynchronous on Ascend. This debug
+        # barrier deliberately creates an eager boundary before the verifier's
+        # dynamic gathers; without it, CANN can capture those gathers in the
+        # staging graph and obscure the first failing operation.
+        torch.npu.synchronize()
         valid = (slot_mapping[:, 0] >= 0) & (slot_mapping[:, 1] >= 0)
         page_ids = slot_mapping[valid, 0]
         offsets = slot_mapping[valid, 1]
