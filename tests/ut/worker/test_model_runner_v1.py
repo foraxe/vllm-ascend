@@ -42,6 +42,8 @@ class TestNPUModelRunnerKVCache(unittest.TestCase):
         runner.vllm_config.kv_transfer_config = None
         runner.model_config = MagicMock()
         runner.model_config.use_mla = True
+        runner.enable_c128_owner_shard = False
+        runner.enable_c128_owner_compact_allocation = False
         runner._c128_packed_layer_page_counts = {}
         runner._c128_packed_owner_layers = set()
         runner._c128_packed_layer_buckets = {}
@@ -550,7 +552,7 @@ class TestNPUModelRunnerPackedAllocatorReshape(unittest.TestCase):
         kv_cache_config,
     ):
         replicated_spec = MLAAttentionSpec(
-            block_size=1,
+            block_size=4,
             num_kv_heads=1,
             head_size=self.PAGE_BYTES,
             dtype=torch.uint8,
@@ -558,7 +560,7 @@ class TestNPUModelRunnerPackedAllocatorReshape(unittest.TestCase):
             model_version="deepseek_v4",
         )
         owner_spec = MLAAttentionSpec(
-            block_size=1,
+            block_size=128,
             num_kv_heads=1,
             head_size=self.PAGE_BYTES,
             dtype=torch.uint8,
@@ -575,7 +577,7 @@ class TestNPUModelRunnerPackedAllocatorReshape(unittest.TestCase):
         runner.attn_backend = SimpleNamespace(
             get_kv_cache_shape=lambda num_blocks, block_size, num_kv_heads, head_size: (
                 num_blocks,
-                block_size,
+                1,
                 num_kv_heads,
                 head_size,
             )
@@ -692,7 +694,7 @@ class TestNPUModelRunnerPackedAllocatorReshape(unittest.TestCase):
             plan,
             metadata,
         )
-        owner_spec = self._configure_real_compressed_reshape(
+        owner_spec = self._configure_representative_compressed_reshape(
             runner,
             kv_cache_config,
         )
@@ -885,7 +887,7 @@ class TestNPUModelRunnerPackedAllocatorReshape(unittest.TestCase):
             plan,
             metadata,
         )
-        self._configure_real_compressed_reshape(
+        self._configure_representative_compressed_reshape(
             runner,
             kv_cache_config,
         )
