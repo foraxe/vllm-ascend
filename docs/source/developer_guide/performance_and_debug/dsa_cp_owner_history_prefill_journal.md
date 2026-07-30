@@ -970,7 +970,7 @@ the baseline per-block denominator, so neither allocatable blocks nor service
 capacity improve.  G26 is `FAIL`; r42 proves the execution path, not persistent
 capacity reduction.
 
-### G27: reclaim baseline C128 physical storage — PLANNED
+### G27: sparse owner-backed Ascend VMM pages — PASS
 
 Hypothesis: Ascend VMM sparse backing can preserve the existing B-page virtual
 cache ABI while physically backing only the pages owned by the local TP rank.
@@ -984,3 +984,342 @@ If the installed HDK/CANN cannot pass that gate, the fallback design is a
 packed physical owner pool plus explicit logical-block-to-owner-slot
 indirection.  It must remove the baseline C128 backing and the full B-page
 staging allocation before any TTFT benchmark is admissible.
+
+The `.204` pod runs CANN 9.0.0 and HDK/driver 25.5.1.  Its system
+`acl_rt.h` and `libascendcl.so` provide the canonical `aclrtMem*` reserve,
+physical allocation, map, V2 shareable-handle, PID authorization, import, and
+unmap APIs.  G27 maps four logical VMM pages per rank while allocating only
+the two pages selected by `owner(logical_page) = logical_page % 2`; the peer
+imports those two handles into the remaining VA holes.
+
+The two-rank NPU0/NPU1 run passed:
+
+```text
+allocation granularity/rank = 2,097,152 bytes
+logical VA/rank             = 4 pages = 8,388,608 bytes
+owned physical/rank         = 2 pages = 4,194,304 bytes
+imported peer aliases/rank  = 2 pages = 4,194,304 virtual bytes
+local/read/remote-write mismatches = 0/0/0 on both ranks
+```
+
+Both ranks acknowledged imported-alias release before owner allocations were
+freed, exited zero, and left NPU0/NPU1 idle.  Imported aliases did not consume
+another 4 MiB of HBM.  This is a physical-allocation and peer-alias `PASS`,
+not yet a Torch or attention-kernel result.
+
+The measured 2-MiB minimum granularity is 16 C128 pages of 128 KiB.  Therefore
+single C128 pages cannot be independently sparse-mapped at their current
+interleaved logical addresses.  A capacity implementation must pack
+owner-local C128 slots contiguously, align each segment to 2 MiB, and remap
+block-table IDs; VMM alone cannot preserve the current page-level layout.
+
+Raw evidence:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/runs/204/g27_sparse_owner_20260730_121939/
+```
+
+### G28: consume a remote VMM mapping as a Torch NPU tensor — PASS
+
+Hypothesis: an imported V2 VMM address can be wrapped as a non-owning Torch NPU
+tensor and consumed by ordinary NPU kernels, rather than only by
+`aclrtMemcpy`.
+
+The probe uses the current image's private, version-pinned Torch-NPU
+constructors:
+
+```text
+_construct_storage_from_data_pointer
+_construct_NPU_Tensor_From_Storage_And_Metadata
+```
+
+NPU0 initialized 4,096 FP32 elements with ordinary `copy_`.  NPU1 imported
+the 2-MiB VMM handle, wrapped the mapped address, and `clone()` read every
+element exactly.  NPU1 then used ordinary `fill_(37)` on the remote tensor;
+NPU0's subsequent `clone()` observed all 4,096 values as 37.  The child
+processes exited `0/0`, no timeout signal was required, and the importer
+unmapped before the exporter freed its allocation.
+
+This proves the remote tensor data path required by an owner-pool prototype.
+The wrapper is non-owning: production must retain an explicit VMM lease,
+synchronize every accessing stream, drop all tensor aliases, then unmap and
+free in that order.  It does not by itself fix G26's shared-pool capacity
+accounting.
+
+Raw evidence:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/runs/204/g28_remote_tensor_20260730_043455/
+```
+
+### G29: exact-shape local-compressor prefix-state oracle — PASS
+
+Hypothesis: eight sequential TP-local 640-token compressor calls for the
+5,120-token aligned prefix, followed by the replicated 3,080-token tail,
+produce the same cache-bearing rows and semantically live state as the global
+compressor path.
+
+The one-NPU oracle uses the production `[8200,7168]` hidden shape, C128
+weights, a 258-block FP32 state cache, logical-to-physical state IDs `1..257`,
+production zero-position RoPE padding, and all eight TP start positions.  It
+compares only completed C128 rows; the custom operator's final per-batch row is
+ABI padding and is undefined even between repeated global calls.
+
+All eight rank histories passed.  The five valid local prefix rows per rank
+matched the global rows with worst `max_abs=0.0078125` and
+`max_rel=0.0075758`.  All 24 cache-bearing tail rows were bit-exact.  The live
+state at positions `8072:8200` and the future continuation state at
+`8096:8224` were byte-identical on every simulated rank.  The target-image run
+reported `3 passed` in 7.71s.
+
+Raw evidence:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/runs/204/
+  20260730T042131Z_prefix_oracle_r44_nonzero_blocks/
+```
+
+### G30: fixed-block runtime allocation accounting — PASS measurement, FAIL capacity
+
+Hypothesis: the one-shot PyTorch storage accounting at fixed `B=4190`
+reproduces G26's static conclusion.  r44 is the real-Flash feature-off B0;
+r45 changes only owner shard, compact owner allocation, and selective stage.
+Both keep the local compressor off, FusedMC2 on, and use the same fixed
+8K/one-output correctness request.  This is an allocation gate, not a TTFT
+candidate.
+
+`PASS` for the measurement requires eight rank records, identical deploy
+hashes and block count, B0 output `你好`, and a clean stop.  The current layout's
+capacity hypothesis passes only if r45 `total_unique_bytes` is below r44.
+An equal or larger total is a valid experiment whose capacity hypothesis
+fails.
+
+r44 passed the measurement gate.  All eight ranks reported:
+
+```text
+num_blocks=4190
+baseline_raw_bytes=13546370560
+compact_owner_bytes=0
+c128_stage_bytes=0
+total_unique_bytes=13546370560
+```
+
+Its 8K/one-output request returned `你好` and cleanup left no NPU worker.
+
+The first owner run, r45, was `INVALID_ACCOUNTING_STAGE`: its helper flattened
+lists and tuples but not the `dict_values` object holding reusable C128 stage
+tensors, so `c128_stage_bytes=0` was a measurement bug.  The corrected helper
+treats Torch tensors as atomic, recursively flattens finite mappings and
+iterables without device reads, and passed five local plus five target-image
+tests.
+
+r47 reran the same owner configuration with only that helper corrected.  All
+eight ranks emitted the same record:
+
+```text
+num_blocks=4190
+baseline_raw_bytes=13546370560
+compact_owner_bytes=1373634560
+c128_stage_bytes=549191680
+total_unique_bytes=15469196800
+unique_storages=64
+duplicate_references=104
+cross_category_aliases=0
+```
+
+The fixed 8K/one-output request returned `你好`, the exact launcher log had no
+fatal signature, TERM completed within 30 seconds, and all eight NPUs were
+idle afterward.  The runtime result matches G26 exactly: the current owner
+layout adds 1,922,826,240 bytes or 14.1944% per rank.  Runtime accounting is
+`PASS`; persistent service-capacity saving is `FAIL`.
+
+Raw evidence:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/runs/204/
+  20260730_r44_b0_fixed4190_accounting_634ef01f_r2/
+  20260730_r45_owner_fixed4190_accounting_634ef01f/
+  20260730_r47_owner_fixed4190_accounting_stagefix_7355d108/
+```
+
+### G31: group-partitioned packed-pool contract — PASS CPU, runtime pending
+
+Hypothesis: disjoint scheduler-group ranges and packed physical component
+segments can remove the retained baseline C128 backing while preserving
+sentinel block zero, deterministic inverse mapping, TP ownership, and the
+measured 2-MiB VMM granularity.
+
+The CPU planning contract assigns one-based disjoint logical ranges, reserves
+one dummy physical page per component, converts interleaved C128 IDs into
+contiguous owner-local slots, aligns each segment independently, and accounts
+a bounded scratch region instead of the current full `B`-page stage.
+Feature-off constructs no plan and translates block IDs identically.
+
+For the exact 8,200-token fixed request, the admission-aware planner assigns
+these six scheduler-group quotas:
+
+```text
+[17, 1, 642, 165, 65, 65]  # plus sentinel block 0
+```
+
+The totals include continuation/admission headroom and therefore differ from
+the earlier required-now live-block trace.  They sum to 955 data blocks and
+map to deterministic one-based ranges:
+
+```text
+[1,18), [18,19), [19,661), [661,826), [826,891), [891,956)
+```
+
+This is a pinned single-request planner contract, not yet a measured capacity
+claim.  The exact persistent/scratch allocation bytes must come from the
+serialized plan consumed by the target runtime.  General service still needs
+dynamic quota borrowing or lifecycle-aware remapping.
+
+The isolated planning prototype passed 22 tests across TP1/2/3/8, mapping
+round trips, collision checks, alignment, invalid IDs, feature-off identity,
+and Flash-shaped capacity accounting.  Runtime still needs coherent planner
+metadata, scheduler partitioning, worker block-table translation, packed
+allocation, and bounded C128 materialization before an NPU capacity claim.
+
+### G32: prefill overlap launcher audit — INVALID configuration
+
+Hypothesis: setting `prefill_comm_compute_overlap=1` alone improves real Flash
+DSA-CP 8K/one-output TTFT by at least 8%, with B0, FusedMC2, and all owner
+features unchanged.
+
+r46 completed one warmup and five timed requests.  Its observed median was
+602.496 ms versus the canonical r40 median of 596.680 ms.  That number is not
+an overlap verdict: source inspection showed that
+`prefill_comm_compute_overlap` is read only by the non-CP implementation in
+`attention/dsa_v1.py`.  Real Flash DSA-CP runs
+`attention/context_parallel/dsa_cp.py`, whose hidden-state all-gather overlap
+is controlled by `multistream_dsa_preprocess`.
+
+r46 is therefore `INVALID_CONFIGURATION`; the intended independent variable
+never reached the measured path.  The versioned launcher now exposes and logs
+three separate controls:
+
+```text
+ENABLE_PREFILL_COMM_COMPUTE_OVERLAP
+ENABLE_MULTISTREAM_DSA_PREPROCESS
+ENABLE_MULTISTREAM_OVERLAP_SHARED_EXPERT
+```
+
+The next A/Bs change only one of the two controls that the real Flash path
+actually consumes.  Raw r46 evidence:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/runs/204/
+  20260730_r46_b0_overlap_on_634ef01f/
+```
+
+### G33: shared-expert multistream overlap — PASS signal, MISS target
+
+Hypothesis: enabling only `multistream_overlap_shared_expert` overlaps the
+shared-expert projections with the routed FusedMC2 MoE lane and improves
+real-Flash 8K/one-output TTFT by at least 3%, without changing the model,
+fixed block count, or DSA path.
+
+r48 changed only that switch from `0` to `1`; r49 returned it to `0`.
+FusedMC2 remained enabled and every prefill, DSA-owner, Mooncake, MTP,
+accounting, profiling, and layer-sharding switch remained disabled.  Three
+matched candidate/control sequences produced:
+
+```text
+candidate r48          control r49          median gain
+585.530 ms             599.208 ms              2.282%
+573.194 ms             586.727 ms              2.306%
+559.924 ms             569.910 ms              1.752%
+```
+
+The sign is positive in all three repetitions, so the lane is retained for a
+later combination.  It misses the independent 3% pass threshold and is not
+the 8% TTFT result.  Greedy one-token text varied among `你好`, `Hello`, and
+`I` in both feature-on and feature-off runs; that service-level variability is
+not evidence of an overlap-specific correctness defect.  Cache/state oracles
+and a nonempty completion remain the correctness gate.
+
+Both services were stopped by their exact process groups and all eight NPUs
+were idle after cleanup.  Raw evidence:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/runs/204/
+  20260730_r48_b0_shared_expert_overlap_75b54627/
+  20260730_r49_b0_a_after_shared_overlap_75b54627/
+```
+
+### G34: E3 local-current-KV — PASS mechanism, PASS <5% TTFT budget
+
+Hypothesis: the aligned 5,120-token C128 prefix computes WKV, norm, RoPE, and
+compressor rows from each TP-local hidden shard, exchanges the narrow
+RoPE-complete KV and compressor outputs into the established replicated
+caches, and leaves the unaligned 3,080-token tail on the full-hidden fallback.
+
+The deployed E3 sources and launcher matched integration commit `84f3da22`
+byte-for-byte.  The target-image reference suite passed `27/27`; effective
+configuration proved `dsa_cp_local_current_kv=1`, FusedMC2 enabled, and every
+overlap, owner-capacity, Mooncake, MTP, accounting, profiling, and
+layer-sharding switch disabled.  The real Flash TP8 service loaded `70/70`
+shards, returned HTTP 200, and its first fixed 8K/one-output request returned
+`你好`.
+
+The launch log contained no `DSA-CP local-current-KV active` record.  That
+record is an INFO-level rank-0 `logger.info_once` emitted only after all
+admission predicates pass.  Its absence cannot distinguish a rejected gate
+from worker-log filtering or once-only sink behavior.  The request therefore
+proves service correctness but does not prove that E3 ran; its cold
+`1,624.761 ms` TTFT is not a performance sample.
+
+The run is classified `INCONCLUSIVE_TELEMETRY`.  The next diagnostic is
+default-off and reports all scalar admission inputs plus ordered rejection
+reasons from every rank without reading device data.  Only an explicit
+`accepted` record permits a matched TTFT run.
+
+The exact process group terminated cleanly, port 7100 closed, and all eight
+NPUs reported no running process.  Raw evidence:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/runs/204/
+  20260730_r50_e3_deploy_84f3da22/
+```
+
+r51 resolved that telemetry gap.  One fixed request emitted exactly 320
+admission records:
+
+```text
+8 TP ranks x 20 C128 layers x 2 chunks = 320
+5,120-token prefix: 160 admitted
+3,080-token tail:   160 rejected, local_compressor_plan_missing
+```
+
+Every admitted record had five C128 rows per 640-token local shard and exact
+unpadded global metadata (`5120 == num_tokens_pad == num_input_tokens ==
+num_actual_tokens`).  Every rank admitted all 20 C128 layers for the prefix
+and rejected all 20 for the tail.  The output was `你好`, health remained 200,
+and the exact process group stopped cleanly.
+
+r52 then restarted the same E3 code and configuration with debug disabled and
+no extra smoke request.  Against the matched r49 control sequence:
+
+```text
+window             r49 control     r52 E3        median regression
+w1/r10 first        599.208 ms      601.494 ms        0.382%
+w1/r10 repeat       586.727 ms      591.629 ms        0.835%
+w5/r10 steady       569.910 ms      572.990 ms        0.540%
+```
+
+The steady p90 was 583.646 ms versus 575.609 ms, a 1.396% regression.  E3
+does not improve TTFT, but it stays within the project's revised hard budget
+of less than 5% TTFT regression.  It is retained as a mechanism dependency for
+the packed owner-capacity path, not as a standalone TTFT optimization.
+All 30 measured completions were nonempty, post-benchmark health was 200,
+the fatal scan was empty, TERM was clean, and a retry snapshot showed all
+eight NPUs idle.
+
+Raw evidence:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/runs/204/
+  20260730_r51_e3_admission_diag_6419fa00/
+  20260730_r52_e3_ttft_clean_6419fa00/
+```
