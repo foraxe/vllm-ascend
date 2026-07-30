@@ -8,6 +8,9 @@ from vllm.v1.utils import CpuGpuBuffer
 from vllm.v1.worker.block_table import _compute_slot_mapping_kernel
 from vllm.v1.worker.cp_utils import get_total_cp_world_size
 
+from vllm_ascend.attention.context_parallel.c128_packed_pool import PackedPlacement
+from vllm_ascend.worker.packed_block_table import PackedBlockTableTranslator
+
 
 class BlockTable:
     def __init__(
@@ -22,6 +25,7 @@ class BlockTable:
         cp_kv_cache_interleave_size: int = 1,
         num_speculative_tokens: int = 0,
         kv_cache_group: KVCacheGroupSpec = None,
+        packed_translator: PackedBlockTableTranslator | None = None,
     ):
         self.max_num_reqs = max_num_reqs
         compress_ratio = 1
@@ -37,6 +41,7 @@ class BlockTable:
         self.pin_memory = pin_memory
         self.device = device
         self.physical_block_size = block_size
+        self.packed_translator = packed_translator
 
         try:
             self.pcp_world_size = get_pcp_group().world_size
@@ -77,6 +82,12 @@ class BlockTable:
                 self.use_hybrid_blocks = True
             else:
                 self.use_hybrid_blocks = False
+        if (
+            self.use_hybrid_blocks
+            and self.packed_translator is not None
+            and self.packed_translator.placement is PackedPlacement.C128_OWNER
+        ):
+            raise ValueError("packed C128 owner translation requires matching physical " "and kernel block sizes")
 
         if self.use_hybrid_blocks:
             logical_table_size = max_num_blocks_per_req * self.blocks_per_phys_block
@@ -100,21 +111,37 @@ class BlockTable:
         block_ids,
         row_idx: int,
     ) -> None:
-        if not block_ids:
-            return
+        prepared = self.prepare_block_ids(block_ids)
+        self.append_prepared_row(prepared, row_idx)
+
+    def prepare_block_ids(self, block_ids) -> np.ndarray:
+        """Translate one scheduler row without mutating table state."""
+        if len(block_ids) == 0:
+            return np.empty((0,), dtype=np.int32)
         block_ids = np.array(block_ids)
+        if self.packed_translator is not None:
+            block_ids = self.packed_translator.translate_group_block_ids(block_ids)
         if self.use_hybrid_blocks:
             block_ids = self._convert_physical_to_logical_blocks(block_ids)
+        return block_ids
 
+    def append_prepared_row(
+        self,
+        block_ids: np.ndarray,
+        row_idx: int,
+    ) -> None:
         num_blocks = len(block_ids)
+        if num_blocks == 0:
+            return
         start = self.num_blocks_per_row[row_idx]
 
         self.block_table.np[row_idx, start : start + num_blocks] = block_ids
         self.num_blocks_per_row[row_idx] += num_blocks
 
     def add_row(self, block_ids: list[int], row_idx: int) -> None:
+        prepared = self.prepare_block_ids(block_ids)
         self.num_blocks_per_row[row_idx] = 0
-        self.append_row(block_ids, row_idx)
+        self.append_prepared_row(prepared, row_idx)
 
     def clear_row(self, row_idx: int) -> None:
         num_blocks = self.num_blocks_per_row[row_idx]
@@ -159,6 +186,7 @@ class BlockTable:
             PAD_ID=PAD_SLOT_ID,
             BLOCK_SIZE=1024,
         )
+        self._translate_packed_slots(num_tokens)
 
     def compute_slot_mapping_draft(self, req_indices: np.ndarray, positions: np.ndarray) -> None:
         # E.g., [0, 1, 0, 1, 2, 3, 4, 0, 1, 2]
@@ -227,7 +255,27 @@ class BlockTable:
             block_numbers = self.block_table.np.ravel()[block_table_indices]
             block_offsets = positions % self.block_size
             np.add(block_numbers * self.block_size, block_offsets, out=self.slot_mapping.np[: req_indices.shape[0]])
+            if self.packed_translator is None:
+                self.slot_mapping.copy_to_gpu(req_indices.shape[0])
+        if self.packed_translator is not None:
+            self._translate_packed_slots(req_indices.shape[0], cpu_source=True)
             self.slot_mapping.copy_to_gpu(req_indices.shape[0])
+
+    def _translate_packed_slots(
+        self,
+        num_slots: int,
+        *,
+        cpu_source: bool = False,
+    ) -> None:
+        if self.packed_translator is None:
+            return
+        slots = self.slot_mapping.cpu[:num_slots] if cpu_source else self.slot_mapping.gpu[:num_slots]
+        self.packed_translator.translate_slot_mapping_(
+            slots,
+            logical_block_size=self.block_size,
+            physical_block_size=self.physical_block_size,
+            blocks_per_phys_block=self.blocks_per_phys_block,
+        )
 
     def commit_block_table(self, num_reqs: int) -> None:
         self.block_table.copy_to_gpu(num_reqs)
@@ -236,7 +284,10 @@ class BlockTable:
         self.block_table.fill_(0)
         self.block_table.cpu.fill_(0)
 
-    def _convert_physical_to_logical_blocks(self, physical_blocks: np.ndarray) -> np.ndarray:
+    def _convert_physical_to_logical_blocks(
+        self,
+        physical_blocks: np.ndarray,
+    ) -> np.ndarray:
         """Convert physical block IDs to logical block IDs."""
         if not self.use_hybrid_blocks:
             return physical_blocks
@@ -285,6 +336,7 @@ class MultiGroupBlockTable:
         kernel_sizes: list[list[int]] | None = None,
         cp_kv_cache_interleave_size: int = 1,
         kv_cache_groups: KVCacheGroupSpec = None,
+        packed_translators: list[PackedBlockTableTranslator | None] | None = None,
     ) -> None:
         if kernel_sizes is None:
             kernel_sizes = [[0]] * len(block_sizes)
@@ -309,6 +361,15 @@ class MultiGroupBlockTable:
                 f"max_num_blocks length ({len(max_num_blocks)}) must match block_sizes length ({len(block_sizes)})"
             )
 
+        if packed_translators is None:
+            packed_translators = [None] * len(block_sizes)
+        elif len(packed_translators) != len(block_sizes):
+            raise ValueError(
+                "packed_translators length "
+                f"({len(packed_translators)}) must match block_sizes length "
+                f"({len(block_sizes)})"
+            )
+
         # Use zip to pair block_sizes with kernel_sizes one-to-one
         if kv_cache_groups is not None:
             self.block_tables = [
@@ -323,9 +384,20 @@ class MultiGroupBlockTable:
                     cp_kv_cache_interleave_size,
                     num_speculative_tokens,
                     kv_cache_group,
+                    packed_translator,
                 )
-                for block_size, kernel_size_list, max_num_blocks_per_req, kv_cache_group in zip(
-                    block_sizes, kernel_sizes, max_num_blocks, kv_cache_groups
+                for (
+                    block_size,
+                    kernel_size_list,
+                    max_num_blocks_per_req,
+                    kv_cache_group,
+                    packed_translator,
+                ) in zip(
+                    block_sizes,
+                    kernel_sizes,
+                    max_num_blocks,
+                    kv_cache_groups,
+                    packed_translators,
                 )
             ]
         else:
@@ -340,19 +412,53 @@ class MultiGroupBlockTable:
                     kernel_size_list,
                     cp_kv_cache_interleave_size,
                     num_speculative_tokens,
+                    packed_translator=packed_translator,
                 )
-                for block_size, kernel_size_list, max_num_blocks_per_req in zip(
-                    block_sizes, kernel_sizes, max_num_blocks
+                for (
+                    block_size,
+                    kernel_size_list,
+                    max_num_blocks_per_req,
+                    packed_translator,
+                ) in zip(
+                    block_sizes,
+                    kernel_sizes,
+                    max_num_blocks,
+                    packed_translators,
                 )
             ]
 
     def append_row(self, block_ids: tuple[list[int], ...], row_idx: int) -> None:
-        for i, block_table in enumerate(self.block_tables):
-            block_table.append_row(block_ids[i], row_idx)
+        prepared_rows = self._prepare_rows(block_ids)
+        for block_table, prepared in zip(
+            self.block_tables,
+            prepared_rows,
+        ):
+            block_table.append_prepared_row(prepared, row_idx)
 
     def add_row(self, block_ids: tuple[list[int], ...], row_idx: int) -> None:
-        for i, block_table in enumerate(self.block_tables):
-            block_table.add_row(block_ids[i], row_idx)
+        prepared_rows = self._prepare_rows(block_ids)
+        for block_table, prepared in zip(
+            self.block_tables,
+            prepared_rows,
+        ):
+            block_table.num_blocks_per_row[row_idx] = 0
+            block_table.append_prepared_row(prepared, row_idx)
+
+    def _prepare_rows(
+        self,
+        block_ids: tuple[list[int], ...],
+    ) -> list[np.ndarray]:
+        if len(block_ids) != len(self.block_tables):
+            raise ValueError(
+                f"block_ids group count ({len(block_ids)}) must match " f"block table count ({len(self.block_tables)})"
+            )
+        return [
+            block_table.prepare_block_ids(group_block_ids)
+            for block_table, group_block_ids in zip(
+                self.block_tables,
+                block_ids,
+            )
+        ]
 
     def clear_row(self, row_idx: int) -> None:
         for block_table in self.block_tables:
