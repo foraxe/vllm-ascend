@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ $# -ne 1 ]]; then
-  echo "usage: $0 <durable-artifact-directory>" >&2
+if [[ $# -lt 1 ]]; then
+  echo "usage: $0 <durable-artifact-directory> [probe options...]" >&2
   exit 2
 fi
 
@@ -18,13 +18,14 @@ cp "${SOURCE_DIR}/vmm_bridge.cpp" \
   "${SOURCE_DIR}/remote_tensor_probe.py" \
   "${SOURCE_DIR}/run_probe.sh" \
   "${ARTIFACT_DIR}/source/"
+RUN_SOURCE_DIR="${ARTIFACT_DIR}/source"
 
 source /usr/local/Ascend/cann/set_env.sh
 
 g++ -std=c++17 -O2 -g -fPIC -shared \
   -Wall -Wextra -Werror \
   -I"${CANN_HOME}/include" \
-  "${SOURCE_DIR}/vmm_bridge.cpp" \
+  "${RUN_SOURCE_DIR}/vmm_bridge.cpp" \
   -L"${CANN_HOME}/lib64" \
   -Wl,-rpath,"${CANN_HOME}/lib64" \
   -lascendcl \
@@ -41,13 +42,13 @@ export PROBE_GIT_SHA="${PROBE_GIT_SHA:-unknown}"
 set +e
 timeout --signal=TERM --kill-after=15s \
   "${TOTAL_TIMEOUT_SECONDS}s" \
-  python3 -u "${SOURCE_DIR}/remote_tensor_probe.py" \
+  python3 -u "${RUN_SOURCE_DIR}/remote_tensor_probe.py" \
     --library "${ARTIFACT_DIR}/libdsa_vmm_bridge.so" \
     --output "${ARTIFACT_DIR}/result.json" \
     --stage-timeout "${STAGE_TIMEOUT_SECONDS}" \
     "$@" \
-  2>&1 | tee "${ARTIFACT_DIR}/run.log"
-probe_status=${PIPESTATUS[0]}
+  > >(tee "${ARTIFACT_DIR}/run.log") 2>&1
+probe_status=$?
 set -e
 
 printf '%s\n' "${probe_status}" >"${ARTIFACT_DIR}/exit_code"
