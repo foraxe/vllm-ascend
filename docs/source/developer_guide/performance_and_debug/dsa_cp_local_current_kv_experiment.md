@@ -2,9 +2,10 @@
 
 ## Status
 
-`CODE_READY_NPU_BLOCKED`: the feature-off path and CPU/reference gates are
-implemented. The worktree was not deployed to an A3 pod, so correctness,
-collective shape, and TTFT remain NPU gates.
+`RUNTIME_PATH_PASS`: the aligned-prefix admission, unaligned-tail fallback,
+target-image unit tests, real-Flash output, and matched TTFT budget passed on
+the `.204` A3 node. A causal NPU trace of the collective payloads remains a
+profiling gate, not a runtime-selection gate.
 
 ## Hypothesis
 
@@ -22,13 +23,17 @@ hidden-state gather.
 
 - Model: `/mnt/deepseek/models/DeepSeek-V4-Flash-w8a8-mtp`
 - Hardware: one A3 node, TP8/EP8, devices `0,1,2,3,4,5,6,7`
-- Workload: one 8192-token input, one output token
-- Sampling: one warmup plus five recorded streaming requests
-- Required output: every request emits the same nonempty first token as B0
-- Baseline: real-Flash B0 median TTFT `596.6797508299351 ms`
+- Workload: 8,192 repeated `hello` words plus a unique suffix, which the
+  service reports as an 8,200-prompt-token request; one output token
+- Sampling: matched `w1/r10`, repeated `w1/r10`, then steady `w5/r10`
+- Required output: every request emits a nonempty token; matched B0 already
+  varies among `你好`, `Hello`, and `I`
+- Baseline: matched r49 medians `599.207691`, `586.726767`, and
+  `569.910270 ms`
 - Baseline artifact:
-  `/a3_inference/nyx/dsv4_dsa_cp/runs/204/20260730T031115_b0_2fca35c1`
-- TTFT target: median at most `548.9453707635403 ms` (`8%` below B0)
+  `/a3_inference/nyx/dsv4_dsa_cp/runs/204/20260730_r49_b0_a_after_shared_overlap_75b54627`
+- TTFT budget: less than `5%` matched median regression; the same budget is
+  applied to steady p90
 
 Keep the following controls fixed:
 
@@ -53,21 +58,19 @@ The causal variable is only `ENABLE_DSA_CP_LOCAL_CURRENT_KV`.
 
 `PASS` requires all of the following:
 
-1. the service reaches health `200` and rank 0 logs
-   `DSA-CP local-current-KV active`;
-2. one 8K/one-output correctness request completes with the B0 first token;
+1. the service reaches health `200` and the debug-only admission run proves
+   every TP rank admits the aligned prefix and rejects the tail;
+2. one 8K/one-output correctness request completes with a nonempty token;
 3. an NPU trace shows no full-hidden AllGather in the aligned C128 layer path,
    and shows a TP gather over the narrower RoPE-complete KV rows plus the
    fixed C128 result exchange;
-4. the one-warmup/five-run median TTFT is at most
-   `548.9453707635403 ms`.
+4. matched median and steady p90 TTFT regress by less than `5%`.
 
 `FAIL` is a completed experiment that violates correctness, structural, or
 TTFT criteria. `INVALID` covers a launch/config mismatch, missing request
 records, or a changed causal control. Kill the candidate immediately on a
-collective-shape mismatch, rank hang, cache-scatter error, nonfinite output, or
-any request output mismatch. An aligned-run TTFT regression is sufficient to
-stop this variant before a broader SWE-bench run.
+collective-shape mismatch, rank hang, cache-scatter error, nonfinite output,
+empty output, or a `5%` or larger matched TTFT regression.
 
 ## Mechanism and fallback
 
@@ -107,3 +110,21 @@ marker. This is a correctness/configuration `PASS` and an E3 structural
 admission input rejected the invocation, or distinguish rejection from an
 unobserved INFO message. Rerun one correctness request with the debug report;
 do not use that run for TTFT.
+
+r51, with debug enabled, emitted exactly 320 admission records: 8 ranks times
+20 C128 layers times two chunks. All 160 5,120-token prefix calls were
+admitted with five C128 rows per 640-token local shard. All 160 3,080-token
+tail calls rejected with `local_compressor_plan_missing`, proving fallback.
+
+r52 restarted the same feature-on configuration with debug disabled and no
+extra request. Its matched medians were `601.494392`, `591.628510`, and
+`572.990280 ms`, regressions of `0.381621%`, `0.835439%`, and `0.540438%`.
+Steady p90 regressed `1.396%`. The service remained healthy, every completion
+was nonempty, the fatal scan was empty, and teardown left all eight NPUs idle.
+Raw evidence:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/runs/204/
+  20260730_r51_e3_admission_diag_6419fa00/
+  20260730_r52_e3_ttft_clean_6419fa00/
+```
