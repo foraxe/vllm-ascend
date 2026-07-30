@@ -111,6 +111,24 @@ def slice_c128_local_compressor_rope(
     return torch.cat((rope[plan.slot_start : plan.slot_end], rope[-1:]), dim=0)
 
 
+def slice_c128_local_compressor_output(
+    compressed_kv: torch.Tensor,
+    plan: C128LocalCompressorPlan,
+) -> torch.Tensor:
+    """Drop the local compressor's final padded batch row.
+
+    The CANN merged-token compressor returns ``min(token_count, token_count /
+    ratio + batch_size)`` rows.  For this aligned single-request local path,
+    the final row is padding required by the operator ABI and has no cache
+    slot.  Only the preceding ``plan.rows`` C128 data rows may enter the TP
+    exchange or owner cache.
+    """
+    # Do not inspect the asynchronous custom-op result here.  The padded input
+    # shape was already validated before ``compressor``; reading output shape
+    # metadata on this boundary has caused target-runtime synchronization.
+    return compressed_kv[: plan.rows]
+
+
 # A DSV4 layer's static-forward cache slot must remain a Tensor.  Inserting a
 # Python wrapper there makes the first model execution leave the normal eager
 # cache contract before DSACP gets a chance to consume it.  Keep ownership

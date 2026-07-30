@@ -21,6 +21,7 @@ from vllm_ascend.attention.context_parallel.c128_owner_cache import (
     make_c128_local_compressor_plan,
     register_c128_owner_cache,
     remap_c128_block_table,
+    slice_c128_local_compressor_output,
     slice_c128_local_compressor_rope,
 )
 
@@ -274,6 +275,14 @@ def test_c128_local_compressor_rope_retains_per_shard_padding_row() -> None:
     torch.testing.assert_close(
         local_rope.squeeze(1), torch.tensor([35, 36, 37, 38, 39, 40], dtype=rope.dtype)
     )
+
+
+def test_c128_local_compressor_output_drops_final_padding_row() -> None:
+    """Only the five mapped data rows may enter the static TP exchange."""
+    plan = C128LocalCompressorPlan(slot_start=35, slot_end=40)
+    compressed_kv = torch.arange(6 * 3, dtype=torch.float32).view(6, 3)
+    local_rows = slice_c128_local_compressor_output(compressed_kv, plan)
+    torch.testing.assert_close(local_rows, compressed_kv[:5])
 
 
 def test_c128_static_collective_layout_restores_rank_major_slot_order() -> None:

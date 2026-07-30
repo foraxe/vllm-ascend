@@ -20,6 +20,7 @@ from vllm_ascend.attention.context_parallel.c128_owner_cache import (
     C128LocalCompressorPlan,
     get_c128_owner_cache,
     make_c128_local_compressor_plan,
+    slice_c128_local_compressor_output,
     slice_c128_local_compressor_rope,
 )
 from vllm_ascend.attention.utils import AscendCommonAttentionMetadata, split_decodes_and_prefills
@@ -1353,6 +1354,11 @@ class AscendDSACPImpl(DSAAttentionImpl):
             trace_c128_stage("compressor_ready")
 
             if use_c128_local_compressor:
+                assert c128_local_compressor_plan is not None
+                compressed_kv = slice_c128_local_compressor_output(
+                    compressed_kv,
+                    c128_local_compressor_plan,
+                )
                 # This exchanges only the static C128 result buffer (40 rows
                 # for the validated 5120-token TP8 chunk), never hidden
                 # states. Equal chunks make the recv buffer rank-major, i.e.
