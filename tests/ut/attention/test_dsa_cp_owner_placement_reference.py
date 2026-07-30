@@ -15,6 +15,7 @@ import torch
 from vllm_ascend.attention.context_parallel.c128_owner_cache import (
     C128LocalCompressorPlan,
     C128OwnerShardCache,
+    c128_local_current_kv_rejection_reasons,
     c128_local_page,
     c128_owner,
     c128_positions_are_contiguous,
@@ -155,6 +156,47 @@ def test_local_current_kv_gate_is_exact(
         )
         is expected
     )
+
+
+def test_local_current_kv_rejection_reasons_report_every_failed_input() -> None:
+    """Debug admission reports all independent scalar failures in one pass."""
+    assert c128_local_current_kv_rejection_reasons(
+        enabled=False,
+        has_prefill=False,
+        need_gather_q_kv=False,
+        compress_ratio=4,
+        local_compressor_plan=None,
+        local_hidden_rows=255,
+        tokens_per_rank=256,
+        num_tokens_pad=2048,
+        num_input_tokens=2041,
+        num_actual_tokens=2040,
+    ) == (
+        "feature_disabled",
+        "not_prefill",
+        "hidden_gather_not_requested",
+        "compress_ratio_not_128",
+        "local_compressor_plan_missing",
+        "local_hidden_rows_mismatch",
+        "token_padding_present",
+        "input_actual_token_mismatch",
+    )
+
+
+def test_local_current_kv_rejection_reasons_report_row_mismatch() -> None:
+    """A present but incomplete local C128 plan has its own rejection."""
+    assert c128_local_current_kv_rejection_reasons(
+        enabled=True,
+        has_prefill=True,
+        need_gather_q_kv=True,
+        compress_ratio=128,
+        local_compressor_plan=C128LocalCompressorPlan(0, 1),
+        local_hidden_rows=256,
+        tokens_per_rank=256,
+        num_tokens_pad=2048,
+        num_input_tokens=2048,
+        num_actual_tokens=2048,
+    ) == ("compressor_rows_mismatch",)
 
 
 def test_direct_placement_rejects_colliding_slots() -> None:

@@ -83,3 +83,27 @@ projection, KV norm, and RoPE consume local hidden rows and local position table
 gather reconstructs global KV row order before the unchanged SWA slot scatter.
 The already-validated fixed C128 result exchange reconstructs global
 compressor-slot order before the unchanged replicated C128 scatter.
+
+## Admission diagnostics
+
+For one correctness-only launch, set `ENABLE_C128_OWNER_DEBUG=1`. Every C128
+invocation prints a `DSA_OWNER_TRACE c128_local_current_kv_admission` line with
+the admission result, every boolean/scalar gate input, and all rejection
+reasons. The report reads only Python booleans, integer metadata, tensor shape
+metadata, and the CPU-built compressor plan; it does not inspect NPU tensor
+values or call `.item()`, `.cpu()`, or a synchronization API.
+
+Keep this debug gate off for TTFT measurements. Debug off performs no admission
+logging. The older `logger.info_once("DSA-CP local-current-KV active ...")`
+line is positive evidence when present, but its absence alone is inconclusive:
+the admission gate may have rejected every invocation, the INFO sink may be
+filtered or routed elsewhere, and `info_once` emits from rank 0 only.
+
+The r50 deployment of integration commit `84f3da22` passed its 27 target-image
+unit tests, effective-config check (`enable_dsa_cp_local_current_kv=1`),
+service health, and output `你好`, but its recursive log scan found no active
+marker. This is a correctness/configuration `PASS` and an E3 structural
+`UNPROVEN`: the old positive-only instrumentation cannot recover which
+admission input rejected the invocation, or distinguish rejection from an
+unobserved INFO message. Rerun one correctness request with the debug report;
+do not use that run for TTFT.

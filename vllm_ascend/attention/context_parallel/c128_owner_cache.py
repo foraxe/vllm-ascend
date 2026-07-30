@@ -101,6 +101,56 @@ def c128_positions_are_contiguous(input_positions_cpu: torch.Tensor) -> bool:
     )
 
 
+def c128_local_current_kv_rejection_reasons(
+    *,
+    enabled: bool,
+    has_prefill: bool,
+    need_gather_q_kv: bool,
+    compress_ratio: int,
+    local_compressor_plan: C128LocalCompressorPlan | None,
+    local_hidden_rows: int,
+    tokens_per_rank: int,
+    num_tokens_pad: int,
+    num_input_tokens: int,
+    num_actual_tokens: int,
+) -> tuple[str, ...]:
+    """Explain why DSA-CP cannot exchange current KV for this invocation.
+
+    The first runtime gate is intentionally narrow.  It accepts only the
+    single-request, fully C128-aligned layout already certified by
+    :func:`make_c128_local_compressor_plan`.  C4, decode, a caller that does
+    not require sequence gathering, mixed requests, and unaligned tails keep
+    the established hidden-state gather path.
+
+    The returned decision does not depend on owner-sharded persistent cache
+    storage.  The local producer can therefore feed the ordinary replicated
+    SWA and C128 consumer caches.
+    """
+    reasons = []
+    if not enabled:
+        reasons.append("feature_disabled")
+    if not has_prefill:
+        reasons.append("not_prefill")
+    if not need_gather_q_kv:
+        reasons.append("hidden_gather_not_requested")
+    if compress_ratio != 128:
+        reasons.append("compress_ratio_not_128")
+    if local_compressor_plan is None:
+        reasons.append("local_compressor_plan_missing")
+    if local_hidden_rows != tokens_per_rank:
+        reasons.append("local_hidden_rows_mismatch")
+    if num_tokens_pad != num_input_tokens:
+        reasons.append("token_padding_present")
+    if num_input_tokens != num_actual_tokens:
+        reasons.append("input_actual_token_mismatch")
+    if (
+        local_compressor_plan is not None
+        and local_compressor_plan.rows * compress_ratio != tokens_per_rank
+    ):
+        reasons.append("compressor_rows_mismatch")
+    return tuple(reasons)
+
+
 def can_use_c128_local_current_kv(
     *,
     enabled: bool,
@@ -114,28 +164,18 @@ def can_use_c128_local_current_kv(
     num_input_tokens: int,
     num_actual_tokens: int,
 ) -> bool:
-    """Whether DSA-CP can exchange current KV instead of full hidden rows.
-
-    The first runtime gate is intentionally narrow.  It accepts only the
-    single-request, fully C128-aligned layout already certified by
-    :func:`make_c128_local_compressor_plan`.  C4, decode, a caller that does
-    not require sequence gathering, mixed requests, and unaligned tails keep
-    the established hidden-state gather path.
-
-    The returned decision does not depend on owner-sharded persistent cache
-    storage.  The local producer can therefore feed the ordinary replicated
-    SWA and C128 consumer caches.
-    """
-    return (
-        enabled
-        and has_prefill
-        and need_gather_q_kv
-        and compress_ratio == 128
-        and local_compressor_plan is not None
-        and local_hidden_rows == tokens_per_rank
-        and num_tokens_pad == num_input_tokens
-        and num_input_tokens == num_actual_tokens
-        and local_compressor_plan.rows * compress_ratio == tokens_per_rank
+    """Whether DSA-CP can exchange current KV instead of full hidden rows."""
+    return not c128_local_current_kv_rejection_reasons(
+        enabled=enabled,
+        has_prefill=has_prefill,
+        need_gather_q_kv=need_gather_q_kv,
+        compress_ratio=compress_ratio,
+        local_compressor_plan=local_compressor_plan,
+        local_hidden_rows=local_hidden_rows,
+        tokens_per_rank=tokens_per_rank,
+        num_tokens_pad=num_tokens_pad,
+        num_input_tokens=num_input_tokens,
+        num_actual_tokens=num_actual_tokens,
     )
 
 

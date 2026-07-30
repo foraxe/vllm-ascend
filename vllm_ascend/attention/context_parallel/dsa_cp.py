@@ -18,8 +18,8 @@ from vllm_ascend.attention.abstract import DSAAttentionImpl
 from vllm_ascend.attention.attention_v1 import AscendAttentionState
 from vllm_ascend.attention.context_parallel.c128_owner_cache import (
     C128LocalCompressorPlan,
+    c128_local_current_kv_rejection_reasons,
     c128_positions_are_contiguous,
-    can_use_c128_local_current_kv,
     get_c128_owner_cache,
     make_c128_local_compressor_plan,
     slice_c128_local_compressor_output,
@@ -1126,7 +1126,7 @@ class AscendDSACPImpl(DSAAttentionImpl):
         cp_metadata = req_metadata.cp_metadata
         has_prefill = _has_prefill(common_attn_metadata.attn_state)
         c128_local_compressor_plan = cp_metadata.c128_local_compressor_plan
-        use_dsa_cp_local_current_kv = can_use_c128_local_current_kv(
+        rejection_reasons = c128_local_current_kv_rejection_reasons(
             enabled=self.enable_dsa_cp_local_current_kv,
             has_prefill=has_prefill,
             need_gather_q_kv=need_gather_q_kv,
@@ -1138,6 +1138,27 @@ class AscendDSACPImpl(DSAAttentionImpl):
             num_input_tokens=req_metadata.input_positions.shape[0],
             num_actual_tokens=common_attn_metadata.num_actual_tokens,
         )
+        use_dsa_cp_local_current_kv = not rejection_reasons
+        if self.enable_c128_owner_debug and self.compress_ratio == 128:
+            print(
+                "DSA_OWNER_TRACE c128_local_current_kv_admission "
+                f"layer={layer_name} rank={self.tp_rank} "
+                f"admitted={use_dsa_cp_local_current_kv} "
+                f"rejection_reasons={','.join(rejection_reasons) or 'none'} "
+                f"enabled={self.enable_dsa_cp_local_current_kv} "
+                f"has_prefill={has_prefill} "
+                f"need_gather_q_kv={need_gather_q_kv} "
+                f"compress_ratio={self.compress_ratio} "
+                f"local_compressor_plan_present={c128_local_compressor_plan is not None} "
+                f"local_compressor_plan_rows="
+                f"{c128_local_compressor_plan.rows if c128_local_compressor_plan is not None else -1} "
+                f"local_hidden_rows={hidden_states_local.shape[0]} "
+                f"tokens_per_rank={cp_metadata.tokens_per_rank} "
+                f"num_tokens_pad={cp_metadata.num_tokens_pad} "
+                f"num_input_tokens={req_metadata.input_positions.shape[0]} "
+                f"num_actual_tokens={common_attn_metadata.num_actual_tokens}",
+                flush=True,
+            )
         if use_dsa_cp_local_current_kv and self.tp_rank == 0:
             logger.info_once(
                 "DSA-CP local-current-KV active: layer=%s; exchanging "
