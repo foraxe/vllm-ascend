@@ -8,6 +8,11 @@ import pytest
 import torch
 from vllm.v1.kv_cache_interface import FullAttentionSpec, MambaSpec
 
+from vllm_ascend.core.fixed_quota_block_pool import (
+    FIXED_GROUP_BLOCK_QUOTAS_ATTR,
+    FixedQuotaBlockPool,
+    GroupBlockPoolView,
+)
 from vllm_ascend.patch.platform import patch_kv_cache_coordinator as coordinator_patch
 
 pytestmark = pytest.mark.cpu_test
@@ -164,6 +169,104 @@ def test_compressed_group_disables_eagle_adjustment_for_all_groups() -> None:
         )
 
     assert coordinator.eagle_group_ids == set()
+
+
+def _two_group_coordinator_config(*, quotas=None):
+    config = SimpleNamespace(
+        num_blocks=10,
+        kv_cache_groups=[
+            SimpleNamespace(
+                kv_cache_spec=SimpleNamespace(block_size=16, compress_ratio=1),
+                is_eagle_group=False,
+            ),
+            SimpleNamespace(
+                kv_cache_spec=SimpleNamespace(block_size=16, compress_ratio=2),
+                is_eagle_group=False,
+            ),
+        ],
+    )
+    if quotas is not None:
+        setattr(config, FIXED_GROUP_BLOCK_QUOTAS_ATTR, quotas)
+    return config
+
+
+def _construct_coordinator_with_mock_managers(config):
+    managers = [MagicMock(kv_cache_group_id=0), MagicMock(kv_cache_group_id=1)]
+    with (
+        patch.object(
+            coordinator_patch,
+            "get_manager_for_kv_cache_spec",
+            side_effect=managers,
+        ) as manager_factory,
+        patch.object(
+            coordinator_patch.AscendHybridKVCacheCoordinator,
+            "verify_and_split_kv_cache_groups",
+        ),
+    ):
+        coordinator = coordinator_patch.AscendHybridKVCacheCoordinator(
+            kv_cache_config=config,
+            max_model_len=4096,
+            use_eagle=False,
+            enable_caching=False,
+            enable_kv_cache_events=False,
+            dcp_world_size=1,
+            pcp_world_size=1,
+            hash_block_size=16,
+        )
+    return coordinator, manager_factory
+
+
+def test_feature_off_keeps_one_shared_upstream_block_pool() -> None:
+    config = _two_group_coordinator_config()
+    shared_pool = MagicMock()
+    with patch.object(coordinator_patch, "BlockPool", return_value=shared_pool):
+        coordinator, manager_factory = _construct_coordinator_with_mock_managers(config)
+
+    assert coordinator.block_pool is shared_pool
+    assert [call.kwargs["block_pool"] for call in manager_factory.call_args_list] == [shared_pool, shared_pool]
+
+
+def test_feature_on_binds_each_manager_to_deterministic_group_view() -> None:
+    config = _two_group_coordinator_config(quotas=(3, 6))
+    coordinator, manager_factory = _construct_coordinator_with_mock_managers(config)
+
+    assert isinstance(coordinator.block_pool, FixedQuotaBlockPool)
+    manager_pools = [call.kwargs["block_pool"] for call in manager_factory.call_args_list]
+    assert all(isinstance(pool, GroupBlockPoolView) for pool in manager_pools)
+    assert [pool.group_id for pool in manager_pools] == [0, 1]
+    assert [
+        (pool.get_group_block_range(pool.group_id).start, pool.get_group_block_range(pool.group_id).stop)
+        for pool in manager_pools
+    ] == [(1, 4), (4, 10)]
+
+
+def test_fixed_quota_admission_rejects_one_exhausted_partition() -> None:
+    coordinator = object.__new__(coordinator_patch.AscendHybridKVCacheCoordinator)
+    coordinator.block_pool = FixedQuotaBlockPool(
+        num_gpu_blocks=5,
+        enable_caching=False,
+        hash_block_size=16,
+        group_block_quotas=(1, 3),
+    )
+    coordinator.block_pool.get_group_view(0).get_new_blocks(1)
+    managers = (MagicMock(), MagicMock())
+    managers[0].get_num_blocks_to_allocate.return_value = 1
+    managers[1].get_num_blocks_to_allocate.return_value = 0
+    coordinator.single_type_managers = managers
+
+    required = coordinator.get_num_blocks_to_allocate(
+        request_id="request",
+        num_tokens=16,
+        new_computed_blocks=((), ()),
+        num_encoder_tokens=0,
+        total_computed_tokens=0,
+        num_tokens_main_model=16,
+        apply_admission_cap=True,
+    )
+
+    assert required == coordinator.block_pool.get_num_free_blocks() + 1
+    managers[0].get_num_blocks_to_allocate.assert_called_once()
+    managers[1].get_num_blocks_to_allocate.assert_not_called()
 
 
 def test_ascend_coordinator_cache_blocks_forwards_group_eagle_flags() -> None:

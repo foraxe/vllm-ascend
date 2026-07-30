@@ -2,8 +2,9 @@
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
 import inspect
 import sys
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from math import lcm
+from typing import cast
 
 import vllm
 from vllm.v1.core.block_pool import BlockPool
@@ -18,9 +19,16 @@ from vllm.v1.core.kv_cache_utils import (
     BlockHashListWithBlockSize,
     KVCacheBlock,
 )
-from vllm.v1.core.single_type_kv_cache_manager import SingleTypeKVCacheManager
+from vllm.v1.core.single_type_kv_cache_manager import (
+    CrossAttentionManager,
+    SingleTypeKVCacheManager,
+)
 from vllm.v1.kv_cache_interface import FullAttentionSpec, KVCacheConfig, KVCacheSpec, MambaSpec
 
+from vllm_ascend.core.fixed_quota_block_pool import (
+    FixedQuotaBlockPool,
+    get_fixed_group_block_quotas,
+)
 from vllm_ascend.core.single_type_kv_cache_manager import get_manager_for_kv_cache_spec
 from vllm_ascend.patch.platform.patch_prefix_cache_retention import (
     get_prefix_cache_retention_interval,
@@ -100,13 +108,36 @@ class AscendHybridKVCacheCoordinator(HybridKVCacheCoordinator):
             max_num_batched_tokens = max_model_len
         self.max_num_batched_tokens = max_num_batched_tokens
 
-        self.block_pool = BlockPool(
-            kv_cache_config.num_blocks,
-            enable_caching,
-            hash_block_size,
-            enable_kv_cache_events,
-            metrics_collector,
-        )
+        group_block_quotas = get_fixed_group_block_quotas(kv_cache_config)
+        manager_block_pools: tuple[BlockPool, ...]
+        if group_block_quotas is None:
+            self.block_pool = BlockPool(
+                kv_cache_config.num_blocks,
+                enable_caching,
+                hash_block_size,
+                enable_kv_cache_events,
+                metrics_collector,
+            )
+            manager_block_pools = (self.block_pool,) * len(kv_cache_config.kv_cache_groups)
+        else:
+            if len(group_block_quotas) != len(kv_cache_config.kv_cache_groups):
+                raise ValueError(
+                    "Fixed group block quota count must match KV-cache group "
+                    f"count: {len(group_block_quotas)} != "
+                    f"{len(kv_cache_config.kv_cache_groups)}"
+                )
+            self.block_pool = FixedQuotaBlockPool(
+                kv_cache_config.num_blocks,
+                enable_caching,
+                hash_block_size,
+                group_block_quotas,
+                enable_kv_cache_events,
+                metrics_collector,
+            )
+            manager_block_pools = tuple(
+                cast(BlockPool, self.block_pool.get_group_view(group_id))
+                for group_id in range(len(group_block_quotas))
+            )
 
         has_compressed_group = any(
             _compress_ratio(group.kv_cache_spec) > 1 for group in kv_cache_config.kv_cache_groups
@@ -125,7 +156,7 @@ class AscendHybridKVCacheCoordinator(HybridKVCacheCoordinator):
         self.single_type_managers = tuple(
             get_manager_for_kv_cache_spec(
                 kv_cache_spec=kv_cache_group.kv_cache_spec,
-                block_pool=self.block_pool,
+                block_pool=manager_block_pools[i],
                 enable_caching=enable_caching,
                 kv_cache_group_id=i,
                 dcp_world_size=dcp_world_size,
@@ -151,6 +182,57 @@ class AscendHybridKVCacheCoordinator(HybridKVCacheCoordinator):
         self.verify_and_split_kv_cache_groups()
 
         self.use_eagle = use_eagle
+
+    def get_num_blocks_to_allocate(
+        self,
+        request_id: str,
+        num_tokens: int,
+        new_computed_blocks: tuple[Sequence[KVCacheBlock], ...],
+        num_encoder_tokens: int,
+        total_computed_tokens: int,
+        num_tokens_main_model: int,
+        apply_admission_cap: bool = False,
+    ) -> int:
+        """Apply per-group admission when the logical pool is partitioned."""
+
+        if not isinstance(self.block_pool, FixedQuotaBlockPool):
+            return super().get_num_blocks_to_allocate(
+                request_id,
+                num_tokens,
+                new_computed_blocks,
+                num_encoder_tokens,
+                total_computed_tokens,
+                num_tokens_main_model,
+                apply_admission_cap,
+            )
+
+        total_blocks_to_allocate = 0
+        for group_id, manager in enumerate(self.single_type_managers):
+            if isinstance(manager, CrossAttentionManager):
+                group_blocks_to_allocate = manager.get_num_blocks_to_allocate(
+                    request_id,
+                    num_encoder_tokens,
+                    [],
+                    0,
+                    num_encoder_tokens,
+                    apply_admission_cap=apply_admission_cap,
+                )
+            else:
+                group_blocks_to_allocate = manager.get_num_blocks_to_allocate(
+                    request_id,
+                    num_tokens,
+                    new_computed_blocks[group_id],
+                    total_computed_tokens,
+                    num_tokens_main_model,
+                    apply_admission_cap=apply_admission_cap,
+                )
+            if group_blocks_to_allocate > (self.block_pool.get_num_free_blocks_for_group(group_id)):
+                # KVCacheManager compares this scalar with the aggregate free
+                # count. Return a guaranteed rejection sentinel when one
+                # partition is exhausted but other partitions still have room.
+                return self.block_pool.get_num_free_blocks() + 1
+            total_blocks_to_allocate += group_blocks_to_allocate
+        return total_blocks_to_allocate
 
     @staticmethod
     def _logical_block_size(kv_cache_spec: KVCacheSpec) -> int:
