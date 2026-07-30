@@ -826,7 +826,7 @@ class TestNPUModelRunnerPackedAllocatorReshape(unittest.TestCase):
         replicated_spec = MLAAttentionSpec(
             block_size=4,
             num_kv_heads=1,
-            head_size=self.PAGE_BYTES,
+            head_size=self.PAGE_BYTES // 4,
             dtype=torch.uint8,
             compress_ratio=4,
             model_version="deepseek_v4",
@@ -834,7 +834,7 @@ class TestNPUModelRunnerPackedAllocatorReshape(unittest.TestCase):
         owner_spec = MLAAttentionSpec(
             block_size=128,
             num_kv_heads=1,
-            head_size=self.PAGE_BYTES,
+            head_size=self.PAGE_BYTES // 128,
             dtype=torch.uint8,
             compress_ratio=128,
             model_version="deepseek_v4",
@@ -851,7 +851,7 @@ class TestNPUModelRunnerPackedAllocatorReshape(unittest.TestCase):
                 num_blocks,
                 1,
                 num_kv_heads,
-                head_size,
+                self.PAGE_BYTES,
             )
         )
         runner._kv_cache_spec_attn_group_iterator = lambda: [
@@ -880,7 +880,9 @@ class TestNPUModelRunnerPackedAllocatorReshape(unittest.TestCase):
             allocation_granularity_bytes=1,
         )
         plan = PackedPoolPlan(
-            global_block_capacity=2,
+            # Keep the production 65-page scratch bound valid under the pure
+            # planner invariant that scratch cannot exceed global capacity.
+            global_block_capacity=66,
             tp_size=2,
             groups=(
                 PackedPoolGroupSpec(
