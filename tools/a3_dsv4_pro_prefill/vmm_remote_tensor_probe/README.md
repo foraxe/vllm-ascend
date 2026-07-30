@@ -98,3 +98,40 @@ Preserve `build.log`, `symbols.log`, `run.log`, `result.json`, `exit_code`,
 the copied source, and a before/after `npu-smi info` snapshot together in the
 artifact directory. Do not run this probe concurrently with a vLLM service or
 another NPU0/1 VMM probe.
+
+## `.204` result
+
+Canonical run `g28_remote_tensor_20260730_043455` is `PASS` from signed commit
+`11b275512aeba5e855668176f2c22b5d35c20342`:
+
+```text
+mapped size:             2,097,152 bytes
+requested tensor bytes:     16,384 bytes
+exporter initial values: 11.0 ... 4106.0, checksum 8,431,616
+importer remote clone:    exact equality across all 4,096 values
+importer remote fill_:    37.0 across all 4,096 values
+exporter final clone:     37.0 ... 37.0, checksum 151,552
+child exit codes:         importer=0, exporter=0
+forced cleanup:           terminated=[], killed=[]
+wrapper exit code:        0
+```
+
+The importer emitted `importer_unmapped` before the exporter emitted
+`exporter_freed`. Before and after snapshots show no process on NPU0 or NPU1.
+The durable artifact is:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/runs/204/g28_remote_tensor_20260730_043455/
+```
+
+Two preceding attempts are retained because they test the harness itself:
+
+- `g28_remote_tensor_20260730_042433` is `INVALID`: V2 export completed, but
+  parent logging tried to JSON-serialize the raw 128-byte handle before
+  forwarding it to the importer. Both children were terminated; no kernel
+  result was produced.
+- `g28_remote_tensor_20260730_042932` contains a functional `PASS` with exact
+  values and orderly cleanup, but its shell wrapper recorded exit code `2`
+  despite `result.json` being `PASS`. It is not the canonical reproduction.
+  Commit `11b27551` replaced pipeline status extraction and the canonical run
+  confirms wrapper exit code `0`.
