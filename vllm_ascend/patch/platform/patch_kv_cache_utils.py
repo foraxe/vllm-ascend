@@ -378,6 +378,7 @@ def _serialize_c128_packed_pool_plan(
         "scratch": scratch,
         "total_physical_bytes_by_rank": list(plan.total_physical_bytes_by_rank()),
         "quota_replicated_bytes_by_rank": list(plan.quota_replicated_bytes_by_rank()),
+        "aligned_quota_replicated_bytes_by_rank": list(plan.aligned_quota_replicated_bytes_by_rank()),
     }
 
 

@@ -480,22 +480,23 @@ class NPUWorker(WorkerBase):
             self.model_runner.load_model()
 
     def shutdown(self) -> None:
-        """Close an installed packed-arena lease before worker process exit.
-
-        The existing feature-off worker shutdown is a no-op.  Preserve it by
-        calling into the model runner only when a packed runtime was actually
-        installed.
-        """
+        """Route C128 cache cleanup without touching the feature-off path."""
         model_runner = getattr(self, "model_runner", None)
-        if (
-            model_runner is not None
-            and getattr(
-                model_runner,
-                "_c128_packed_arena_runtime",
-                None,
-            )
-            is not None
-        ):
+        if model_runner is None:
+            return
+        model_runner_state = vars(model_runner)
+        packed_runtime = model_runner_state.get(
+            "_c128_packed_arena_runtime",
+        )
+        owner_registrations = model_runner_state.get(
+            "_c128_registered_owner_caches_by_layer",
+            {},
+        )
+        owner_stages = model_runner_state.get(
+            "_c128_owner_stage_caches",
+            {},
+        )
+        if packed_runtime is not None or bool(owner_registrations) or bool(owner_stages):
             cleanup_error: Exception | None = None
             for _attempt in range(2):
                 try:
@@ -504,7 +505,7 @@ class NPUWorker(WorkerBase):
                 except Exception as error:
                     cleanup_error = error
             logger.error(
-                "Packed C128 VMM cleanup failed after two attempts; "
+                "C128 owner-cache cleanup failed after two attempts; "
                 "worker process teardown will release remaining resources: %s",
                 cleanup_error,
             )

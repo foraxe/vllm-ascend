@@ -222,6 +222,7 @@ def _metadata(
         "scratch": scratch,
         "total_physical_bytes_by_rank": list(plan.total_physical_bytes_by_rank()),
         "quota_replicated_bytes_by_rank": list(plan.quota_replicated_bytes_by_rank()),
+        "aligned_quota_replicated_bytes_by_rank": list(plan.aligned_quota_replicated_bytes_by_rank()),
     }
 
 
@@ -459,6 +460,19 @@ def test_integer_fields_reject_json_booleans() -> None:
         packed_arena_contract_from_metadata(metadata)
 
 
+def test_aligned_quota_replicated_accounting_tamper_is_rejected() -> None:
+    metadata = _metadata()
+    aligned_bytes = metadata["aligned_quota_replicated_bytes_by_rank"]
+    assert isinstance(aligned_bytes, list)
+    aligned_bytes[3] += CANN_VMM_GRANULARITY_BYTES
+
+    with pytest.raises(
+        PackedArenaMetadataError,
+        match="aligned_quota_replicated_bytes_by_rank",
+    ):
+        packed_arena_contract_from_metadata(metadata)
+
+
 def test_close_quiesces_and_releases_views_before_lease() -> None:
     events: list[tuple[object, ...]] = []
     runtime = _open_runtime(events)
@@ -473,7 +487,14 @@ def test_close_quiesces_and_releases_views_before_lease() -> None:
 
         return release_view
 
+    for view_key in EXPECTED_VIEW_KEYS[1:]:
+        runtime.install_tensor_views(
+            view_key,
+            lambda _tensor, key=view_key: (lambda: events.append(("release_other_view", key))),
+        )
     runtime.install_tensor_views(REPLICATED_VIEW_KEY, install_view)
+    runtime.seal_views()
+    runtime.publish()
     assert holder["view"] is not None
     events.clear()
 
@@ -542,13 +563,35 @@ def test_seal_requires_the_exact_plan_view_manifest() -> None:
     runtime.seal_views()
 
     assert runtime.state is PackedArenaRuntimeState.SEALED
-    with pytest.raises(PackedArenaRuntimeClosedError, match="sealed"):
+    runtime.publish()
+    assert runtime.state is PackedArenaRuntimeState.PUBLISHED
+    with pytest.raises(PackedArenaRuntimeClosedError, match="published"):
         runtime.install_tensor_views(
             REPLICATED_VIEW_KEY,
             lambda _tensor: lambda: None,
         )
     runtime.close()
     assert runtime.state is PackedArenaRuntimeState.CLOSED
+
+
+def test_publish_rejects_unsealed_and_duplicate_transitions() -> None:
+    events: list[tuple[object, ...]] = []
+    runtime = _open_runtime(events)
+
+    with pytest.raises(RuntimeError, match="must be sealed"):
+        runtime.publish()
+
+    for view_key in EXPECTED_VIEW_KEYS:
+        runtime.install_tensor_views(
+            view_key,
+            lambda _tensor: lambda: None,
+        )
+    runtime.seal_views()
+    runtime.publish()
+
+    with pytest.raises(RuntimeError, match="must be sealed"):
+        runtime.publish()
+    runtime.close()
 
 
 def test_non_atomic_view_install_permanently_blocks_unmap() -> None:

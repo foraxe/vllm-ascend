@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM-Ascend project
 
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -13,8 +14,13 @@ from vllm_ascend.attention.context_parallel.c128_packed_pool import (
     PackedPoolGroupSpec,
     PackedPoolPlan,
 )
+from vllm_ascend.core.fixed_quota_block_pool import FixedQuotaBlockPool
 from vllm_ascend.worker.block_table import BlockTable, MultiGroupBlockTable
-from vllm_ascend.worker.packed_block_table import PackedBlockTableTranslator
+from vllm_ascend.worker.npu_input_batch import NPUInputBatch
+from vllm_ascend.worker.packed_block_table import (
+    PackedBlockTableTranslator,
+    packed_block_table_translators_from_metadata,
+)
 
 pytestmark = pytest.mark.cpu_test
 
@@ -157,8 +163,8 @@ def test_multigroup_translation_uses_exact_disjoint_group_ranges() -> None:
     table.add_row(
         (
             [0, 1, 3],
-            [0, 1, 4, 7],
-            [0, 1, 2],
+            [0, 4, 7, 10],
+            [0, 11, 12],
         ),
         row_idx=0,
     )
@@ -173,20 +179,20 @@ def test_multigroup_translation_uses_exact_disjoint_group_ranges() -> None:
     )
     np.testing.assert_array_equal(
         table[2].block_table.np[0, :3],
-        np.array([0, 11, 12], dtype=np.int32),
+        np.array([0, 1, 2], dtype=np.int32),
     )
 
     table.append_row(
         (
             [2],
-            [2],
-            [2],
+            [5],
+            [12],
         ),
         row_idx=0,
     )
     assert table[0].block_table.np[0, 3] == 2
     assert table[1].block_table.np[0, 4] == 5
-    assert table[2].block_table.np[0, 3] == 12
+    assert table[2].block_table.np[0, 3] == 2
 
 
 def test_feature_off_append_retains_existing_hybrid_expansion() -> None:
@@ -231,11 +237,11 @@ def test_feature_on_hybrid_expansion_preserves_sentinel_zero() -> None:
             PackedPlacement.REPLICATED,
         ),
     )
-    table.add_row([0, 1], row_idx=0)
+    table.add_row([0, 3], row_idx=0)
 
     np.testing.assert_array_equal(
         table.block_table.np[0, :4],
-        np.array([0, 1, 6, 7], dtype=np.int32),
+        np.array([0, 1, 2, 3], dtype=np.int32),
     )
     assert table.num_blocks_per_row[0] == 4
 
@@ -306,7 +312,7 @@ def test_c128_slots_are_owner_local_and_reserve_physical_slot_zero() -> None:
             tp_rank=1,
         ),
     )
-    table.add_row([0, 1, 2, 3, 4, 5, 6, 7], row_idx=0)
+    table.add_row([0, 4, 5, 6, 7, 8, 9, 10], row_idx=0)
     table.compute_slot_mapping_draft(
         req_indices=np.zeros(8, dtype=np.int32),
         positions=np.arange(0, 8 * 128, 128, dtype=np.int32),
@@ -391,7 +397,7 @@ def test_c128_owner_translation_preserves_cp_interleave_padding() -> None:
         cp_rank=1,
         interleave=1,
     )
-    table.add_row([1], row_idx=0)
+    table.add_row([3], row_idx=0)
     table.compute_slot_mapping_draft(
         req_indices=np.zeros(8, dtype=np.int32),
         positions=np.arange(8, dtype=np.int32),
@@ -450,12 +456,12 @@ def test_multigroup_validation_is_atomic_across_groups() -> None:
             ),
         ],
     )
-    table.add_row(([1], [1]), row_idx=0)
+    table.add_row(([1], [4]), row_idx=0)
     before = [block_table.block_table.np[0].copy() for block_table in table.block_tables]
     before_counts = [int(block_table.num_blocks_per_row[0]) for block_table in table.block_tables]
 
     with pytest.raises(ValueError, match="outside"):
-        table.append_row(([2], [8]), row_idx=0)
+        table.append_row(([2], [11]), row_idx=0)
 
     for block_table, expected, expected_count in zip(
         table.block_tables,
@@ -464,6 +470,276 @@ def test_multigroup_validation_is_atomic_across_groups() -> None:
     ):
         np.testing.assert_array_equal(block_table.block_table.np[0], expected)
         assert block_table.num_blocks_per_row[0] == expected_count
+
+
+def test_fixed_quota_scheduler_global_ids_enter_exact_table_domains() -> None:
+    """Global scheduler IDs become the read domain required by placement."""
+    plan = _plan()
+    pool = FixedQuotaBlockPool(
+        num_gpu_blocks=13,
+        enable_caching=False,
+        hash_block_size=128,
+        group_block_quotas=(3, 7, 2),
+    )
+    scheduler_rows = tuple(
+        [
+            0,
+            *(block.block_id for block in pool.get_group_view(group_id).get_new_blocks(quota)),
+        ]
+        for group_id, quota in enumerate((3, 7, 2))
+    )
+    assert scheduler_rows == (
+        [0, 1, 2, 3],
+        [0, 4, 5, 6, 7, 8, 9, 10],
+        [0, 11, 12],
+    )
+
+    table = MultiGroupBlockTable(
+        max_num_reqs=1,
+        max_model_len=1024,
+        max_num_batched_tokens=64,
+        pin_memory=False,
+        device=torch.device("cpu"),
+        block_sizes=[128, 128, 128],
+        max_num_blocks=[4, 8, 3],
+        kernel_sizes=[[128], [128], [128]],
+        packed_translators=(
+            _translator(
+                plan,
+                "c4",
+                "c4_replicated",
+                PackedPlacement.REPLICATED,
+            ),
+            _translator(
+                plan,
+                "c128",
+                "c128_owner",
+                PackedPlacement.C128_OWNER,
+                tp_rank=1,
+            ),
+            _translator(
+                plan,
+                "swa",
+                "swa_replicated",
+                PackedPlacement.REPLICATED,
+            ),
+        ),
+    )
+    table.add_row(scheduler_rows, row_idx=0)
+
+    expected_table_rows = (
+        [0, 1, 2, 3],
+        [0, 4, 5, 6, 7, 8, 9, 10],
+        [0, 1, 2],
+    )
+    for block_table, expected in zip(
+        table.block_tables,
+        expected_table_rows,
+    ):
+        np.testing.assert_array_equal(
+            block_table.block_table.np[0, : len(expected)],
+            np.asarray(expected, dtype=np.int32),
+        )
+
+
+def test_replicated_group_after_group_zero_reads_page_written_by_slot() -> None:
+    """Replicated read and write paths must use one component-local page ID."""
+    plan = PackedPoolPlan(
+        global_block_capacity=7,
+        tp_size=2,
+        groups=(
+            _group(
+                "prefix",
+                2,
+                _component("prefix_replicated", PackedPlacement.REPLICATED),
+            ),
+            _group(
+                "flash",
+                4,
+                _component("flash_replicated", PackedPlacement.REPLICATED),
+            ),
+        ),
+    )
+    table = _block_table(
+        block_size=128,
+        kernel_size=128,
+        translator=_translator(
+            plan,
+            "flash",
+            "flash_replicated",
+            PackedPlacement.REPLICATED,
+        ),
+    )
+    # Scheduler-global flash IDs [3, 4] become component-local pages [1, 2].
+    table.add_row([3, 4], row_idx=0)
+    table.compute_slot_mapping_draft(
+        req_indices=np.zeros(4, dtype=np.int32),
+        positions=np.array([0, 127, 128, 255], dtype=np.int32),
+    )
+
+    stored_pages = table.block_table.np[0, :2]
+    written_pages = table.slot_mapping.np[:4] // 128
+    np.testing.assert_array_equal(
+        stored_pages,
+        np.array([1, 2], dtype=np.int32),
+    )
+    np.testing.assert_array_equal(
+        written_pages,
+        np.array([1, 1, 2, 2], dtype=np.int32),
+    )
+    assert set(written_pages.tolist()).issubset(set(stored_pages.tolist()))
+
+
+def test_global_id_from_another_fixed_partition_fails_before_write() -> None:
+    plan = _plan()
+    table = _block_table(
+        block_size=128,
+        kernel_size=128,
+        translator=_translator(
+            plan,
+            "c128",
+            "c128_owner",
+            PackedPlacement.C128_OWNER,
+            tp_rank=0,
+        ),
+    )
+    before = table.block_table.np[0].copy()
+
+    with pytest.raises(
+        ValueError,
+        match=r"global block ID 1.*c128 range \[4, 11\)",
+    ):
+        table.add_row([1], row_idx=0)
+
+    np.testing.assert_array_equal(table.block_table.np[0], before)
+    assert table.num_blocks_per_row[0] == 0
+
+
+@pytest.mark.parametrize(
+    ("block_ids", "error_type", "message"),
+    [
+        ([4.5], TypeError, "integer dtype"),
+        ([True], TypeError, "integer dtype"),
+        ([[4]], ValueError, "one-dimensional"),
+    ],
+)
+def test_scheduler_ids_reject_lossy_or_nonscalar_coercion(
+    block_ids,
+    error_type,
+    message: str,
+) -> None:
+    table = _block_table(
+        block_size=128,
+        kernel_size=128,
+        translator=_translator(
+            _plan(),
+            "c128",
+            "c128_owner",
+            PackedPlacement.C128_OWNER,
+            tp_rank=0,
+        ),
+    )
+    before = table.block_table.np[0].copy()
+
+    with pytest.raises(error_type, match=message):
+        table.add_row(block_ids, row_idx=0)
+
+    np.testing.assert_array_equal(table.block_table.np[0], before)
+    assert table.num_blocks_per_row[0] == 0
+
+
+def test_metadata_activation_matches_exact_worker_group_layers() -> None:
+    plan = _plan()
+    metadata = {
+        "groups": [
+            {
+                "group_index": 0,
+                "name": "c4",
+                "layer_names": ["c4.0"],
+            },
+            {
+                "group_index": 1,
+                "name": "c128",
+                "layer_names": ["c128.0"],
+            },
+            {
+                "group_index": 2,
+                "name": "swa",
+                "layer_names": ["swa.0"],
+            },
+        ]
+    }
+    with patch(
+        "vllm_ascend.worker.c128_packed_runtime." "packed_arena_contract_from_metadata",
+        return_value=SimpleNamespace(plan=plan),
+    ):
+        translators = packed_block_table_translators_from_metadata(
+            metadata,
+            tp_rank=2,
+            kv_cache_group_layer_names=(
+                ("c4.0",),
+                ("c128.0",),
+                ("swa.0",),
+            ),
+        )
+
+    assert tuple(translator.group_name for translator in translators) == (
+        "c4",
+        "c128",
+        "swa",
+    )
+    assert tuple(translator.tp_rank for translator in translators) == (2, 2, 2)
+
+    with (
+        patch(
+            "vllm_ascend.worker.c128_packed_runtime." "packed_arena_contract_from_metadata",
+            return_value=SimpleNamespace(plan=plan),
+        ),
+        pytest.raises(ValueError, match="layer mapping mismatch"),
+    ):
+        packed_block_table_translators_from_metadata(
+            metadata,
+            tp_rank=2,
+            kv_cache_group_layer_names=(
+                ("c4.0",),
+                ("wrong.c128",),
+                ("swa.0",),
+            ),
+        )
+
+
+def test_input_batch_activates_only_explicit_translator_dependency() -> None:
+    translator = _translator(
+        _plan(),
+        "c128",
+        "c128_owner",
+        PackedPlacement.C128_OWNER,
+        tp_rank=0,
+    )
+    input_batch = NPUInputBatch(
+        max_num_reqs=1,
+        max_model_len=128,
+        max_num_batched_tokens=16,
+        device=torch.device("cpu"),
+        pin_memory=False,
+        vocab_size=32,
+        block_sizes=[128],
+        kernel_block_sizes=[[128]],
+        packed_translators=(translator,),
+    )
+
+    assert input_batch.block_table[0].packed_translator is translator
+    feature_off_batch = NPUInputBatch(
+        max_num_reqs=1,
+        max_model_len=128,
+        max_num_batched_tokens=16,
+        device=torch.device("cpu"),
+        pin_memory=False,
+        vocab_size=32,
+        block_sizes=[128],
+        kernel_block_sizes=[[128]],
+    )
+    assert feature_off_batch.block_table[0].packed_translator is None
 
 
 def _snapshot_row(

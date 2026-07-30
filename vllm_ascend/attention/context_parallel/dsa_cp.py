@@ -18,6 +18,7 @@ from vllm_ascend.attention.abstract import DSAAttentionImpl
 from vllm_ascend.attention.attention_v1 import AscendAttentionState
 from vllm_ascend.attention.context_parallel.c128_owner_cache import (
     C128LocalCompressorPlan,
+    C128OwnerShardCache,
     c128_local_current_kv_rejection_reasons,
     c128_positions_are_contiguous,
     get_c128_owner_cache,
@@ -73,6 +74,59 @@ def _has_prefill(attn_state: AscendAttentionState) -> bool:
         AscendAttentionState.DecodeOnly,
         AscendAttentionState.SpecDecoding,
     }
+
+
+def _prepare_c128_owner_scatter(
+    owner_cache: C128OwnerShardCache,
+    slot_mapping: torch.Tensor,
+    *,
+    tp_rank: int,
+) -> tuple[torch.Tensor, torch.Tensor, int]:
+    """Keep the producer's slot domain attached to its owner-cache contract.
+
+    Legacy owner caches receive logical-global ``[page, offset]`` slots.
+    Packed caches receive worker-translated owner-local slots, with remote
+    writes represented by padding.  The cache, not DSA, owns that distinction
+    so DSA never applies an additional owner/local-page translation.
+    """
+    return owner_cache.prepare_owned_scatter(slot_mapping, tp_rank)
+
+
+def _materialize_c128_owner_cache(
+    owner_cache: C128OwnerShardCache,
+    block_table: torch.Tensor,
+    *,
+    selective: bool,
+    tp_rank: int,
+    group,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Materialize a local execution view without changing table identity.
+
+    For a packed cache, ``block_table`` is still in the scheduler's
+    packed-global domain here.  ``C128OwnerShardCache`` resolves it only at
+    this materialization boundary, then returns the scratch-local table
+    consumed by sparse attention.
+    """
+    materialize = owner_cache.materialize_selected_for_attention if selective else owner_cache.materialize_for_attention
+    return materialize(
+        block_table,
+        tp_rank=tp_rank,
+        group=group,
+    )
+
+
+def _compressor_state_execution_block_table(attn_metadata) -> torch.Tensor:
+    """Return the worker-prepared table consumed by compressor state."""
+    if attn_metadata.req_metadata is None:
+        raise ValueError("compressor state metadata is missing request metadata")
+    return attn_metadata.req_metadata.block_table
+
+
+def _swa_execution_block_table(attn_metadata) -> torch.Tensor:
+    """Return the worker-prepared table consumed by sparse SWA attention."""
+    if attn_metadata.req_metadata is None:
+        raise ValueError("SWA metadata is missing request metadata")
+    return attn_metadata.req_metadata.block_table
 
 
 @dataclass
@@ -251,11 +305,9 @@ class AscendDSACPMetadataBuilder(AttentionMetadataBuilder[AscendDSAMetadata]):
                 for _ in range(spec_token_num)
             ]
             self.decode_threshold += spec_token_num
-            assert self.decode_threshold <= 16, (
-                f"decode_threshold exceeded \
+            assert self.decode_threshold <= 16, f"decode_threshold exceeded \
                 npu_fused_infer_attention_score TND layout's limit of 16, \
                 got {self.decode_threshold}"
-            )
 
         self.reorder_batch_threshold = self.decode_threshold
 
@@ -631,9 +683,7 @@ class AscendDSACPMetadataBuilder(AttentionMetadataBuilder[AscendDSAMetadata]):
 
         c128_local_compressor_plan = None
         if self.compressor_ratio == 128 and num_reqs == 1:
-            sequence_start_pos = int(
-                (self.seq_lens_cpu[0] - (query_start_loc_cpu[1] - query_start_loc_cpu[0])).item()
-            )
+            sequence_start_pos = int((self.seq_lens_cpu[0] - (query_start_loc_cpu[1] - query_start_loc_cpu[0])).item())
             c128_local_compressor_plan = make_c128_local_compressor_plan(
                 input_positions_cpu[:num_input_tokens],
                 local_start=local_start,
@@ -644,9 +694,7 @@ class AscendDSACPMetadataBuilder(AttentionMetadataBuilder[AscendDSAMetadata]):
             if (
                 self.enable_dsa_cp_local_current_kv
                 and c128_local_compressor_plan is not None
-                and not c128_positions_are_contiguous(
-                    input_positions_cpu[:num_input_tokens]
-                )
+                and not c128_positions_are_contiguous(input_positions_cpu[:num_input_tokens])
             ):
                 c128_local_compressor_plan = None
 
@@ -1043,8 +1091,8 @@ class AscendDSACPImpl(DSAAttentionImpl):
             # layout, while the DSA-CP batched matmul consumes
             # [group, in, o_lora_rank]. Cache the transposed layout per layer
             # so only the first (unprofiled) warmup performs this allocation.
-            self._batched_wo_a = wo_a.transpose(0, 1).contiguous().view(
-                self.n_local_groups, wo_a.shape[1], self.o_lora_rank
+            self._batched_wo_a = (
+                wo_a.transpose(0, 1).contiguous().view(self.n_local_groups, wo_a.shape[1], self.o_lora_rank)
             )
         return self._batched_wo_a
 
@@ -1167,9 +1215,7 @@ class AscendDSACPImpl(DSAAttentionImpl):
             )
 
         overlap_hidden_states_allgather = (
-            self.multistream_dsa_preprocess
-            and need_gather_q_kv
-            and not use_dsa_cp_local_current_kv
+            self.multistream_dsa_preprocess and need_gather_q_kv and not use_dsa_cp_local_current_kv
         )
         wait_hidden_states_local_event = (
             torch.npu.current_stream().record_event() if overlap_hidden_states_allgather else None
@@ -1194,16 +1240,8 @@ class AscendDSACPImpl(DSAAttentionImpl):
         local_seq_lengths_key = cp_metadata.local_seq_lens
         trace_c128 = self.enable_c128_owner_debug and c128_owner_cache is not None and has_prefill
         use_c128_local_compressor = (
-            (
-                self.enable_c128_owner_local_compressor
-                and c128_owner_cache is not None
-            )
-            or use_dsa_cp_local_current_kv
-        ) and (
-            has_prefill
-            and self.compress_ratio == 128
-            and c128_local_compressor_plan is not None
-        )
+            (self.enable_c128_owner_local_compressor and c128_owner_cache is not None) or use_dsa_cp_local_current_kv
+        ) and (has_prefill and self.compress_ratio == 128 and c128_local_compressor_plan is not None)
 
         def trace_c128_stage(stage: str) -> None:
             if trace_c128:
@@ -1222,7 +1260,7 @@ class AscendDSACPImpl(DSAAttentionImpl):
             sample_count = min(8, compressor_slot_mapping.shape[0])
             compressor_slot_sample = compressor_slot_mapping[:sample_count].cpu().tolist()
             compressor_slot_tail = compressor_slot_mapping[-sample_count:].cpu().tolist()
-            state_block_sample = state_block_table[:, :min(8, state_block_table.shape[1])].cpu().tolist()
+            state_block_sample = state_block_table[:, : min(8, state_block_table.shape[1])].cpu().tolist()
             print(
                 "DSA_OWNER_TRACE c128_cp_layout "
                 f"layer={layer_name} rank={self.tp_rank} need_gather={need_gather_q_kv} "
@@ -1318,9 +1356,7 @@ class AscendDSACPImpl(DSAAttentionImpl):
         if wait_hidden_states_allgather_event:
             torch.npu.current_stream().wait_event(wait_hidden_states_allgather_event)
 
-        kv = self.wkv(
-            hidden_states_local if use_dsa_cp_local_current_kv else hidden_states
-        )
+        kv = self.wkv(hidden_states_local if use_dsa_cp_local_current_kv else hidden_states)
         kv = self.kv_norm(kv)
         assert self.rope_head_dim is not None
         kv = kv.view(-1, 1, self.nope_head_dim + self.rope_head_dim)
@@ -1346,9 +1382,10 @@ class AscendDSACPImpl(DSAAttentionImpl):
         owner_scatter_plan = None
         if c128_owner_cache is not None:
             trace_c128_stage("owner_prepare_begin")
-            owner_scatter_plan = c128_owner_cache.prepare_owned_scatter(
+            owner_scatter_plan = _prepare_c128_owner_scatter(
+                c128_owner_cache,
                 compressor_attn_metadata.req_metadata.slot_mapping,
-                self.tp_rank,
+                tp_rank=self.tp_rank,
             )
             trace_c128_stage("owner_prepare_ready")
 
@@ -1406,12 +1443,8 @@ class AscendDSACPImpl(DSAAttentionImpl):
             if use_c128_local_compressor:
                 assert c128_local_compressor_plan is not None
                 compressor_start_pos = compressor_start_pos + cp_metadata.local_start
-                compress_sin = slice_c128_local_compressor_rope(
-                    compress_sin, c128_local_compressor_plan
-                )
-                compress_cos = slice_c128_local_compressor_rope(
-                    compress_cos, c128_local_compressor_plan
-                )
+                compress_sin = slice_c128_local_compressor_rope(compress_sin, c128_local_compressor_plan)
+                compress_cos = slice_c128_local_compressor_rope(compress_cos, c128_local_compressor_plan)
             compressed_kv = torch.ops._C_ascend.compressor(
                 compressor_hidden_states,
                 self.compressor_wkv.weight,
@@ -1421,7 +1454,7 @@ class AscendDSACPImpl(DSAAttentionImpl):
                 self.compressor_norm.weight,
                 compress_sin.view(-1, compress_sin.shape[-1]),
                 compress_cos.view(-1, compress_cos.shape[-1]),
-                state_block_table=compressor_kv_state_metadata.req_metadata.block_table,
+                state_block_table=_compressor_state_execution_block_table(compressor_kv_state_metadata),
                 cu_seqlens=compressor_cu_seqlens,
                 seqused=None,
                 start_pos=compressor_start_pos,
@@ -1502,7 +1535,7 @@ class AscendDSACPImpl(DSAAttentionImpl):
             attn_output = torch.ops._C_ascend.npu_sparse_attn_sharedkv(
                 q,
                 ori_kv=swa_kv_cache,
-                ori_block_table=swa_metadata.req_metadata.block_table,
+                ori_block_table=_swa_execution_block_table(swa_metadata),
                 metadata=swa_metadata.req_metadata.sas_metadata,
                 **common_attn_kwargs,
             )[0]
@@ -1513,7 +1546,7 @@ class AscendDSACPImpl(DSAAttentionImpl):
                 ori_kv=swa_kv_cache,
                 cmp_kv=compress_kv_cache,
                 cmp_sparse_indices=compress_topk_idxs,
-                ori_block_table=swa_metadata.req_metadata.block_table,
+                ori_block_table=_swa_execution_block_table(swa_metadata),
                 cmp_block_table=compressor_attn_metadata.req_metadata.block_table,
                 cu_seqlens_cmp_kv=req_metadata.cu_cmp_seqlen_list,
                 metadata=req_metadata.sas_metadata,
@@ -1528,13 +1561,10 @@ class AscendDSACPImpl(DSAAttentionImpl):
                 if not has_prefill:
                     raise RuntimeError("C128 owner-shard is prefill-only; decode requires the replicated cache path")
                 trace_c128_stage("materialize_begin")
-                materialize = (
-                    c128_owner_cache.materialize_selected_for_attention
-                    if self.enable_c128_owner_selective_stage
-                    else c128_owner_cache.materialize_for_attention
-                )
-                cmp_kv, cmp_block_table = materialize(
+                cmp_kv, cmp_block_table = _materialize_c128_owner_cache(
+                    c128_owner_cache,
                     cmp_block_table,
+                    selective=self.enable_c128_owner_selective_stage,
                     tp_rank=self.tp_rank,
                     group=self.tp_group.device_group,
                 )
@@ -1550,7 +1580,7 @@ class AscendDSACPImpl(DSAAttentionImpl):
                 q,
                 ori_kv=swa_kv_cache,
                 cmp_kv=cmp_kv,
-                ori_block_table=swa_metadata.req_metadata.block_table,
+                ori_block_table=_swa_execution_block_table(swa_metadata),
                 cmp_block_table=cmp_block_table,
                 cu_seqlens_cmp_kv=req_metadata.cu_cmp_seqlen_list,
                 metadata=compressor_attn_metadata.req_metadata.sas_metadata,

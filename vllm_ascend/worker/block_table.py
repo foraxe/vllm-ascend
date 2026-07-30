@@ -1,3 +1,5 @@
+from collections.abc import Sequence
+
 import numpy as np
 import torch
 from vllm.distributed import get_dcp_group, get_pcp_group
@@ -372,7 +374,7 @@ class MultiGroupBlockTable:
         kernel_sizes: list[list[int]] | None = None,
         cp_kv_cache_interleave_size: int = 1,
         kv_cache_groups: KVCacheGroupSpec = None,
-        packed_translators: list[PackedBlockTableTranslator | None] | None = None,
+        packed_translators: Sequence[PackedBlockTableTranslator | None] | None = None,
     ) -> None:
         if kernel_sizes is None:
             kernel_sizes = [[0]] * len(block_sizes)

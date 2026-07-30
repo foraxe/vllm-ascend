@@ -50,10 +50,35 @@ class TestNPUWorker(TestBase):
         worker = NPUWorker.__new__(NPUWorker)
         worker.model_runner = MagicMock()
         worker.model_runner._c128_packed_arena_runtime = None
+        worker.model_runner._c128_registered_owner_caches_by_layer = {}
+        worker.model_runner._c128_owner_stage_caches = {}
 
         worker.shutdown()
 
         worker.model_runner.shutdown.assert_not_called()
+
+    def test_shutdown_routes_legacy_owner_registration_or_stage_cleanup(self):
+        from vllm_ascend.worker.worker import NPUWorker
+
+        for residual_field in (
+            "_c128_registered_owner_caches_by_layer",
+            "_c128_owner_stage_caches",
+        ):
+            with self.subTest(residual_field=residual_field):
+                worker = NPUWorker.__new__(NPUWorker)
+                worker.model_runner = MagicMock()
+                worker.model_runner._c128_packed_arena_runtime = None
+                worker.model_runner._c128_registered_owner_caches_by_layer = {}
+                worker.model_runner._c128_owner_stage_caches = {}
+                setattr(
+                    worker.model_runner,
+                    residual_field,
+                    {"legacy": object()},
+                )
+
+                worker.shutdown()
+
+                worker.model_runner.shutdown.assert_called_once_with()
 
     def test_shutdown_retries_packed_cleanup_once(self):
         from vllm_ascend.worker.worker import NPUWorker

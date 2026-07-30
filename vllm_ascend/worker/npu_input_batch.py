@@ -17,6 +17,8 @@
 # Adapted from vllm-project/vllm/vllm/worker/gpu_input_batch.py
 #
 
+from collections.abc import Sequence
+
 import numpy as np
 import torch
 from vllm.lora.request import LoRARequest
@@ -28,6 +30,7 @@ from vllm.v1.sample.logits_processor import BatchUpdateBuilder, LogitsProcessors
 from vllm.v1.worker.gpu_input_batch import InputBatch
 
 from vllm_ascend.worker.block_table import MultiGroupBlockTable
+from vllm_ascend.worker.packed_block_table import PackedBlockTableTranslator
 
 
 class NPUInputBatch(InputBatch):
@@ -49,6 +52,7 @@ class NPUInputBatch(InputBatch):
         num_speculative_tokens: int = 0,
         cp_kv_cache_interleave_size: int = 1,
         kv_cache_groups: list[KVCacheGroupSpec] | None = None,
+        packed_translators: Sequence[PackedBlockTableTranslator | None] | None = None,
     ):
         self.is_pooling_model = is_pooling_model
         self.is_spec_decode = is_spec_decode
@@ -122,6 +126,7 @@ class NPUInputBatch(InputBatch):
             kernel_sizes=kernel_block_sizes,
             cp_kv_cache_interleave_size=cp_kv_cache_interleave_size,
             kv_cache_groups=kv_cache_groups,
+            packed_translators=packed_translators,
         )
 
         # Sampling-related.

@@ -9,6 +9,7 @@ import pytest
 
 from vllm_ascend.attention.context_parallel.c128_packed_owner_route import (
     C128PackedOwnerRoute,
+    C128PackedOwnerRouteTable,
 )
 from vllm_ascend.attention.context_parallel.c128_packed_pool import (
     SentinelBlockError,
@@ -458,3 +459,53 @@ def test_metadata_fixture_is_not_mutated_during_parse() -> None:
         allow_planner_only=True,
     )
     assert metadata == original
+
+
+def test_explicit_route_table_binds_every_owner_layer_and_runtime_view() -> None:
+    table = C128PackedOwnerRouteTable.from_serialized_plan(
+        _metadata(runtime_ready=True),
+        expected_group_layer_names=(
+            ("c4.0",),
+            ("c128.0", "c128.1"),
+        ),
+    )
+
+    assert tuple(route.layer_name for route in table.routes) == (
+        "c128.0",
+        "c128.1",
+    )
+    assert tuple(route.view_key for route in table.routes) == (
+        "component/group_1/group_1_component_0/0",
+        "component/group_1/group_1_component_0/1",
+    )
+    assert table.for_layer("c128.1").copy_index == 1
+    with pytest.raises(ValueError, match="found 0"):
+        table.for_layer("missing")
+
+
+def test_route_table_rejects_planner_only_and_worker_layer_drift() -> None:
+    with pytest.raises(RuntimeError, match="planner-only"):
+        C128PackedOwnerRouteTable.from_serialized_plan(_metadata())
+
+    with pytest.raises(ValueError, match="layer mapping mismatch"):
+        C128PackedOwnerRouteTable.from_serialized_plan(
+            _metadata(runtime_ready=True),
+            expected_group_layer_names=(
+                ("c4.0",),
+                ("wrong.c128", "c128.1"),
+            ),
+        )
+
+
+def test_route_table_rejects_owner_component_without_layer_copy() -> None:
+    metadata = _metadata(runtime_ready=True)
+    metadata["groups"][1]["components"].append(
+        {
+            "name": "orphan_owner",
+            "placement": "c128_owner",
+            "layer_names": [],
+        }
+    )
+
+    with pytest.raises(ValueError, match="at least one nonempty string"):
+        C128PackedOwnerRouteTable.from_serialized_plan(metadata)

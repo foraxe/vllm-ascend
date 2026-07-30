@@ -700,16 +700,58 @@ class PackedPoolPlan:
         return tuple(totals)
 
     def quota_replicated_bytes_by_rank(self) -> tuple[int, ...]:
-        """Return bytes if each declared packed quota were replicated.
+        """Return unaligned payload bytes for replicated declared quotas.
 
         Scratch is excluded.  This is a same-quota synthetic comparator, not
-        a reconstruction of a multi-group shared BlockPool; real baseline
-        storage must be deduplicated from its raw allocations.
+        an allocation comparator or a reconstruction of a multi-group shared
+        BlockPool. Real baseline storage must be deduplicated from its raw
+        allocations.
         """
         bytes_per_rank = 0
         for group in self.groups:
             for component in group.components:
                 bytes_per_rank += (group.logical_blocks + 1) * component.copies * component.page_size_bytes
+        return (bytes_per_rank,) * self.tp_size
+
+    def aligned_quota_replicated_bytes_by_rank(
+        self,
+        *,
+        include_scratch: bool = True,
+    ) -> tuple[int, ...]:
+        """Return the exact same-quota replicated VMM allocation.
+
+        Each component copy remains an independently aligned segment, matching
+        the packed arena's allocation contract. This isolates owner placement
+        from quota reduction: comparing against a full shared-pool baseline
+        would otherwise attribute the fixed workload envelope to C128
+        sharding. Scratch is unchanged between the owner and replicated
+        counterfactual and may be excluded for persistent-only accounting.
+        """
+        bucket_cursors: dict[str, int] = {bucket: 0 for bucket in self._bucket_page_sizes}
+        for group in self.groups:
+            for component in group.components:
+                replicated_segment_bytes = _round_up(
+                    (group.logical_blocks + 1) * component.page_size_bytes,
+                    component.allocation_granularity_bytes,
+                )
+                for _copy_index in range(component.copies):
+                    segment_base = _round_up(
+                        bucket_cursors[component.bucket],
+                        component.allocation_granularity_bytes,
+                    )
+                    bucket_cursors[component.bucket] = segment_base + replicated_segment_bytes
+        if include_scratch:
+            for scratch in self.scratch:
+                scratch_base = _round_up(
+                    bucket_cursors[scratch.bucket],
+                    scratch.allocation_granularity_bytes,
+                )
+                scratch_bytes = _round_up(
+                    scratch.max_pages_per_rank * scratch.page_size_bytes,
+                    scratch.allocation_granularity_bytes,
+                )
+                bucket_cursors[scratch.bucket] = scratch_base + scratch_bytes
+        bytes_per_rank = sum(bucket_cursors.values())
         return (bytes_per_rank,) * self.tp_size
 
 

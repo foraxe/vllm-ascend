@@ -21,6 +21,7 @@ import math
 import sys
 import time
 from collections import defaultdict
+from collections.abc import Mapping, Sequence
 from contextlib import contextmanager, nullcontext
 from copy import copy, deepcopy
 from dataclasses import dataclass, replace
@@ -105,7 +106,9 @@ from vllm_ascend.ascend_config import get_ascend_config
 from vllm_ascend.attention.attention_v1 import AscendAttentionBackend, AscendAttentionState
 from vllm_ascend.attention.context_parallel.c128_owner_cache import (
     C128OwnerShardCache,
+    get_c128_owner_cache,
     register_c128_owner_cache,
+    unregister_c128_owner_cache,
 )
 from vllm_ascend.attention.context_parallel.dsa_cp import AscendDSACPMetadataBuilder
 from vllm_ascend.attention.dsa_v1 import AscendDSAMetadataBuilder
@@ -283,6 +286,28 @@ class NPUModelRunner(GPUModelRunner):
         # production adapter installs it yet; the enabled initialization path
         # below therefore fails closed before legacy cache allocation.
         self._c128_packed_arena_runtime: Any | None = None
+        # These maps describe aliases installed from a validated packed-arena
+        # manifest. Production activation remains fail-closed in
+        # ``initialize_kv_cache``; the internal transaction below exists so
+        # the allocator/reshape ABI can be tested before that gate moves.
+        self._c128_packed_layer_page_counts: dict[str, int] = {}
+        self._c128_packed_owner_layers: set[str] = set()
+        self._c128_packed_layer_buckets: dict[str, str] = {}
+        self._c128_packed_scratch_raw_tensors: dict[str, torch.Tensor] = {}
+        self._c128_packed_owner_route_table: Any | None = None
+        self._c128_packed_registered_owner_caches: dict[
+            str,
+            C128OwnerShardCache,
+        ] = {}
+        # Every out-of-band data_ptr registration needs an exact lifecycle
+        # owner, including the legacy compact-owner path that does not open a
+        # packed arena. Packed entries are also retained here; their runtime
+        # releasers remove them in LIFO order.
+        self._c128_registered_owner_caches_by_layer: dict[
+            str,
+            C128OwnerShardCache,
+        ] = {}
+        self._c128_packed_block_table_translators: tuple[Any, ...] = ()
         # This first production gate is intentionally narrow: it changes only
         # C128 placement in eager, single-engine DSA-CP prefill.  C4 has an
         # indexer cache and external KV connectors need a different ownership
@@ -3555,9 +3580,9 @@ class NPUModelRunner(GPUModelRunner):
                 )
             packed_arena_contract_from_metadata(metadata)
             raise RuntimeError(
-                "packed C128 VMM metadata is runtime-ready, but the concrete "
-                "ACL/tensor adapter, packed reshape, block-table translation, "
-                "and C128 materialization seams are not installed"
+                "packed C128 VMM metadata is runtime-ready, but production "
+                "activation remains disabled pending live shared-view, "
+                "continuation, and allocator-replacement gates"
             )
         kv_cache_config = deepcopy(kv_cache_config)
         self.kv_cache_config = kv_cache_config
@@ -3651,7 +3676,559 @@ class NPUModelRunner(GPUModelRunner):
                 f"packed C128 VMM runtime device {runtime.device_index} does "
                 f"not match worker device {device_index}"
             )
+        runtime.publish()
+        if runtime.state is not PackedArenaRuntimeState.PUBLISHED:
+            raise RuntimeError(
+                "packed C128 VMM runtime publication did not complete"
+            )
         self._c128_packed_arena_runtime = runtime
+
+    @staticmethod
+    def _c128_packed_sequence(
+        value: object,
+        field: str,
+    ) -> Sequence[object]:
+        if isinstance(value, (str, bytes)) or not isinstance(
+            value,
+            Sequence,
+        ):
+            raise ValueError(f"{field} must be a sequence")
+        return value
+
+    @staticmethod
+    def _c128_packed_mapping(
+        value: object,
+        field: str,
+    ) -> Mapping[str, object]:
+        if not isinstance(value, Mapping):
+            raise ValueError(f"{field} must be a mapping")
+        return value
+
+    def _install_c128_packed_byte_alias(
+        self,
+        runtime: Any,
+        *,
+        view_key: str,
+        byte_offset: int,
+        size_bytes: int,
+        destination: dict[str, torch.Tensor],
+        destination_key: str,
+        owner_registration_key: str | None = None,
+    ) -> None:
+        """Install one exact byte interval from a runtime-owned bucket root."""
+        if byte_offset < 0 or size_bytes <= 0:
+            raise ValueError(
+                f"{view_key} has invalid byte interval "
+                f"[{byte_offset}, {byte_offset + size_bytes})"
+            )
+
+        def install(root: object):
+            if not isinstance(root, torch.Tensor):
+                raise TypeError(
+                    f"{view_key} bucket root must be a torch.Tensor"
+                )
+            if root.dtype is not torch.uint8 or root.ndim != 1:
+                raise ValueError(
+                    f"{view_key} bucket root must be a one-dimensional "
+                    "torch.uint8 tensor"
+                )
+            if not root.is_contiguous():
+                raise ValueError(
+                    f"{view_key} bucket root must be contiguous"
+                )
+            interval_stop = byte_offset + size_bytes
+            if interval_stop > root.numel():
+                raise ValueError(
+                    f"{view_key} byte interval ["
+                    f"{byte_offset}, {interval_stop}) exceeds bucket root "
+                    f"size {root.numel()}"
+                )
+            alias = root.narrow(0, byte_offset, size_bytes)
+            if (
+                alias.numel() != size_bytes
+                or alias.element_size() != 1
+                or alias.data_ptr() != root.data_ptr() + byte_offset
+            ):
+                raise RuntimeError(
+                    f"{view_key} did not preserve the packed byte-address ABI"
+                )
+            if destination_key in destination:
+                raise ValueError(
+                    f"duplicate packed-arena destination {destination_key!r}"
+                )
+            destination[destination_key] = alias
+
+            def release() -> None:
+                if owner_registration_key is not None:
+                    owner_cache = (
+                        self._c128_registered_owner_caches_by_layer.get(
+                            owner_registration_key,
+                        )
+                    )
+                    if owner_cache is not None:
+                        self._unregister_c128_owner_cache_for_layer(
+                            owner_registration_key,
+                            expected_cache=owner_cache,
+                        )
+                destination.pop(destination_key, None)
+
+            return release
+
+        runtime.install_tensor_views(view_key, install)
+
+    @staticmethod
+    def _c128_packed_component_pages(
+        plan: Any,
+        group: Any,
+        component: Any,
+        *,
+        tp_rank: int,
+        copy_index: int,
+    ) -> tuple[int, int, int]:
+        """Return exact local payload pages, byte offset, and segment bytes."""
+        from vllm_ascend.attention.context_parallel.c128_packed_pool import (
+            PackedPlacement,
+        )
+
+        sentinel = plan.sentinel_address(
+            group.name,
+            component.name,
+            tp_rank=tp_rank,
+            copy_index=copy_index,
+        )
+        if component.placement is PackedPlacement.REPLICATED:
+            payload_pages = group.logical_blocks + 1
+        elif component.placement is PackedPlacement.C128_OWNER:
+            owner_pages = 0
+            for group_block_id in range(1, group.logical_blocks + 1):
+                address = plan.map_c128(
+                    group.name,
+                    component.name,
+                    group_block_id,
+                    copy_index=copy_index,
+                )
+                owner_pages += int(address.tp_rank == tp_rank)
+            payload_pages = owner_pages + 1
+        else:  # pragma: no cover - the pure plan rejects other placements.
+            raise ValueError(
+                f"unsupported packed placement: {component.placement!r}"
+            )
+        payload_bytes = payload_pages * component.page_size_bytes
+        if payload_bytes > sentinel.segment_allocated_bytes:
+            raise ValueError(
+                f"packed component {group.name}/{component.name}/"
+                f"{copy_index} needs {payload_bytes} bytes, but its local "
+                f"segment exposes {sentinel.segment_allocated_bytes}"
+            )
+        return (
+            payload_pages,
+            sentinel.segment_base_bytes,
+            sentinel.segment_allocated_bytes,
+        )
+
+    def _initialize_kv_cache_from_c128_packed_arena(
+        self,
+        runtime: Any,
+        kv_cache_config: KVCacheConfig,
+    ) -> dict[str, torch.Tensor]:
+        """Build exact cache aliases from an OPEN synthetic packed runtime.
+
+        This is the allocator/reshape proof seam, not the production
+        activation seam. ``initialize_kv_cache`` continues to reject the
+        packed feature before opening CANN VMM. A future activation can call
+        this transaction only after the planner publishes runtime-ready
+        metadata and the attention route consumes the same global-ID ABI.
+
+        Ownership is published only after every component-copy and scratch
+        view is installed and every cache reshapes successfully. Any failure
+        drops aliases, closes the caller-provided runtime, and leaves the
+        model runner without a packed runtime.
+        """
+        if not self.enable_c128_packed_vmm_arena:
+            raise RuntimeError("packed C128 VMM arena is disabled")
+        if self._c128_packed_arena_runtime is not None:
+            raise RuntimeError("packed C128 VMM arena is already open")
+
+        from vllm_ascend.attention.context_parallel.c128_packed_pool import (
+            PackedPlacement,
+        )
+        from vllm_ascend.worker.c128_packed_runtime import (
+            C128_PACKED_POOL_METADATA_KEY,
+            PackedArenaRuntimeState,
+        )
+
+        if runtime.state is not PackedArenaRuntimeState.OPEN:
+            raise RuntimeError(
+                "packed C128 allocator/reshape requires an OPEN runtime"
+            )
+        metadata = getattr(
+            kv_cache_config,
+            C128_PACKED_POOL_METADATA_KEY,
+            None,
+        )
+        if metadata is None:
+            raise ValueError(
+                f"{C128_PACKED_POOL_METADATA_KEY} is required for packed "
+                "allocator/reshape"
+            )
+        metadata = self._c128_packed_mapping(
+            metadata,
+            C128_PACKED_POOL_METADATA_KEY,
+        )
+        plan = runtime.contract.plan
+        tp_rank = runtime.tp_rank
+        if plan.tp_size != self.vllm_config.parallel_config.tensor_parallel_size:
+            raise ValueError(
+                f"packed plan TP size {plan.tp_size} does not match model "
+                "runner TP size "
+                f"{self.vllm_config.parallel_config.tensor_parallel_size}"
+            )
+
+        raw_tensors: dict[str, torch.Tensor] = {}
+        scratch_tensors: dict[str, torch.Tensor] = {}
+        page_counts: dict[str, int] = {}
+        owner_layers: set[str] = set()
+        layer_buckets: dict[str, str] = {}
+        kv_caches: dict[str, torch.Tensor] = {}
+        missing_state = object()
+        previous_input_batch = getattr(
+            self,
+            "input_batch",
+            missing_state,
+        )
+        previous_kernel_block_sizes = getattr(
+            self,
+            "kernel_block_sizes",
+            missing_state,
+        )
+        previous_stage_caches = dict(self._c128_owner_stage_caches)
+        previous_page_counts = self._c128_packed_layer_page_counts
+        previous_owner_layers = self._c128_packed_owner_layers
+        previous_layer_buckets = self._c128_packed_layer_buckets
+        previous_scratch_tensors = (
+            self._c128_packed_scratch_raw_tensors
+        )
+        previous_route_table = self._c128_packed_owner_route_table
+        previous_registered_owner_caches = (
+            self._c128_packed_registered_owner_caches
+        )
+        previous_translators = (
+            self._c128_packed_block_table_translators
+        )
+        try:
+            serialized_groups = self._c128_packed_sequence(
+                metadata.get("groups"),
+                "groups",
+            )
+            if len(serialized_groups) != len(plan.groups):
+                raise ValueError(
+                    "packed metadata group count does not match runtime plan"
+                )
+            configured_layers = {
+                layer_name
+                for cache_group in kv_cache_config.kv_cache_groups
+                for layer_name in cache_group.layer_names
+            }
+            ordered_group_layers = tuple(
+                tuple(cache_group.layer_names)
+                for cache_group in kv_cache_config.kv_cache_groups
+            )
+            from vllm_ascend.attention.context_parallel.c128_packed_owner_route import (
+                C128PackedOwnerRouteTable,
+            )
+            from vllm_ascend.worker.packed_block_table import (
+                packed_block_table_translators_from_metadata,
+            )
+
+            owner_route_table = (
+                C128PackedOwnerRouteTable.from_serialized_plan(
+                    metadata,
+                    expected_group_layer_names=ordered_group_layers,
+                )
+            )
+            packed_translators = (
+                packed_block_table_translators_from_metadata(
+                    metadata,
+                    tp_rank=tp_rank,
+                    kv_cache_group_layer_names=ordered_group_layers,
+                )
+            )
+            self.may_reinitialize_input_batch(
+                kv_cache_config,
+                packed_translators=packed_translators,
+            )
+            manifest_layers: set[str] = set()
+
+            for group_index, (group, raw_group) in enumerate(
+                zip(plan.groups, serialized_groups)
+            ):
+                serialized_group = self._c128_packed_mapping(
+                    raw_group,
+                    f"groups[{group_index}]",
+                )
+                if (
+                    serialized_group.get("group_index") != group_index
+                    or serialized_group.get("name") != group.name
+                    or serialized_group.get("logical_blocks")
+                    != group.logical_blocks
+                ):
+                    raise ValueError(
+                        f"groups[{group_index}] does not match the runtime "
+                        "plan"
+                    )
+                serialized_components = self._c128_packed_sequence(
+                    serialized_group.get("components"),
+                    f"groups[{group_index}].components",
+                )
+                if len(serialized_components) != len(group.components):
+                    raise ValueError(
+                        f"groups[{group_index}] component count does not "
+                        "match the runtime plan"
+                    )
+
+                for component_index, (component, raw_component) in enumerate(
+                    zip(group.components, serialized_components)
+                ):
+                    component_path = (
+                        f"groups[{group_index}].components["
+                        f"{component_index}]"
+                    )
+                    serialized_component = self._c128_packed_mapping(
+                        raw_component,
+                        component_path,
+                    )
+                    if (
+                        serialized_component.get("name") != component.name
+                        or serialized_component.get("bucket")
+                        != component.bucket
+                        or serialized_component.get("page_size_bytes")
+                        != component.page_size_bytes
+                        or serialized_component.get("copies")
+                        != component.copies
+                        or serialized_component.get("placement")
+                        != component.placement.value
+                    ):
+                        raise ValueError(
+                            f"{component_path} does not match the runtime plan"
+                        )
+                    layer_names = self._c128_packed_sequence(
+                        serialized_component.get("layer_names"),
+                        f"{component_path}.layer_names",
+                    )
+                    if (
+                        len(layer_names) != component.copies
+                        or any(
+                            not isinstance(layer_name, str)
+                            for layer_name in layer_names
+                        )
+                    ):
+                        raise ValueError(
+                            f"{component_path}.layer_names must contain "
+                            "exactly one layer per copy"
+                        )
+
+                    for copy_index, layer_name_object in enumerate(layer_names):
+                        assert isinstance(layer_name_object, str)
+                        layer_name = layer_name_object
+                        if layer_name in manifest_layers:
+                            raise ValueError(
+                                f"packed manifest contains duplicate layer "
+                                f"{layer_name!r}"
+                            )
+                        manifest_layers.add(layer_name)
+                        payload_pages, byte_offset, _ = (
+                            self._c128_packed_component_pages(
+                                plan,
+                                group,
+                                component,
+                                tp_rank=tp_rank,
+                                copy_index=copy_index,
+                            )
+                        )
+                        view_key = (
+                            f"component/{group.name}/"
+                            f"{component.name}/{copy_index}"
+                        )
+                        self._install_c128_packed_byte_alias(
+                            runtime,
+                            view_key=view_key,
+                            byte_offset=byte_offset,
+                            size_bytes=(
+                                payload_pages * component.page_size_bytes
+                            ),
+                            destination=raw_tensors,
+                            destination_key=layer_name,
+                            owner_registration_key=(
+                                layer_name
+                                if component.placement
+                                is PackedPlacement.C128_OWNER
+                                else None
+                            ),
+                        )
+                        page_counts[layer_name] = payload_pages
+                        layer_buckets[layer_name] = component.bucket
+                        if component.placement is PackedPlacement.C128_OWNER:
+                            owner_layers.add(layer_name)
+
+            if manifest_layers != configured_layers:
+                missing = sorted(configured_layers - manifest_layers)
+                extra = sorted(manifest_layers - configured_layers)
+                raise ValueError(
+                    "packed layer manifest does not match KV cache config: "
+                    f"missing={missing}, extra={extra}"
+                )
+
+            serialized_scratch = self._c128_packed_sequence(
+                metadata.get("scratch"),
+                "scratch",
+            )
+            scratch_by_bucket = {
+                scratch.bucket: scratch for scratch in plan.scratch
+                if scratch.max_pages_per_rank
+            }
+            if len(serialized_scratch) != len(scratch_by_bucket):
+                raise ValueError(
+                    "packed scratch manifest does not match runtime plan"
+                )
+            for scratch_index, raw_scratch in enumerate(serialized_scratch):
+                scratch_path = f"scratch[{scratch_index}]"
+                serialized_item = self._c128_packed_mapping(
+                    raw_scratch,
+                    scratch_path,
+                )
+                bucket = serialized_item.get("bucket")
+                if not isinstance(bucket, str) or bucket not in scratch_by_bucket:
+                    raise ValueError(
+                        f"{scratch_path} references an unknown bucket"
+                    )
+                scratch = scratch_by_bucket.pop(bucket)
+                if (
+                    serialized_item.get("page_size_bytes")
+                    != scratch.page_size_bytes
+                    or serialized_item.get("max_pages_per_rank")
+                    != scratch.max_pages_per_rank
+                ):
+                    raise ValueError(
+                        f"{scratch_path} does not match the runtime plan"
+                    )
+                segments = self._c128_packed_sequence(
+                    serialized_item.get("segments"),
+                    f"{scratch_path}.segments",
+                )
+                local_segments = [
+                    self._c128_packed_mapping(
+                        segment,
+                        f"{scratch_path}.segments entry",
+                    )
+                    for segment in segments
+                    if isinstance(segment, Mapping)
+                    and segment.get("rank") == tp_rank
+                ]
+                if len(local_segments) != 1:
+                    raise ValueError(
+                        f"{scratch_path} must contain exactly one local rank "
+                        f"{tp_rank} segment"
+                    )
+                byte_offset = local_segments[0].get("segment_base_bytes")
+                if type(byte_offset) is not int:
+                    raise ValueError(
+                        f"{scratch_path}.segment_base_bytes must be an integer"
+                    )
+                self._install_c128_packed_byte_alias(
+                    runtime,
+                    view_key=f"scratch/{bucket}",
+                    byte_offset=byte_offset,
+                    size_bytes=(
+                        scratch.max_pages_per_rank
+                        * scratch.page_size_bytes
+                    ),
+                    destination=scratch_tensors,
+                    destination_key=bucket,
+                )
+            if scratch_by_bucket:
+                raise ValueError(
+                    "packed scratch manifest is missing buckets "
+                    f"{sorted(scratch_by_bucket)}"
+                )
+
+            self._c128_packed_layer_page_counts = page_counts
+            self._c128_packed_owner_layers = owner_layers
+            self._c128_packed_layer_buckets = layer_buckets
+            self._c128_packed_scratch_raw_tensors = scratch_tensors
+            self._c128_packed_owner_route_table = owner_route_table
+            self._c128_packed_block_table_translators = (
+                packed_translators
+            )
+            kv_caches = self._reshape_kv_cache_tensors(
+                kv_cache_config,
+                raw_tensors,
+            )
+            runtime.seal_views()
+            self._install_c128_packed_arena_runtime(
+                runtime,
+                kv_cache_config,
+            )
+            accounting = runtime.accounting
+            logger.info(
+                "C128_PACKED_ARENA_ACCOUNTING rank=%d "
+                "persistent_bytes=%d scratch_region_bytes=%d "
+                "total_bytes=%d",
+                accounting.tp_rank,
+                accounting.persistent_allocated_bytes,
+                accounting.scratch_region_bytes,
+                accounting.total_allocated_bytes,
+            )
+            return kv_caches
+        except BaseException as construction_error:
+            kv_caches.clear()
+            self._c128_owner_stage_caches.clear()
+            self._c128_owner_stage_caches.update(
+                previous_stage_caches
+            )
+            self._c128_packed_layer_page_counts = previous_page_counts
+            self._c128_packed_owner_layers = previous_owner_layers
+            self._c128_packed_layer_buckets = previous_layer_buckets
+            self._c128_packed_scratch_raw_tensors = (
+                previous_scratch_tensors
+            )
+            self._c128_packed_owner_route_table = previous_route_table
+            self._c128_packed_block_table_translators = (
+                previous_translators
+            )
+            cleanup_succeeded = False
+            try:
+                runtime.close()
+                cleanup_succeeded = True
+            except BaseException as cleanup_error:
+                # The runtime's remaining LIFO view releasers own the only
+                # safe path to unregister still-live owner caches. Preserve
+                # both objects so worker shutdown can retry ordered cleanup.
+                self._c128_packed_arena_runtime = runtime
+                logger.error(
+                    "Packed C128 allocator/reshape rollback cleanup failed; "
+                    "runtime retained for retry: %s",
+                    cleanup_error,
+                )
+                raise cleanup_error from construction_error
+            finally:
+                if previous_input_batch is missing_state:
+                    self.__dict__.pop("input_batch", None)
+                else:
+                    self.input_batch = previous_input_batch
+                if previous_kernel_block_sizes is missing_state:
+                    self.__dict__.pop("kernel_block_sizes", None)
+                else:
+                    self.kernel_block_sizes = (
+                        previous_kernel_block_sizes
+                    )
+                if cleanup_succeeded:
+                    self._c128_packed_arena_runtime = None
+                    self._c128_packed_registered_owner_caches = (
+                        previous_registered_owner_caches
+                    )
+                    raw_tensors.clear()
+                    scratch_tensors.clear()
+            raise
 
     def _close_c128_packed_arena_runtime(self) -> None:
         """Close a quiesced runtime after every model-runner alias is gone."""
@@ -3661,20 +4238,90 @@ class NPUModelRunner(GPUModelRunner):
         runtime.close()
         self._c128_packed_arena_runtime = None
 
+    def _unregister_c128_owner_cache_for_layer(
+        self,
+        layer_name: str,
+        *,
+        expected_cache: C128OwnerShardCache | None = None,
+    ) -> bool:
+        """Drop one exact data_ptr registration and its lifecycle references."""
+        registered_caches = getattr(
+            self,
+            "_c128_registered_owner_caches_by_layer",
+            {},
+        )
+        owner_cache = registered_caches.get(layer_name)
+        if owner_cache is None:
+            return False
+        if expected_cache is not None and owner_cache is not expected_cache:
+            raise RuntimeError(
+                "C128 owner-cache lifecycle identity changed for "
+                f"layer {layer_name!r}"
+            )
+
+        current_cache = get_c128_owner_cache(owner_cache.persistent_cache)
+        if current_cache is not None and current_cache is not owner_cache:
+            raise RuntimeError(
+                "C128 owner-cache data_ptr was rebound before cleanup for "
+                f"layer {layer_name!r}"
+            )
+        removed = (
+            unregister_c128_owner_cache(owner_cache)
+            if current_cache is owner_cache
+            else False
+        )
+        if registered_caches.get(layer_name) is owner_cache:
+            registered_caches.pop(layer_name)
+        packed_caches = getattr(
+            self,
+            "_c128_packed_registered_owner_caches",
+            {},
+        )
+        if packed_caches.get(layer_name) is owner_cache:
+            packed_caches.pop(layer_name)
+        return removed
+
+    def _unregister_all_c128_owner_caches(self) -> None:
+        """Release residual legacy registrations after cache alias teardown."""
+        registered_caches = getattr(
+            self,
+            "_c128_registered_owner_caches_by_layer",
+            {},
+        )
+        for layer_name, owner_cache in tuple(registered_caches.items()):
+            self._unregister_c128_owner_cache_for_layer(
+                layer_name,
+                expected_cache=owner_cache,
+            )
+
     def shutdown(self) -> None:
-        """Drop model-runner cache aliases before closing a packed lease."""
+        """Drop cache aliases, registrations, stages, then packed ownership."""
         runtime = self._c128_packed_arena_runtime
-        if runtime is None:
-            super().shutdown()
-            return
 
         # GPUModelRunner.shutdown synchronizes the device and clears kv_caches,
         # cross-layer caches, static attention contexts, and attention groups.
-        # The stage dictionary is Ascend-owned and must be cleared explicitly
-        # before the registered packed-view releasers and lease teardown.
+        # Registrations keep the owner wrapper and both tensors alive, so they
+        # must be removed only after those model-runner aliases are gone.
         super().shutdown()
+        if runtime is None:
+            self._unregister_all_c128_owner_caches()
+            self._c128_owner_stage_caches.clear()
+            return
+
+        # Packed owner registrations are removed by the runtime's LIFO view
+        # releasers. Stage and other model-runner aliases must disappear first.
         self._c128_owner_stage_caches.clear()
+        self._c128_packed_layer_page_counts.clear()
+        self._c128_packed_owner_layers.clear()
+        self._c128_packed_layer_buckets.clear()
+        self._c128_packed_scratch_raw_tensors.clear()
         self._close_c128_packed_arena_runtime()
+        # A mixed or partially constructed runner may still hold a legacy
+        # registration that was not owned by a packed view releaser.
+        self._unregister_all_c128_owner_caches()
+        self._c128_packed_owner_route_table = None
+        self._c128_packed_registered_owner_caches.clear()
+        self._c128_packed_block_table_translators = ()
 
     def _bind_routed_experts_capturer(self, capturer) -> None:
         # Upstream binds via ``module.router.set_capture_fn(...)`` on
@@ -4079,10 +4726,27 @@ class NPUModelRunner(GPUModelRunner):
                 # encounter OOM issue
                 if self.use_compress and isinstance(current_kv_cache_spec, (MLAAttentionSpec, SlidingWindowMLASpec)):
                     kv_tensor = kv_cache_raw_tensors[layer_name]
-                    is_c128_owner_cache = self._is_c128_owner_tensor([layer_name], layer_kv_cache_spec)
+                    packed_num_blocks = self._c128_packed_layer_page_counts.get(
+                        layer_name
+                    )
+                    is_packed_c128_owner = (
+                        layer_name in self._c128_packed_owner_layers
+                    )
+                    is_c128_owner_cache = (
+                        is_packed_c128_owner
+                        or self._is_c128_owner_tensor(
+                            [layer_name],
+                            layer_kv_cache_spec,
+                        )
+                    )
                     sum_page_size_bytes = kv_tensor.numel()
                     num_blocks = sum_page_size_bytes // current_kv_cache_spec.page_size_bytes
-                    if is_c128_owner_cache and self.enable_c128_owner_compact_allocation:
+                    if packed_num_blocks is not None:
+                        assert num_blocks == packed_num_blocks, (
+                            f"packed layer {layer_name} exposes {num_blocks} "
+                            f"pages, expected {packed_num_blocks}"
+                        )
+                    elif is_c128_owner_cache and self.enable_c128_owner_compact_allocation:
                         assert isinstance(current_kv_cache_spec, MLAAttentionSpec)
                         expected_owner_blocks = cdiv(
                             kv_cache_config.num_blocks, self.vllm_config.parallel_config.tensor_parallel_size
@@ -4119,14 +4783,89 @@ class NPUModelRunner(GPUModelRunner):
 
                     if is_c128_owner_cache:
                         assert len(kv_cache) == 1, "C128 owner-shard does not support quantized scale pages yet"
+                        if is_packed_c128_owner:
+                            bucket = self._c128_packed_layer_buckets[
+                                layer_name
+                            ]
+                            try:
+                                raw_stage_cache = (
+                                    self
+                                    ._c128_packed_scratch_raw_tensors[bucket]
+                                )
+                            except KeyError as error:
+                                raise ValueError(
+                                    "packed C128 owner cache requires a "
+                                    f"scratch view for bucket {bucket!r}"
+                                ) from error
+                            if (
+                                raw_stage_cache.numel()
+                                % current_kv_cache_spec.page_size_bytes
+                            ):
+                                raise ValueError(
+                                    f"packed scratch {bucket!r} is not an "
+                                    "integral number of C128 pages"
+                                )
+                            stage_pages = (
+                                raw_stage_cache.numel()
+                                // current_kv_cache_spec.page_size_bytes
+                            )
+                            stage_shape = self.attn_backend.get_kv_cache_shape(
+                                stage_pages,
+                                current_kv_cache_spec.block_size,
+                                current_kv_cache_spec.num_kv_heads,
+                                current_kv_cache_spec.head_size,
+                            )
+                            stage_cache = (
+                                raw_stage_cache
+                                .view(current_kv_cache_spec.dtype)
+                                .view(stage_shape)
+                            )
+                            stage_key = (
+                                "packed",
+                                bucket,
+                                stage_pages,
+                                current_kv_cache_spec.block_size,
+                                current_kv_cache_spec.num_kv_heads,
+                                current_kv_cache_spec.head_size,
+                                current_kv_cache_spec.dtype,
+                            )
+                            existing_stage = (
+                                self._c128_owner_stage_caches.get(stage_key)
+                            )
+                            if (
+                                existing_stage is not None
+                                and existing_stage.data_ptr()
+                                != stage_cache.data_ptr()
+                            ):
+                                raise ValueError(
+                                    "packed C128 layers with the same bucket "
+                                    "must share one scratch view"
+                                )
+                            self._c128_owner_stage_caches[
+                                stage_key
+                            ] = stage_cache
+                        else:
+                            stage_cache = (
+                                self._get_c128_owner_stage_cache(
+                                    current_kv_cache_spec,
+                                    kv_cache_config.num_blocks,
+                                )
+                            )
                         owner_cache = C128OwnerShardCache(
                             persistent_cache=kv_cache[0],
-                            stage_cache=self._get_c128_owner_stage_cache(
-                                current_kv_cache_spec, kv_cache_config.num_blocks
-                            ),
+                            stage_cache=stage_cache,
                             tp_size=self.vllm_config.parallel_config.tensor_parallel_size,
                             debug=bool(
                                 (self.vllm_config.additional_config or {}).get("enable_c128_owner_debug", False)
+                            ),
+                            packed_route=(
+                                self._c128_packed_owner_route_table.for_layer(
+                                    layer_name
+                                )
+                                if is_packed_c128_owner
+                                and self._c128_packed_owner_route_table
+                                is not None
+                                else None
                             ),
                         )
                         # Preserve the normal DeepSeek-V4 cache container ABI:
@@ -4134,7 +4873,34 @@ class NPUModelRunner(GPUModelRunner):
                         # static_forward_context wraps that list once more.
                         # Owner metadata stays out-of-band; DSACP resolves it
                         # from the Tensor inside this unchanged container.
-                        kv_caches[layer_name] = [register_c128_owner_cache(owner_cache)]
+                        if (
+                            layer_name
+                            in self._c128_registered_owner_caches_by_layer
+                        ):
+                            raise RuntimeError(
+                                "C128 owner cache is already registered for "
+                                f"layer {layer_name!r}"
+                            )
+                        registered_cache = register_c128_owner_cache(
+                            owner_cache
+                        )
+                        self._c128_registered_owner_caches_by_layer[
+                            layer_name
+                        ] = owner_cache
+                        if is_packed_c128_owner:
+                            if owner_cache.packed_route is None:
+                                self._unregister_c128_owner_cache_for_layer(
+                                    layer_name,
+                                    expected_cache=owner_cache,
+                                )
+                                raise RuntimeError(
+                                    "packed C128 owner cache requires an "
+                                    f"exact route for layer {layer_name!r}"
+                                )
+                            self._c128_packed_registered_owner_caches[
+                                layer_name
+                            ] = owner_cache
+                        kv_caches[layer_name] = [registered_cache]
                     else:
                         kv_caches[layer_name] = kv_cache
                 elif isinstance(current_kv_cache_spec, AttentionSpec):
@@ -4172,7 +4938,19 @@ class NPUModelRunner(GPUModelRunner):
                         assert raw_tensor is not None
                         assert raw_tensor.numel() % current_kv_cache_spec.page_size_bytes == 0
                         num_blocks = raw_tensor.numel() // current_kv_cache_spec.page_size_bytes
-                        assert num_blocks >= kv_cache_config.num_blocks
+                        packed_num_blocks = (
+                            self._c128_packed_layer_page_counts.get(
+                                layer_name
+                            )
+                        )
+                        if packed_num_blocks is not None:
+                            assert num_blocks == packed_num_blocks, (
+                                f"packed layer {layer_name} exposes "
+                                f"{num_blocks} pages, expected "
+                                f"{packed_num_blocks}"
+                            )
+                        else:
+                            assert num_blocks >= kv_cache_config.num_blocks
                         kv_cache_shape = attn_backend.get_kv_cache_shape(
                             num_blocks,
                             current_kv_cache_spec.block_size,
@@ -4191,6 +4969,9 @@ class NPUModelRunner(GPUModelRunner):
                     assert raw_v_tensor is not None
                     assert sum_page_size_bytes % current_kv_cache_spec.page_size_bytes == 0
                     num_blocks = sum_page_size_bytes // current_kv_cache_spec.page_size_bytes
+                    packed_num_blocks = (
+                        self._c128_packed_layer_page_counts.get(layer_name)
+                    )
 
                     # `num_blocks` is the number of blocks the model runner can use.
                     # `kv_cache_config.num_blocks` is the number of blocks that
@@ -4199,7 +4980,13 @@ class NPUModelRunner(GPUModelRunner):
                     # different memory capacities, `num_blocks` can be different on
                     # different GPUs, and `kv_cache_config.num_blocks` is set to
                     # the min of all `num_blocks`. Verify it here.
-                    assert num_blocks >= kv_cache_config.num_blocks
+                    if packed_num_blocks is not None:
+                        assert num_blocks == packed_num_blocks, (
+                            f"packed layer {layer_name} exposes {num_blocks} "
+                            f"pages, expected {packed_num_blocks}"
+                        )
+                    else:
+                        assert num_blocks >= kv_cache_config.num_blocks
 
                     if hasattr(attn_backend, "get_supported_kernel_block_sizes") and self.use_hybrid_blocks:
                         block_size = attn_backend.get_supported_kernel_block_sizes()[0]
@@ -4304,7 +5091,16 @@ class NPUModelRunner(GPUModelRunner):
                     assert raw_tensor is not None
                     assert raw_tensor.numel() % current_kv_cache_spec.page_size_bytes == 0
                     num_blocks = raw_tensor.numel() // current_kv_cache_spec.page_size_bytes
-                    assert num_blocks >= kv_cache_config.num_blocks
+                    packed_num_blocks = (
+                        self._c128_packed_layer_page_counts.get(layer_name)
+                    )
+                    if packed_num_blocks is not None:
+                        assert num_blocks == packed_num_blocks, (
+                            f"packed layer {layer_name} exposes {num_blocks} "
+                            f"pages, expected {packed_num_blocks}"
+                        )
+                    else:
+                        assert num_blocks >= kv_cache_config.num_blocks
 
                     # `num_blocks` is the number of blocks the model runner can use.
                     # `kv_cache_config.num_blocks` is the number of blocks that
@@ -4338,7 +5134,12 @@ class NPUModelRunner(GPUModelRunner):
 
         return kv_caches
 
-    def may_reinitialize_input_batch(self, kv_cache_config: KVCacheConfig) -> None:
+    def may_reinitialize_input_batch(
+        self,
+        kv_cache_config: KVCacheConfig,
+        *,
+        packed_translators: Sequence[Any | None] | None = None,
+    ) -> None:
         """
         Re-initialize the input batch if the block sizes are different from
         `[self.cache_config.block_size]`. This usually happens when there
@@ -4428,6 +5229,7 @@ class NPUModelRunner(GPUModelRunner):
                 kernel_block_sizes=self.kernel_block_sizes,
                 max_num_blocks_per_req=max_num_blocks,
                 kv_cache_groups=kv_cache_config.kv_cache_groups,
+                packed_translators=packed_translators,
             )
 
     def initialize_attn_backend(self, kv_cache_config: KVCacheConfig) -> None:

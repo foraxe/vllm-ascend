@@ -26,6 +26,7 @@ from vllm_ascend.attention.context_parallel.c128_owner_cache import (
     remap_c128_block_table,
     slice_c128_local_compressor_output,
     slice_c128_local_compressor_rope,
+    unregister_c128_owner_cache,
 )
 
 pytestmark = pytest.mark.cpu_test
@@ -249,9 +250,7 @@ def test_owner_sharded_c128_materialization_matches_replicated_history() -> None
     total_pages = world_size * pages_per_owner
     replicated_history = torch.randn(total_pages, page_size, kv_dim)
 
-    owner_shards = [
-        replicated_history[owner::world_size].clone() for owner in range(world_size)
-    ]
+    owner_shards = [replicated_history[owner::world_size].clone() for owner in range(world_size)]
     selected_rows = torch.tensor([0, 3, 4, 7, 10, 17, 22])
 
     materialized = _materialize_owner_rows(owner_shards, selected_rows, page_size)
@@ -293,6 +292,31 @@ def test_owner_cache_registry_preserves_tensor_static_forward_abi() -> None:
     assert isinstance(static_forward_cache[0][0], torch.Tensor)
     assert get_c128_owner_cache(static_forward_cache[0][0]) is owner_cache
     assert get_c128_owner_cache(torch.empty_like(persistent)) is None
+    assert unregister_c128_owner_cache(owner_cache)
+    assert get_c128_owner_cache(persistent) is None
+    assert not unregister_c128_owner_cache(owner_cache)
+
+
+def test_owner_cache_registry_rejects_foreign_unregister() -> None:
+    persistent = torch.zeros(3, 2, 4)
+    registered_cache = C128OwnerShardCache(
+        persistent,
+        torch.empty(6, 2, 4),
+        tp_size=2,
+    )
+    foreign_cache = C128OwnerShardCache(
+        persistent,
+        torch.empty(6, 2, 4),
+        tp_size=2,
+    )
+    register_c128_owner_cache(registered_cache)
+
+    with pytest.raises(RuntimeError, match="already registered"):
+        register_c128_owner_cache(foreign_cache)
+    assert not unregister_c128_owner_cache(foreign_cache)
+    assert get_c128_owner_cache(persistent) is registered_cache
+    assert unregister_c128_owner_cache(persistent)
+    assert get_c128_owner_cache(persistent) is None
 
 
 def test_owner_scatter_plan_preserves_rows_and_compact_addresses() -> None:
@@ -332,30 +356,22 @@ def test_owner_sharded_quantized_c128_dequantizes_only_selected_rows(world_size:
     torch.manual_seed(23)
     page_size, pages_per_owner, kv_dim = 2, 3, 5
     total_pages = world_size * pages_per_owner
-    quantized_history = torch.randint(
-        -127, 128, (total_pages, page_size, kv_dim), dtype=torch.int8
-    )
+    quantized_history = torch.randint(-127, 128, (total_pages, page_size, kv_dim), dtype=torch.int8)
     scales_history = torch.rand(total_pages, page_size, 1, dtype=torch.float32) + 0.01
-    owner_quantized_shards = [
-        quantized_history[owner::world_size].clone() for owner in range(world_size)
-    ]
-    owner_scale_shards = [
-        scales_history[owner::world_size].clone() for owner in range(world_size)
-    ]
+    owner_quantized_shards = [quantized_history[owner::world_size].clone() for owner in range(world_size)]
+    owner_scale_shards = [scales_history[owner::world_size].clone() for owner in range(world_size)]
     selected_rows = torch.tensor([0, 3, 4, 7, total_pages * page_size - 1])
 
     materialized = _materialize_owner_quantized_rows(
         owner_quantized_shards, owner_scale_shards, selected_rows, page_size
     )
     expected = (
-        quantized_history.flatten(0, 1)[selected_rows].to(torch.float32)
-        * scales_history.flatten(0, 1)[selected_rows]
+        quantized_history.flatten(0, 1)[selected_rows].to(torch.float32) * scales_history.flatten(0, 1)[selected_rows]
     )
     torch.testing.assert_close(materialized, expected)
 
     owner_persistent_bytes = sum(
-        quantized.numel() * quantized.element_size()
-        + scale.numel() * scale.element_size()
+        quantized.numel() * quantized.element_size() + scale.numel() * scale.element_size()
         for quantized, scale in zip(owner_quantized_shards, owner_scale_shards)
     )
     replicated_persistent_bytes = world_size * (
@@ -393,13 +409,16 @@ def test_c128_local_compressor_plan_accepts_aligned_tp8_chunk() -> None:
 def test_c128_local_compressor_plan_rejects_unaligned_tp8_tail() -> None:
     """The 3080-token TP8 tail has 385-token rank shards and must fall back."""
     positions = torch.arange(5120, 8200, dtype=torch.int64)
-    assert make_c128_local_compressor_plan(
-        positions,
-        local_start=0,
-        local_end=385,
-        tp_size=8,
-        sequence_start_pos=5120,
-    ) is None
+    assert (
+        make_c128_local_compressor_plan(
+            positions,
+            local_start=0,
+            local_end=385,
+            tp_size=8,
+            sequence_start_pos=5120,
+        )
+        is None
+    )
 
 
 def test_local_current_kv_rejects_noncontiguous_positions() -> None:
@@ -415,9 +434,7 @@ def test_c128_local_compressor_rope_retains_per_shard_padding_row() -> None:
     rope = torch.arange(41, dtype=torch.float32).unsqueeze(1)
     plan = C128LocalCompressorPlan(slot_start=35, slot_end=40)
     local_rope = slice_c128_local_compressor_rope(rope, plan)
-    torch.testing.assert_close(
-        local_rope.squeeze(1), torch.tensor([35, 36, 37, 38, 39, 40], dtype=rope.dtype)
-    )
+    torch.testing.assert_close(local_rope.squeeze(1), torch.tensor([35, 36, 37, 38, 39, 40], dtype=rope.dtype))
 
 
 def test_c128_local_compressor_output_drops_final_padding_row() -> None:
@@ -438,8 +455,7 @@ def test_c128_static_collective_layout_restores_rank_major_slot_order() -> None:
     """
     world_size, rows, kv_dim = 8, 5, 3
     local_rows = [
-        torch.arange(rank * rows * kv_dim, (rank + 1) * rows * kv_dim).view(rows, kv_dim)
-        for rank in range(world_size)
+        torch.arange(rank * rows * kv_dim, (rank + 1) * rows * kv_dim).view(rows, kv_dim) for rank in range(world_size)
     ]
     sends = []
     for compressed_kv in local_rows:
@@ -449,7 +465,5 @@ def test_c128_static_collective_layout_restores_rank_major_slot_order() -> None:
 
     expected = torch.cat(local_rows)
     for receiver in range(world_size):
-        received = torch.cat(
-            [send.view(world_size, rows, kv_dim)[receiver] for send in sends]
-        )
+        received = torch.cat([send.view(world_size, rows, kv_dim)[receiver] for send in sends])
         torch.testing.assert_close(received, expected)

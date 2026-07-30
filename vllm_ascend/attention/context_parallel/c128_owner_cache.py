@@ -22,11 +22,17 @@ ownership or compressor-state semantics.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import torch
 import torch.distributed as dist
 import torch_npu
 from vllm.logger import init_logger
+
+if TYPE_CHECKING:
+    from vllm_ascend.attention.context_parallel.c128_packed_owner_route import (
+        C128PackedOwnerRoute,
+    )
 
 logger = init_logger(__name__)
 
@@ -143,10 +149,7 @@ def c128_local_current_kv_rejection_reasons(
         reasons.append("token_padding_present")
     if num_input_tokens != num_actual_tokens:
         reasons.append("input_actual_token_mismatch")
-    if (
-        local_compressor_plan is not None
-        and local_compressor_plan.rows * compress_ratio != tokens_per_rank
-    ):
+    if local_compressor_plan is not None and local_compressor_plan.rows * compress_ratio != tokens_per_rank:
         reasons.append("compressor_rows_mismatch")
     return tuple(reasons)
 
@@ -272,12 +275,18 @@ def remap_c128_block_table(block_table: torch.Tensor, selected_pages: torch.Tens
 
 @dataclass
 class C128OwnerShardCache:
-    """One canonical C128 page shard and a reusable local execution view."""
+    """One canonical C128 page shard and a reusable local execution view.
+
+    A packed persistent view reserves page zero as the sentinel and addresses
+    owner-local pages from one.  ``stage_cache`` remains a zero-based bounded
+    scratch view; ``packed_route`` carries that translation contract.
+    """
 
     persistent_cache: torch.Tensor
     stage_cache: torch.Tensor
     tp_size: int
     debug: bool = False
+    packed_route: C128PackedOwnerRoute | None = None
 
     def _trace(self, message: str) -> None:
         if self.debug:
@@ -290,6 +299,130 @@ class C128OwnerShardCache:
     @property
     def stage_capacity_pages(self) -> int:
         return self.stage_cache.shape[0]
+
+    def _validate_packed_views(
+        self,
+        tp_rank: int,
+    ) -> C128PackedOwnerRoute | None:
+        """Validate the attached packed route against both concrete views.
+
+        The packed persistent tensor is component-local: page zero is its
+        sentinel and positive pages are owner-local data slots.  The stage
+        tensor is a zero-based scratch view.  This validation is deliberately
+        separate from request metadata so shape/route mismatches fail before a
+        cache write or HCCL materialization.
+        """
+        route = self.packed_route
+        if route is None:
+            return None
+        if route.tp_size != self.tp_size:
+            raise RuntimeError(
+                "packed C128 route TP size does not match its owner cache: " f"{route.tp_size} != {self.tp_size}"
+            )
+        if self.persistent_cache.ndim < 2 or self.stage_cache.ndim < 2:
+            raise ValueError("packed C128 persistent and scratch tensors must be paged")
+        persistent_page_bytes = self.persistent_cache[0].numel() * self.persistent_cache.element_size()
+        stage_page_bytes = self.stage_cache[0].numel() * self.stage_cache.element_size()
+        if persistent_page_bytes != route.page_size_bytes:
+            raise ValueError(
+                "packed C128 persistent page size does not match its route: "
+                f"{persistent_page_bytes} != {route.page_size_bytes}"
+            )
+        if stage_page_bytes != route.page_size_bytes:
+            raise ValueError(
+                "packed C128 scratch page size does not match its route: "
+                f"{stage_page_bytes} != {route.page_size_bytes}"
+            )
+        route.validate_runtime_tensor_pages(
+            tp_rank=tp_rank,
+            persistent_pages=self.persistent_cache.shape[0],
+            scratch_pages=self.stage_cache.shape[0],
+        )
+        return route
+
+    def _prepare_packed_owned_scatter(
+        self,
+        slot_mapping: torch.Tensor,
+        tp_rank: int,
+    ) -> tuple[torch.Tensor, torch.Tensor, int]:
+        """Consume worker-translated owner-local C128 scatter slots.
+
+        ``PackedBlockTableTranslator`` has already mapped each locally owned
+        packed-global page to its component-local physical page and converted
+        remote rows to ``PAD_SLOT_ID``.  Reapplying logical-page ownership or
+        compact division here would address a different page.  Padding becomes
+        ``(-1, block_size - 1)`` when DSA builds its two-dimensional mapping,
+        so page negativity alone identifies a non-write.
+        """
+        route = self._validate_packed_views(tp_rank)
+        assert route is not None
+        page_ids = slot_mapping[:, 0]
+        # Page zero is the component sentinel and negative pages are remote or
+        # padding. The CPU translator has already rejected invalid scheduler
+        # IDs before commit; keep this per-layer device path synchronization
+        # free.
+        valid = page_ids > 0
+        owner_rows = torch.nonzero(valid, as_tuple=False).flatten()
+        local_slot_mapping = slot_mapping.index_select(0, owner_rows)
+        flat_slots = (local_slot_mapping[:, 0] * self.persistent_cache.shape[1] + local_slot_mapping[:, 1]).view(-1, 1)
+        return owner_rows, flat_slots, slot_mapping.shape[0]
+
+    def _packed_owner_index_block_table(
+        self,
+        block_table: torch.Tensor,
+        tp_rank: int,
+    ) -> torch.Tensor:
+        """Translate packed-global IDs only at the materialization boundary.
+
+        Existing HCCL staging expects an integer whose modulo is the owner and
+        whose quotient is the local persistent page.  Construct that private
+        domain from the packed route while leaving scheduler/attention
+        metadata in the packed-global domain.  Sentinel zero and negative
+        padding become attention padding; the returned materialized table is
+        scratch-local and zero-based.
+        """
+        route = self._validate_packed_views(tp_rank)
+        assert route is not None
+        if block_table.dtype not in {
+            torch.int8,
+            torch.int16,
+            torch.int32,
+            torch.int64,
+        }:
+            raise TypeError("packed C128 block_table must use a signed integer dtype")
+        positive = block_table > 0
+        data = positive & ((block_table >= route.logical_start) & (block_table < route.logical_stop))
+
+        # Preserve the static table shape. Invalid/padding positions use a
+        # harmless in-range value during arithmetic and become -1 in the final
+        # torch.where. CPU translation is the authoritative production
+        # rejection boundary for foreign group IDs.
+        global_blocks = torch.where(
+            data,
+            block_table,
+            torch.full_like(block_table, route.logical_start),
+        )
+        owners = torch.remainder(global_blocks, self.tp_size)
+        first_owned = route.logical_start + torch.remainder(
+            owners - route.logical_start,
+            self.tp_size,
+        )
+        owner_local_slots = (
+            torch.div(
+                global_blocks - first_owned,
+                self.tp_size,
+                rounding_mode="floor",
+            )
+            + 1
+        )
+        # ``c128_owner`` and ``c128_local_page`` recover ``owners`` and
+        # ``owner_local_slots`` respectively from this private index.
+        owner_index = owner_local_slots * self.tp_size + owners
+        return torch.where(
+            data,
+            owner_index,
+            torch.full_like(block_table, -1),
+        )
 
     def scatter_owned(
         self,
@@ -311,6 +444,16 @@ class C128OwnerShardCache:
             raise ValueError("C128 slot_mapping and compressed_kv row counts differ")
         if not 0 <= tp_rank < self.tp_size:
             raise ValueError(f"tp_rank={tp_rank} is outside TP size {self.tp_size}")
+        if self.packed_route is not None:
+            self.scatter_prepared(
+                compressed_kv,
+                *self._prepare_packed_owned_scatter(
+                    slot_mapping,
+                    tp_rank,
+                ),
+                tp_rank,
+            )
+            return
 
         page_ids = slot_mapping[:, 0]
         # Negative page/offset entries are padding.  The regular C128 scatter
@@ -329,9 +472,7 @@ class C128OwnerShardCache:
         # two-dimensional NPU indices.  Flatten the identical [page, offset]
         # address into standard torch_npu scatter indices instead.
         page_size = self.persistent_cache.shape[1]
-        flat_slots = (
-            local_slot_mapping[:, 0] * page_size + local_slot_mapping[:, 1]
-        ).view(-1, 1)
+        flat_slots = (local_slot_mapping[:, 0] * page_size + local_slot_mapping[:, 1]).view(-1, 1)
         self._trace(f"DSA_OWNER_TRACE owner_cache_scatter_begin rank={tp_rank}")
         # Empty index/update tensors are accepted by torch_npu. Keeping that
         # path device-only avoids a host `.item()`/`any()` synchronization
@@ -360,6 +501,11 @@ class C128OwnerShardCache:
             raise ValueError("C128 slot_mapping must have shape [rows, 2]")
         if not 0 <= tp_rank < self.tp_size:
             raise ValueError(f"tp_rank={tp_rank} is outside TP size {self.tp_size}")
+        if self.packed_route is not None:
+            return self._prepare_packed_owned_scatter(
+                slot_mapping,
+                tp_rank,
+            )
 
         page_ids = slot_mapping[:, 0]
         valid_mask = (page_ids >= 0) & (slot_mapping[:, 1] >= 0)
@@ -368,9 +514,7 @@ class C128OwnerShardCache:
         local_slot_mapping = slot_mapping.index_select(0, owner_rows).clone()
         local_slot_mapping[:, 0] = c128_local_page(local_slot_mapping[:, 0], self.tp_size)
         page_size = self.persistent_cache.shape[1]
-        flat_slots = (
-            local_slot_mapping[:, 0] * page_size + local_slot_mapping[:, 1]
-        ).view(-1, 1)
+        flat_slots = (local_slot_mapping[:, 0] * page_size + local_slot_mapping[:, 1]).view(-1, 1)
         return owner_rows, flat_slots, slot_mapping.shape[0]
 
     def scatter_prepared(
@@ -419,8 +563,7 @@ class C128OwnerShardCache:
         padded[: local_pages.numel()] = local_pages
         all_pages = torch.cat(cls._all_gather_fixed(padded, group=group))
         return [
-            all_pages[rank * max_count : (rank + 1) * max_count][: count.item()]
-            for rank, count in enumerate(counts)
+            all_pages[rank * max_count : (rank + 1) * max_count][: count.item()] for rank, count in enumerate(counts)
         ]
 
     @classmethod
@@ -451,7 +594,13 @@ class C128OwnerShardCache:
         if not 0 <= tp_rank < self.tp_size:
             raise ValueError(f"tp_rank={tp_rank} is outside TP size {self.tp_size}")
 
-        local_pages = torch.unique(block_table[block_table >= 0], sorted=True)
+        materialization_block_table = (
+            self._packed_owner_index_block_table(block_table, tp_rank) if self.packed_route is not None else block_table
+        )
+        local_pages = torch.unique(
+            materialization_block_table[materialization_block_table >= 0],
+            sorted=True,
+        )
         union_pages = self._all_gather_pages_union(local_pages, group=group)
         logger.info(
             "C128 owner stage: rank=%d local_pages=%d union_pages=%d capacity=%d",
@@ -498,7 +647,10 @@ class C128OwnerShardCache:
             stage_slots = torch.searchsorted(union_pages, owner_pages)
             self.stage_cache[stage_slots] = gathered_pages[owner][:owner_count]
 
-        remapped_block_table = remap_c128_block_table(block_table, union_pages)
+        remapped_block_table = remap_c128_block_table(
+            materialization_block_table,
+            union_pages,
+        )
         logger.info(
             "C128 owner stage complete: rank=%d staged_pages=%d",
             tp_rank,
@@ -527,7 +679,13 @@ class C128OwnerShardCache:
         if not 0 <= tp_rank < self.tp_size:
             raise ValueError(f"tp_rank={tp_rank} is outside TP size {self.tp_size}")
 
-        local_pages = torch.unique(block_table[block_table >= 0], sorted=True)
+        materialization_block_table = (
+            self._packed_owner_index_block_table(block_table, tp_rank) if self.packed_route is not None else block_table
+        )
+        local_pages = torch.unique(
+            materialization_block_table[materialization_block_table >= 0],
+            sorted=True,
+        )
         if local_pages.numel() > self.stage_capacity_pages:
             raise RuntimeError(
                 f"C128 stage capacity {self.stage_capacity_pages} pages is smaller than "
@@ -549,8 +707,7 @@ class C128OwnerShardCache:
             input_splits.append(owner_pages.numel() * page_elements)
 
         receive_pages_by_owner = [
-            local_pages[c128_owner(local_pages, self.tp_size) == owner]
-            for owner in range(self.tp_size)
+            local_pages[c128_owner(local_pages, self.tp_size) == owner] for owner in range(self.tp_size)
         ]
         output_splits = [pages.numel() * page_elements for pages in receive_pages_by_owner]
         send_payload = torch.cat(send_chunks) if send_chunks else self.persistent_cache.new_empty((0,))
@@ -573,7 +730,10 @@ class C128OwnerShardCache:
                 self.stage_cache[stage_slots] = page_values
             offset += count
 
-        remapped_block_table = remap_c128_block_table(block_table, local_pages)
+        remapped_block_table = remap_c128_block_table(
+            materialization_block_table,
+            local_pages,
+        )
         logger.info(
             "C128 owner selective stage complete: rank=%d local_pages=%d sent_pages=%d received_pages=%d",
             tp_rank,
@@ -587,8 +747,47 @@ class C128OwnerShardCache:
 def register_c128_owner_cache(cache: C128OwnerShardCache) -> torch.Tensor:
     """Register owner metadata while preserving the model's Tensor cache ABI."""
     persistent_cache = cache.persistent_cache
-    _OWNER_CACHES_BY_DATA_PTR[persistent_cache.data_ptr()] = cache
+    data_ptr = persistent_cache.data_ptr()
+    registered = _OWNER_CACHES_BY_DATA_PTR.get(data_ptr)
+    if registered is not None and registered is not cache:
+        raise RuntimeError("C128 owner-cache data_ptr is already registered to another " f"cache: data_ptr={data_ptr}")
+    _OWNER_CACHES_BY_DATA_PTR[data_ptr] = cache
     return persistent_cache
+
+
+def unregister_c128_owner_cache(
+    cache_or_tensor: C128OwnerShardCache | torch.Tensor,
+) -> bool:
+    """Remove one exact owner-cache registration.
+
+    The identity check prevents a delayed cleanup callback from deleting a
+    newer registration that happens to use the same device address.  Returning
+    ``False`` for an absent or different registration makes cleanup
+    retry-idempotent.
+    """
+    if isinstance(cache_or_tensor, C128OwnerShardCache):
+        persistent_cache = cache_or_tensor.persistent_cache
+        expected_cache = cache_or_tensor
+    elif isinstance(cache_or_tensor, torch.Tensor):
+        persistent_cache = cache_or_tensor
+        expected_cache = None
+    else:
+        raise TypeError(
+            "C128 owner-cache unregister expects a C128OwnerShardCache or "
+            f"Tensor, got {type(cache_or_tensor).__name__}"
+        )
+
+    data_ptr = persistent_cache.data_ptr()
+    registered = _OWNER_CACHES_BY_DATA_PTR.get(data_ptr)
+    if registered is None:
+        return False
+    if expected_cache is not None:
+        if registered is not expected_cache:
+            return False
+    elif registered.persistent_cache is not persistent_cache:
+        return False
+    del _OWNER_CACHES_BY_DATA_PTR[data_ptr]
+    return True
 
 
 def get_c128_owner_cache(kv_cache: object) -> C128OwnerShardCache | None:

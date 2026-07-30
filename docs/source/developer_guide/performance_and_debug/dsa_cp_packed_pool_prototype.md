@@ -1,9 +1,14 @@
 # DSA-CP packed-pool planning prototype
 
-Status: feature-gated planner/config propagation and a CPU-testable worker
-lifecycle contract are implemented.  Production packed allocation remains
-disabled until the adapter, reshape, block-table, and C128 materialization
-seams land together.
+Status: the feature-gated planner/config propagation, concrete ACL arena
+adapter, worker lifecycle, global-ID block-table/owner-route contract,
+synthetic allocator/reshape transaction, and packed DSA materialization seam
+are implemented.  Production packed allocation remains disabled:
+the planner still emits `planner_only=true` and
+`downstream_runtime_abi_ready=false`, and the normal model-runner startup
+rejects the feature before opening CANN VMM.  This milestone proves component
+composition and cleanup, not allocator replacement, KV-capacity saving, cache
+equivalence, or TTFT.
 
 ## Hypothesis and gate
 
@@ -22,8 +27,8 @@ CPU-only:
 - metric: exact mapping round-trip, physical-byte collision count, aligned
   segment size, and bytes per rank;
 - pass: every valid ID has one inverse, collision count is zero, invalid IDs
-  fail closed, feature-off translation is identity, and the real Flash-shaped
-  example saves physical bytes;
+  fail closed, feature-off translation is identity, and a same-`B`
+  owner-versus-replicated plan saves physical bytes after VMM alignment;
 - kill: any mapping ambiguity, unbounded scratch, or a capacity calculation
   that retains the old full C128 backing.
 
@@ -88,6 +93,36 @@ Their partition sum is 955 positive data IDs.  At the measured B0 block count
 `B=4190`, declaration order assigns ranges `[1,18)`, `[18,19)`,
 `[19,661)`, `[661,826)`, `[826,891)`, and `[891,956)`, leaving 3234
 unassigned data IDs after the global block-zero sentinel.
+
+This fixed-workload plan does not prove owner-shard capacity saving.  Its C128
+MLA quota is one page.  Each of its 20 component copies contains a sentinel
+plus zero or one owned data page, and both the owner and replicated
+counterfactual round that copy to one 2-MiB VMM segment on every rank.
+Consequently:
+
+```text
+fixed 955-quota owner bytes == fixed 955-quota aligned-replicated bytes
+```
+
+The large difference between either fixed-quota number and the historical
+`B=4190` raw allocation is workload-envelope reduction.  It must not be
+reported as DSA owner-shard capacity saving.
+
+There is a second replacement gate in the legacy allocator.  DeepSeek-V4
+groups layers by page-size bucket and aliases one full-`B` raw tensor across
+the same tuple index in several cache groups.  The 128-KiB tuple containing a
+C128 attention layer also contains non-C128 consumers, including the
+corresponding C128 compressor-state `SlidingWindowMLASpec` layer (and, for
+some tuple indices, other state/SWA layers).  Splitting the C128 attention
+layer and adding an owner tensor leaves the non-C128 full-`B` backing alive.
+That is the additive-sidecar configuration measured in G30, not replacement.
+
+An allocator replacement must move every live consumer of that shared tensor
+to its own plan component view in one transaction.  For the C128
+compressor-state layer, this also requires block-table/state-continuation
+equivalence across both prefill chunks; moving only the attention history
+cannot reclaim the original backing.  A later distributed/local compressor
+path additionally needs the prefix-scan or chunk-boundary state handoff gate.
 
 The `window=4096` and two dense-SWA rows in this table remain fixture evidence,
 not a captured live `config.json`/group dump.  Runtime planning reads every
@@ -174,9 +209,10 @@ Both mapping directions are part of the contract.  A runtime implementation
 must not replace exact metadata with a hash or dynamically sized staging
 allocation.
 
-## Real Flash-shaped accounting example
+## Same-B owner-placement accounting oracle
 
-The CPU gate uses the measured B0 shape:
+The pure CPU gate also constructs a same-`B` owner-versus-replicated oracle
+using the measured page/copy counts:
 
 ```text
 B = 4190 total BlockPool slots
@@ -191,74 +227,131 @@ narrow replicated copies = 21
 VMM allocation granularity = 2097152 bytes
 ```
 
-The replicated baseline is exactly:
+Its unaligned replicated payload is exactly:
 
 ```text
 B * (22 * 131072 + 21 * 16640)
 ```
 
-The packed candidate keeps the two ordinary wide copies and all narrow copies,
+The owner candidate keeps the two ordinary wide copies and all narrow copies,
 allocates only each rank's 523 or 524 C128 data pages plus one sentinel page
 for every C128 layer, and adds 65 wide scratch payload pages.  Every component
 copy and the scratch region is rounded independently to 2 MiB.  Thus the
 524- or 525-page occupied C128 segments both allocate 528 pages, while the
 65-page scratch allocates 80 pages.  The test compares exact aligned bytes
-against the baseline.  It does not count a full `B`-page stage and therefore
-cannot reproduce the G26 false capacity claim.
+against a same-component, same-`B`, independently aligned replicated
+counterfactual.  It does not count a full `B`-page stage and therefore cannot
+reproduce the G26 false capacity claim.
 
-## Runtime seams still unresolved
+This oracle proves that owner placement can save bytes when a C128 logical
+range is large enough to amortize 2-MiB per-copy granularity.  It is not the
+current scheduler plan: the production fixed-quota scheduler has six disjoint
+group ranges and only one C128 MLA page.  A capacity experiment therefore
+needs a new same-service-capacity plan with a C128 quota above one VMM granule
+per owner, or a scheduler/allocator design that retains the shared `B=4190`
+service envelope while routing C128 physical pages to owners.
 
-The prototype is feature-off until all four seams below are implemented and
-validated together.  Feature-off means no `PackedPoolPlan` is constructed;
-`translate_group_block_ids(None, ...)` is an unconditional identity over the
-existing shared-pool IDs.
+The CPU suite pins one explicit accounting candidate by assigning all 3234
+currently unused fixed-profile IDs to C128:
 
-1. Planner (partial):
-   `vllm_ascend.patch.platform.patch_kv_cache_utils` now chooses the fixed
-   Flash `N_g` quotas after final block-count clamping and serializes the
-   range/component metadata.  It deliberately does not size tensors from
-   `BucketPhysicalBytes`; that activation belongs with the worker allocator
-   ABI.  Feature-off returns the original configs without metadata mutation.
-2. Scheduler:
-   `vllm_ascend.patch.platform.patch_kv_cache_coordinator.AscendHybridKVCacheCoordinator.__init__`
-   currently constructs one shared `BlockPool(kv_cache_config.num_blocks)`.
-   The upstream
-   `vllm.v1.core.kv_cache_manager.KVCacheManager.allocate_slots` returns block
-   objects by cache group.  The runtime must preserve prefix-cache lifetime and
-   block-zero padding while encoding each group's positive local ID into its
-   assigned range.  Whether this uses range-aware views of one pool or separate
-   per-group pools is still a scheduler design decision.
-3. Worker block tables:
-   `vllm_ascend.worker.block_table.MultiGroupBlockTable.append_row` and
-   `add_row` currently copy scheduler IDs directly, and
-   `BlockTable.compute_slot_mapping` treats those values as physical page
-   numbers.  The worker must translate group IDs once and select the correct
-   component address without changing padding, CP interleave, or hybrid-block
-   expansion semantics.  A raw `global_id * page_size` address is invalid for
-   C128 because one 2-MiB mapping granule contains 16 C128 pages; the table must
-   use the plan's owner-local slot and aligned segment base.
-4. Worker allocation and C128 consumption:
-   `NPUModelRunner._allocate_kv_cache_tensors` and
-   `_reshape_kv_cache_tensors` currently assume raw tensors contain the
-   planner's full page count.
-   `NPUModelRunner._get_c128_owner_stage_cache` allocates a full-page execution
-   view.  They must allocate the packed component segments, expose ordinary
-   dense views to non-C128 kernels, bind C128 persistent tensors to the
-   owner-local segment, and replace the full stage with the declared bounded
-   scratch before `AscendDSACPImpl` materializes selected rows.
-   `C128OwnerShardCache.prepare_owned_scatter`, `scatter_owned`,
-   `materialize_for_attention`, and `materialize_selected_for_attention`
-   currently use `c128_local_page(page, TP) = page // TP`.  That formula is
-   valid only for the old zero-based full logical range.  Compressor scatter,
-   selected-page reads, and inverse materialization must all use this plan's
-   group-range-aware owner slot (including the reserved dummy page); changing
-   only `BlockTable.compute_slot_mapping` would address the wrong page.
+```text
+workload quotas = [17, 1, 642, 165, 65, 65]
+same-B accounting quotas = [17, 3235, 642, 165, 65, 65]
+sum = 4189 data IDs, plus sentinel 0 => B=4190
+```
 
-The next runtime gate is not TTFT.  It is a feature-on/off allocator proof at a
-fixed block count: deduplicate raw storage pointers, compare allocated bytes to
-this plan, reconstruct every component from its inverse mapping, and then prove
-continuation/cache equivalence.  Only after that gate may the service-capacity
-and 8K/one-output TTFT comparisons run.
+For that exact six-group plan, the aligned owner allocation is smaller than
+the aligned replicated counterfactual on every rank.  This isolates a real
+C128 placement delta without comparing against a 955-ID envelope.  It is
+still accounting-only: locking all spare shared-pool capacity to C128 changes
+the general multi-request borrowing semantics, so it may be used for the
+pinned one-request profile only after the scheduler and state-continuation
+gates pass.  Until that contract exists, runtime metadata remains
+`planner_only=true/downstream_runtime_abi_ready=false`.
+
+A different fixed-profile service-capacity experiment can preserve the same
+aggregate `B=4190` ID domain and place the slack in one ordinary replicated
+group:
+
+```text
+[17, 1, 642, 165, 65, 3299]
+```
+
+This satisfies `FixedQuotaBlockPool`'s exact `sum(quotas) == B - 1` contract
+and the pinned single-request 8200/1 admission requirements.  It is a
+quota/repacking experiment, not an owner-sharding result: the C128 quota is
+still one and therefore contributes zero aligned owner saving.  It also
+removes arbitrary cross-group borrowing, so the assigned slack group and the
+distinction between required versus assigned quota must be explicit in
+metadata.  The current planner does not emit this policy or attach
+`ascend_kv_cache_group_block_quotas`; this layout is representation-ready but
+not activated.
+
+## Implemented mechanism seam and remaining activation gates
+
+Feature-off still means no `PackedPoolPlan` is constructed;
+`translate_group_block_ids(None, ...)` remains an unconditional identity over
+the existing shared-pool IDs.  Feature-on production startup still fails
+before CANN/Torch allocation.  The following pieces are composable only
+through an internal synthetic transaction used by unit tests:
+
+1. Planner:
+   `vllm_ascend.patch.platform.patch_kv_cache_utils` chooses the fixed Flash
+   quotas after final block-count clamping and serializes the complete
+   component/view manifest.  It deliberately leaves both activation bits
+   false and does not resize live tensors.
+2. Scheduler and block IDs:
+   `FixedQuotaBlockPool` emits already-global IDs.  The packed translator
+   validates their one-dimensional signed-integer domain and assigned group
+   range and preserves sentinel zero.  Replicated groups then store
+   component-local execution IDs (`global - group_start + 1`) so compressor
+   state and SWA read the same pages written by their slot mappings.  C128
+   owner groups retain packed-global table IDs until materialization and
+   translate only their write slots to owner-local pages.
+   `MultiGroupBlockTable` preflights all groups before mutating a row, and
+   `NPUInputBatch` can accept an explicit translator tuple.  No production
+   scheduler path currently installs the fixed quotas or constructs these
+   translators.  A same-service-capacity owner experiment should instead keep
+   the existing shared `BlockPool` ID domain unless borrowing and prefix-cache
+   semantics are separately proven.
+3. Allocation and lifecycle:
+   `_initialize_kv_cache_from_c128_packed_arena` accepts an already-open,
+   strictly validated synthetic runtime, installs exact component-copy and
+   scratch aliases, reshapes each layer using its local page count, attaches
+   owner routes, seals and publishes only after all views succeed, and closes
+   the runtime on failure.  Runtime view releasers unregister the exact owner
+   cache before dropping aliases; teardown is quiesce, reverse-order view
+   release, backing lease close.  Normal `initialize_kv_cache` does not call
+   this transaction and still rejects packed allocation.
+4. C128 consumption:
+   Packed scatter consumes the worker-translated one-based owner-local slot
+   without applying ownership twice.  Full and selected materialization accept
+   packed-global IDs, use the immutable owner route to locate persistent
+   pages, and remap results into zero-based bounded scratch for attention.
+   Sentinel/padding pages cannot be written.  The new route conversion and
+   scatter-preparation helpers contain no tensor-value-to-host branch.
+   Existing HCCL materialization still performs host-visible count/list
+   conversion while constructing variable-size collective payloads; removing
+   those synchronizations is a separate performance gate.
+
+The decisive next gate is not TTFT.  It is a same-`B` feature-on/off allocator
+replacement proof:
+
+- capture the live `KVCacheTensor.shared_by` families and require every C128
+  attention/compressor-state consumer of a replaced raw backing to move
+  together;
+- preserve the existing scheduler ID domain and prove prefix-cache/block
+  lifetime semantics;
+- open the concrete ACL arena from normal startup, install every declared
+  view, and prove the legacy full-`B` backing and full-`B` stage are absent;
+- measure authoritative ACL physical bytes, not only PyTorch storage
+  metadata;
+- prove cache bytes, compressor continuation across both prefill chunks, and
+  output/logit equivalence before measuring 8K/one-output TTFT.
+
+Only after those gates pass may capacity saving or TTFT be claimed.  The
+fixed-955-quota transaction in this milestone remains a mechanism/correctness
+fixture and must not be used as the capacity result.
 
 ## Packed physical-arena lease slice
 
@@ -429,82 +522,41 @@ does not prove model cache equivalence, capacity, or TTFT.
 
 ### Worker/model-runner lifecycle seam
 
-The anchors below are for integration base `84f3da22`; re-resolve the symbols
-after a rebase.
+The current mechanism integration has these exact boundaries:
 
-1. Feature gate and fail-closed initialization:
-   `vllm_ascend/worker/model_runner_v1.py:271-285` reads the default-false
-   `enable_c128_packed_vmm_arena` JSON boolean and initializes one nullable
-   runtime owner.  `model_runner_v1.py:3529-3563` imports the runtime module
-   only when enabled.  It validates worker-delivered metadata, rejects the
-   current `planner_only=true`/`downstream_runtime_abi_ready=false` schema, and
-   also refuses to fall through to legacy raw allocation if metadata is
-   prematurely marked ready.  Feature-off continues directly into the
-   existing deep-copy/allocation path.
-2. Transactional open and explicit shutdown:
-   `PackedArenaRuntime.open_from_metadata` is the adapter seam.  Given a
-   concrete backend, tensor factory, arena fence, and worker quiescence
-   callback, it rebuilds the plan and opens `PackedArenaLease`.  A future
-   reshape integration must install each bucket through
-   `PackedArenaRuntime.install_tensor_views`.  The runtime owns the lease pin;
-   the installer receives the root only inside its callback and returns a
-   retry-idempotent releaser that reports success only after dropping every
-   derived alias.  There is no public consumer-owned unpin operation.  Only
-   after every component-copy and scratch key in the plan-derived view
-   manifest is installed may the caller call `seal_views()` and publish the
-   complete runtime through
-   `model_runner_v1.py:_install_c128_packed_arena_runtime`; publishing a bare
-   lease before view installation is forbidden.  Installation validates the
-   runtime type, `SEALED` state, exact serialized-metadata fingerprint, TP
-   rank, and device.
-   The caller retains ownership after any failed installation.  If a view
-   installer raises after seeing the root tensor, the runtime retains a
-   permanent blocker and refuses to unmap; the process must be torn down unless
-   the installer proved failure atomic before exposing the root.
-   `worker.py:shutdown` calls inherited model-runner cleanup first, so device
-   work is synchronized and ordinary KV/attention aliases are cleared.  It
-   retries packed cleanup once, then returns so executor-level distributed
-   teardown is not skipped.  `PackedArenaRuntime.close` prevents new borrows,
-   quiesces queued work, runs registered view releasers in reverse order,
-   releases each runtime-owned pin only after its releaser succeeds, and only
-   then closes the lease.  A failed stage retains the lease, pin, and remaining
-   callbacks for explicit retry; there is no driver cleanup in `__del__`.
-3. Serialized ABI and allocation evidence:
-   `c128_packed_runtime.packed_arena_contract_from_metadata` accepts only
-   schema version 1 and the fixed Flash TP8, 8200-token/one-output profile.  It
-   reconstructs groups/components/scratch, recomputes every range, segment,
-   bucket, and per-rank total, and rejects any mismatch before touching the
-   backend.  `PackedArenaRankAccounting.as_metadata()` exposes exact
-   persistent, scratch-region, and total allocated bytes per bucket and rank.
-4. Raw allocation replacement remains blocked:
-   `model_runner_v1.py:3774` is the raw allocation entry.  A coherent enabled
-   branch must replace only plan-owned components with byte/shape views over
-   lease buckets and must register a releaser for every view installed in
-   model-runner state.  It must not allocate a second `torch.zeros` backing.
-5. Shape ABI remains blocked:
-   `model_runner_v1.py:4005` derives `num_blocks` from raw-tensor bytes and
-   assumes one contiguous component.  Packed reshape must instead use each
-   component copy's validated segment base and size; a bucket-wide tensor is
-   not one cache component.
-6. C128 scratch/materialization remains blocked:
-   `model_runner_v1.py:3961` still allocates a full `num_blocks` stage cache.
-   The lease's bounded scratch can replace it only after C128 materialization
-   consumes group-range-aware owner slots.  The current owner cache still uses
-   the legacy zero-based formula, so activating packed persistent storage now
-   would address the wrong page.
-7. Global owner-cache aliases remain blocked:
-   `c128_owner_cache.py:_OWNER_CACHES_BY_DATA_PTR` strongly retains registered
-   owner-cache objects and has no unregister path.  Before packed C128 tensors
-   can be installed, shutdown must remove the corresponding registry entries
-   after quiescence and before the last tracked borrow closes.  Ordinary
-   `kv_caches.clear()` is not sufficient.
+1. `enable_c128_packed_vmm_arena` is a default-false JSON boolean.  Normal
+   `initialize_kv_cache` validates the delivered metadata and rejects both the
+   planner-only schema and any prematurely runtime-ready schema before opening
+   CANN or allocating Torch cache tensors.
+2. `PackedArenaRuntime.open_from_metadata` reconstructs the serialized plan
+   and opens the concrete backend/tensor-factory lease.  The internal
+   `_initialize_kv_cache_from_c128_packed_arena` transaction is test-only: it
+   receives an already-open runtime, installs every component-copy and scratch
+   alias, derives each cache shape from the installed payload pages, attaches
+   block-table translators and owner routes, then seals and publishes.
+3. A failed transaction drops shaped aliases, runs registered view releasers,
+   identity-safely unregisters owner caches, closes the runtime, and restores
+   the previous input-batch/kernel-block state.  A failed cleanup stage keeps
+   the runtime and remaining callbacks reachable for retry.
+4. `packed_arena_contract_from_metadata` still accepts only schema version 1
+   and the fixed Flash TP8 8200/1 profile.  It recomputes every range, segment,
+   view key, bucket, aligned owner/replicated comparator, and per-rank total
+   before backend access.
+5. The packed block table validates scheduler-global IDs, then stores
+   component-local execution IDs for replicated groups and packed-global IDs
+   for C128 owner groups.  Packed C128 slot mappings alone become owner-local;
+   scatter consumes those slots, while materialization uses the retained
+   global table plus the immutable owner route and returns a zero-based
+   scratch-local table.
 
-This seam deliberately stops short of adapter, allocator, reshape, block-table,
-and attention changes.  Its CPU gate proves metadata integrity and lifetime
-order; it does not claim that packed KV tensors are runnable.
+These mechanisms do not make packed KV tensors production-runnable.  The
+remaining blocker is the complete live replacement transaction: normal
+startup must capture the real shared-backing families, move every consumer,
+including C128 compressor state, open/install the arena instead of the legacy
+raw allocation, and prove continuation and cache equivalence.
 
-The next `.204` experiment is an allocator/lifetime gate, not an end-to-end
-TTFT claim:
+The next A3 experiment is an allocator/lifetime gate, not an end-to-end TTFT
+claim:
 
 ```text
 baseline: feature off, existing torch allocations
@@ -514,6 +566,6 @@ metric: unique backing bytes, base/segment/page offsets, zero initialization,
 PASS: measured bytes equal BucketPhysicalBytes on every rank; every segment
       and scratch view round-trips; no NPU process or VMM mapping remains
 FAIL: wrong bytes/offset/value, alias after close, or teardown-order violation
-BLOCKED: missing concrete ACL/tensor adapter or worker shutdown hook
+BLOCKED: live shared-view manifest or compressor-continuation proof unavailable
 kill: first incorrect address/value or any 60-second lifecycle-stage timeout
 ```

@@ -333,6 +333,19 @@ def test_packed_planner_serializes_exact_ranges_after_final_block_clamp() -> Non
     assert metadata["groups"][0]["components"][0]["layer_names"] == [f"c4.{index}" for index in range(21)]
     assert metadata["groups"][0]["components"][1]["layer_names"] == [f"c4.{index}" for index in range(21, 42)]
     assert metadata["groups"][1]["components"][0]["layer_names"] == [f"c128.{index}" for index in range(20)]
+    for expected_group, serialized_group in zip(
+        _flash_groups(),
+        metadata["groups"],
+    ):
+        component_layers = [
+            layer_name for component in serialized_group["components"] for layer_name in component["layer_names"]
+        ]
+        assert sorted(component_layers) == sorted(expected_group.layer_names)
+        assert len(component_layers) == len(set(component_layers))
+    # The full-B raw-tensor tuple paired C128 attention with its compressor
+    # state in the legacy allocator. The packed manifest must move that state
+    # family too; an attention-only owner sidecar cannot reclaim the tuple.
+    assert metadata["groups"][3]["components"][0]["layer_names"] == [f"c128_state.{index}" for index in range(20)]
     assert metadata["buckets"]
     assert len(metadata["scratch"]) == 1
     assert metadata["scratch"][0]["max_pages_per_rank"] == 65
@@ -342,6 +355,11 @@ def test_packed_planner_serializes_exact_ranges_after_final_block_clamp() -> Non
         assert segment["segment_base_bytes"] % (2 * 1024 * 1024) == 0
         assert segment["segment_allocated_bytes"] == 10 * 1024 * 1024
     assert len(metadata["total_physical_bytes_by_rank"]) == 8
+    # The C128 group quota is one page. A sentinel plus that page rounds to
+    # the same 2-MiB segment whether it is owner-sharded or replicated.
+    # Any bytes-vs-B0 delta for this fixed plan is quota-envelope reduction,
+    # not owner placement.
+    assert metadata["total_physical_bytes_by_rank"] == (metadata["aligned_quota_replicated_bytes_by_rank"])
     assert json.loads(json.dumps(metadata, sort_keys=True)) == metadata
 
 

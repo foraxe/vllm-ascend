@@ -54,6 +54,7 @@ class PackedArenaMetadataError(ValueError):
 class PackedArenaRuntimeState(str, Enum):
     OPEN = "open"
     SEALED = "sealed"
+    PUBLISHED = "published"
     CLOSING = "closing"
     CLEANUP_FAILED = "cleanup_failed"
     CLOSED = "closed"
@@ -631,6 +632,14 @@ def packed_arena_contract_from_metadata(
         plan.quota_replicated_bytes_by_rank(),
         "quota_replicated_bytes_by_rank",
     )
+    _require_equal(
+        _integers(
+            metadata.get("aligned_quota_replicated_bytes_by_rank"),
+            "aligned_quota_replicated_bytes_by_rank",
+        ),
+        plan.aligned_quota_replicated_bytes_by_rank(),
+        "aligned_quota_replicated_bytes_by_rank",
+    )
     return PackedArenaRuntimeContract(
         plan=plan,
         rank_accounting=_rank_accounting(plan),
@@ -775,8 +784,24 @@ class PackedArenaRuntime:
             raise RuntimeError("packed-arena runtime cannot be sealed; missing views: " f"{sorted(missing)}")
         self._state = PackedArenaRuntimeState.SEALED
 
+    def publish(self) -> None:
+        """Transfer a sealed runtime to its model-runner owner.
+
+        Publication is a distinct lifecycle transition so a runtime cannot be
+        exposed while required aliases are still missing.  The caller must
+        publish immediately before storing the runtime in its long-lived owner.
+        """
+        if self._state is not PackedArenaRuntimeState.SEALED:
+            raise RuntimeError("packed-arena runtime must be sealed before publication; " f"state={self._state.value}")
+        self._state = PackedArenaRuntimeState.PUBLISHED
+
     def close(self) -> None:
-        """Quiesce work, drop derived views, then close the owning lease."""
+        """Quiesce work, unregister/drop views, then close the owning lease.
+
+        OPEN and SEALED runtimes may be closed to roll back construction.
+        PUBLISHED runtimes follow the same ordered teardown after their
+        model-runner owner has stopped making the aliases reachable.
+        """
         if self._state is PackedArenaRuntimeState.CLOSED:
             return
         self._state = PackedArenaRuntimeState.CLOSING

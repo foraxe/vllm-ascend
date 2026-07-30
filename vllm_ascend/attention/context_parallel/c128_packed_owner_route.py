@@ -415,6 +415,11 @@ class C128PackedOwnerRoute:
     scratch_segments: tuple[C128PackedSegment, ...]
     max_scratch_pages: int
 
+    @property
+    def view_key(self) -> str:
+        """Return the matching :class:`PackedArenaRuntime` component key."""
+        return f"component/{self.group_name}/{self.component_name}/" f"{self.copy_index}"
+
     @classmethod
     def from_serialized_plan(
         cls,
@@ -884,3 +889,106 @@ class C128PackedOwnerRoute:
             entries=tuple(entries),
             max_scratch_pages=self.max_scratch_pages,
         )
+
+
+@dataclass(frozen=True)
+class C128PackedOwnerRouteTable:
+    """Immutable, explicit layer-to-route activation contract.
+
+    Runtime setup builds this table from the worker-delivered serialized plan
+    and passes the selected route to each C128 cache view. Keeping the table
+    caller-owned avoids another data-pointer or process-global registry.
+    """
+
+    routes: tuple[C128PackedOwnerRoute, ...]
+
+    @classmethod
+    def from_serialized_plan(
+        cls,
+        metadata: Mapping[str, Any],
+        *,
+        expected_group_layer_names: Sequence[Sequence[str]] | None = None,
+        allow_planner_only: bool = False,
+    ) -> C128PackedOwnerRouteTable:
+        """Build every C128 owner route after exact group/layer validation."""
+        metadata = _require_mapping(metadata, "packed metadata")
+        if not isinstance(allow_planner_only, bool):
+            raise ValueError("allow_planner_only must be a boolean")
+        groups = _validated_groups(metadata)
+        if expected_group_layer_names is not None and len(expected_group_layer_names) != len(groups):
+            raise ValueError(
+                "packed owner route cache-group count mismatch: " f"{len(expected_group_layer_names)} != {len(groups)}"
+            )
+
+        routes: list[C128PackedOwnerRoute] = []
+        seen_layer_names: set[str] = set()
+        for group_index, group in enumerate(groups):
+            group_name = group.get("name")
+            assert isinstance(group_name, str)
+            raw_group_layers = _require_sequence(
+                group.get("layer_names"),
+                f"{group_name}.layer_names",
+            )
+            group_layers = tuple(raw_group_layers)
+            if any(not isinstance(layer_name, str) or not layer_name for layer_name in group_layers):
+                raise ValueError(f"{group_name}.layer_names must contain nonempty strings")
+            if expected_group_layer_names is not None:
+                expected_layers = tuple(expected_group_layer_names[group_index])
+                if group_layers != expected_layers:
+                    raise ValueError(
+                        f"packed owner route layer mapping mismatch for group "
+                        f"{group_index}: {group_layers!r} != "
+                        f"{expected_layers!r}"
+                    )
+
+            components = _require_sequence(
+                group.get("components"),
+                f"{group_name}.components",
+            )
+            for component_index, raw_component in enumerate(components):
+                component = _require_mapping(
+                    raw_component,
+                    f"{group_name}.components[{component_index}]",
+                )
+                if component.get("placement") != C128_OWNER_PLACEMENT:
+                    continue
+                component_name = component.get("name")
+                if not isinstance(component_name, str) or not component_name:
+                    raise ValueError(f"{group_name}.components[{component_index}].name " "must be a nonempty string")
+                layer_names = tuple(
+                    _require_sequence(
+                        component.get("layer_names"),
+                        f"{group_name}/{component_name}.layer_names",
+                    )
+                )
+                if not layer_names or any(
+                    not isinstance(layer_name, str) or not layer_name for layer_name in layer_names
+                ):
+                    raise ValueError(
+                        f"{group_name}/{component_name}.layer_names must " "contain at least one nonempty string"
+                    )
+                for copy_index, layer_name in enumerate(layer_names):
+                    if layer_name in seen_layer_names:
+                        raise ValueError(f"packed C128 layer {layer_name!r} is routed more " "than once")
+                    route = C128PackedOwnerRoute.from_serialized_plan(
+                        metadata,
+                        group_index=group_index,
+                        group_name=group_name,
+                        component_name=component_name,
+                        layer_name=layer_name,
+                        copy_index=copy_index,
+                        allow_planner_only=allow_planner_only,
+                    )
+                    routes.append(route)
+                    seen_layer_names.add(layer_name)
+
+        if not routes:
+            raise ValueError("packed metadata contains no C128 owner routes")
+        return cls(routes=tuple(routes))
+
+    def for_layer(self, layer_name: str) -> C128PackedOwnerRoute:
+        """Resolve one exact C128 layer without mutable lookup state."""
+        matches = tuple(route for route in self.routes if route.layer_name == layer_name)
+        if len(matches) != 1:
+            raise ValueError(f"expected one packed C128 route for layer {layer_name!r}, " f"found {len(matches)}")
+        return matches[0]

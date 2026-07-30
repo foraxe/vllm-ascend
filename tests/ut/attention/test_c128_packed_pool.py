@@ -262,6 +262,198 @@ def test_tp8_owner_slots_are_dense_with_ceil_tail() -> None:
     assert bucket.persistent_bytes_by_rank == expected_allocated_bytes
 
 
+def test_one_page_c128_quota_has_no_owner_saving_after_vmm_alignment() -> None:
+    """Keep fixed-workload quota reduction separate from owner placement."""
+    plan = PackedPoolPlan(
+        global_block_capacity=4_190,
+        tp_size=8,
+        groups=(
+            _group(
+                "c128",
+                1,
+                _component(
+                    "c128_owner",
+                    placement=PackedPlacement.C128_OWNER,
+                    copies=20,
+                    allocation_granularity_bytes=VMM_GRANULARITY_BYTES,
+                ),
+            ),
+        ),
+        scratch=(
+            PackedPoolScratchSpec(
+                bucket="wide",
+                page_size_bytes=WIDE_PAGE_BYTES,
+                max_pages_per_rank=65,
+                allocation_granularity_bytes=VMM_GRANULARITY_BYTES,
+            ),
+        ),
+    )
+
+    # A sentinel plus zero or one owned data page is below the 16-page VMM
+    # granule. Every owner and replicated copy therefore consumes one 2-MiB
+    # segment per rank, and the identical scratch does not change the delta.
+    assert plan.total_physical_bytes_by_rank() == (plan.aligned_quota_replicated_bytes_by_rank())
+    assert plan.total_physical_bytes_by_rank(include_scratch=False) == (
+        plan.aligned_quota_replicated_bytes_by_rank(
+            include_scratch=False,
+        )
+    )
+    assert plan.quota_replicated_bytes_by_rank() != (
+        plan.aligned_quota_replicated_bytes_by_rank(
+            include_scratch=False,
+        )
+    )
+
+
+def test_aligned_replicated_counterfactual_includes_bucket_alignment_gaps() -> None:
+    """Mixed segment granularities must advance the shared bucket cursor."""
+    plan = PackedPoolPlan(
+        global_block_capacity=5,
+        tp_size=1,
+        groups=(
+            _group(
+                "first",
+                1,
+                _component(
+                    "small_alignment",
+                    placement=PackedPlacement.REPLICATED,
+                    page_size_bytes=128,
+                    allocation_granularity_bytes=256,
+                ),
+            ),
+            _group(
+                "second",
+                1,
+                _component(
+                    "large_alignment",
+                    placement=PackedPlacement.C128_OWNER,
+                    page_size_bytes=128,
+                    allocation_granularity_bytes=1_024,
+                ),
+            ),
+        ),
+        scratch=(
+            PackedPoolScratchSpec(
+                bucket="wide",
+                page_size_bytes=128,
+                max_pages_per_rank=1,
+                allocation_granularity_bytes=1_024,
+            ),
+        ),
+    )
+
+    # first=[0,256), alignment gap=[256,1024), second=[1024,2048),
+    # scratch=[2048,3072).
+    assert plan.aligned_quota_replicated_bytes_by_rank() == (3_072,)
+    assert plan.aligned_quota_replicated_bytes_by_rank(include_scratch=False) == (2_048,)
+
+
+def test_six_group_same_b_counterfactual_isolates_owner_saving() -> None:
+    """Assign the spare range to C128 so owner placement is the only delta."""
+    workload_quotas = (17, 1, 642, 165, 65, 65)
+    global_block_capacity = 4_190
+    spare_blocks = global_block_capacity - 1 - sum(workload_quotas)
+    same_b_quotas = (
+        workload_quotas[0],
+        workload_quotas[1] + spare_blocks,
+        *workload_quotas[2:],
+    )
+    assert same_b_quotas == (17, 3_235, 642, 165, 65, 65)
+
+    plan = PackedPoolPlan(
+        global_block_capacity=global_block_capacity,
+        tp_size=8,
+        groups=(
+            _group(
+                "c4",
+                same_b_quotas[0],
+                _component(
+                    "c4_narrow",
+                    placement=PackedPlacement.REPLICATED,
+                    copies=21,
+                    bucket="narrow",
+                    page_size_bytes=NARROW_PAGE_BYTES,
+                    allocation_granularity_bytes=VMM_GRANULARITY_BYTES,
+                ),
+                _component(
+                    "c4_wide",
+                    placement=PackedPlacement.REPLICATED,
+                    copies=21,
+                    allocation_granularity_bytes=VMM_GRANULARITY_BYTES,
+                ),
+            ),
+            _group(
+                "c128",
+                same_b_quotas[1],
+                _component(
+                    "c128_owner",
+                    placement=PackedPlacement.C128_OWNER,
+                    copies=20,
+                    allocation_granularity_bytes=VMM_GRANULARITY_BYTES,
+                ),
+            ),
+            _group(
+                "c4_state",
+                same_b_quotas[2],
+                _component(
+                    "c4_state",
+                    placement=PackedPlacement.REPLICATED,
+                    copies=21,
+                    allocation_granularity_bytes=VMM_GRANULARITY_BYTES,
+                ),
+            ),
+            _group(
+                "c128_state",
+                same_b_quotas[3],
+                _component(
+                    "c128_state",
+                    placement=PackedPlacement.REPLICATED,
+                    copies=20,
+                    allocation_granularity_bytes=VMM_GRANULARITY_BYTES,
+                ),
+            ),
+            _group(
+                "dense_swa_a",
+                same_b_quotas[4],
+                _component(
+                    "dense_swa_a",
+                    placement=PackedPlacement.REPLICATED,
+                    allocation_granularity_bytes=VMM_GRANULARITY_BYTES,
+                ),
+            ),
+            _group(
+                "dense_swa_b",
+                same_b_quotas[5],
+                _component(
+                    "dense_swa_b",
+                    placement=PackedPlacement.REPLICATED,
+                    allocation_granularity_bytes=VMM_GRANULARITY_BYTES,
+                ),
+            ),
+        ),
+        scratch=(
+            PackedPoolScratchSpec(
+                bucket="wide",
+                page_size_bytes=WIDE_PAGE_BYTES,
+                max_pages_per_rank=65,
+                allocation_granularity_bytes=VMM_GRANULARITY_BYTES,
+            ),
+        ),
+    )
+
+    assert plan.used_logical_blocks == global_block_capacity - 1
+    owner_bytes = plan.total_physical_bytes_by_rank()
+    aligned_replicated_bytes = plan.aligned_quota_replicated_bytes_by_rank()
+    assert all(
+        owner < replicated
+        for owner, replicated in zip(
+            owner_bytes,
+            aligned_replicated_bytes,
+        )
+    )
+    assert len(set(aligned_replicated_bytes)) == 1
+
+
 def test_global_id_roundtrip_across_group_ranges() -> None:
     groups = (
         _group(
@@ -385,8 +577,8 @@ def test_sentinel_and_out_of_range_ids_fail_closed() -> None:
         plan.map_replicated("flash", "c128", 1, tp_rank=0)
 
 
-def test_real_flash_shape_has_positive_capacity_saving_with_bounded_scratch() -> None:
-    """At B=4190, packed C128 owners remove the G26 retained backing."""
+def test_representative_flash_shape_has_positive_accounting_delta() -> None:
+    """A representative same-B counterfactual isolates an owner byte delta."""
     num_blocks = 4_190
     tp_size = 8
     c128_layers = 20
@@ -462,6 +654,13 @@ def test_real_flash_shape_has_positive_capacity_saving_with_bounded_scratch() ->
     assert candidate_bytes == (expected_worst_rank_bytes,) * tp_size
     assert max(candidate_bytes) < baseline_bytes
     assert baseline_bytes - max(candidate_bytes) > 0
+    assert all(
+        candidate < replicated
+        for candidate, replicated in zip(
+            candidate_bytes,
+            plan.aligned_quota_replicated_bytes_by_rank(),
+        )
+    )
 
     for component_name, copy_index in (
         ("other_wide", other_wide_layers - 1),
