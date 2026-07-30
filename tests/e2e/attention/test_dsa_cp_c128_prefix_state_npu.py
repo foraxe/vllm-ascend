@@ -53,9 +53,33 @@ _STATE_RTOL = 1e-3
 
 
 def _make_rope(start_pos: int, token_count: int, *, device: torch.device) -> tuple[torch.Tensor, torch.Tensor]:
-    """Return deterministic C128-position RoPE rows, including the batch tail."""
-    row_count = token_count // _COMPRESS_RATIO + 1
-    row_positions = start_pos + torch.arange(row_count, dtype=torch.float32) * _COMPRESS_RATIO
+    """Match production completed-group positions plus zero-position padding."""
+    valid_rows = _valid_output_rows(start_pos, token_count)
+    row_count = min(
+        token_count,
+        token_count // _COMPRESS_RATIO + 1,
+    )
+    padding_rows = row_count - valid_rows
+    if padding_rows < 0:
+        raise ValueError(
+            "compressor output rows cannot represent completed C128 groups: "
+            f"start_pos={start_pos}, token_count={token_count}"
+        )
+    first_group_start = start_pos - start_pos % _COMPRESS_RATIO
+    valid_positions = (
+        first_group_start
+        + torch.arange(valid_rows, dtype=torch.float32)
+        * _COMPRESS_RATIO
+    )
+    # ``_get_padded_compressed_position`` pads missing per-request rows with
+    # input position zero. ``slice_c128_local_compressor_rope`` then carries
+    # this same final row into every aligned local invocation.
+    row_positions = torch.cat(
+        (
+            valid_positions,
+            torch.zeros(padding_rows, dtype=torch.float32),
+        )
+    )
     frequencies = torch.exp(
         -math.log(10000.0)
         * torch.arange(_ROPE_HEAD_DIM, dtype=torch.float32)
@@ -128,6 +152,20 @@ def test_empty_metric_is_well_defined() -> None:
     assert metric["failing_rows_at_output_tolerance"] == []
     assert metric["row_max_abs"] == []
     assert metric["equal_hash"]
+
+
+def test_rope_uses_production_zero_position_padding() -> None:
+    """The final compressor ABI row must encode input position zero."""
+    sin, cos = _make_rope(
+        _PREFIX_TOKENS,
+        _TAIL_TOKENS,
+        device=torch.device("cpu"),
+    )
+
+    assert sin.shape == (25, _ROPE_HEAD_DIM)
+    assert cos.shape == (25, _ROPE_HEAD_DIM)
+    torch.testing.assert_close(sin[-1], torch.zeros_like(sin[-1]))
+    torch.testing.assert_close(cos[-1], torch.ones_like(cos[-1]))
 
 
 def _logical_state_slice(
@@ -236,7 +274,8 @@ def test_c128_local_prefix_preserves_tail_and_continuation_state() -> None:
         device=device,
     )
     state_block_table = torch.arange(
-        _STATE_BLOCK_TABLE_ENTRIES,
+        1,
+        _STATE_BLOCK_TABLE_ENTRIES + 1,
         dtype=torch.int32,
         device=device,
     ).view(1, -1)
@@ -659,12 +698,17 @@ def test_c128_local_prefix_preserves_tail_and_continuation_state() -> None:
             "norm_shape": list(norm.shape),
             "state_shape": list(initial_state.shape),
             "state_block_table_shape": list(state_block_table.shape),
+            "state_block_table_first_physical_id": 1,
+            "state_block_table_last_physical_id": (
+                _STATE_BLOCK_TABLE_ENTRIES
+            ),
             "prefix_rope_shape": list(prefix_sin.shape),
             "local_rope_shape": [
                 _LOCAL_TOKENS // _COMPRESS_RATIO + 1,
                 _ROPE_HEAD_DIM,
             ],
             "tail_rope_shape": list(tail_sin.shape),
+            "rope_padding_input_position": 0,
         },
         "thresholds": {
             "output_atol": _OUTPUT_ATOL,
