@@ -34,6 +34,14 @@ temporary local view. It requires TP > 1, forbids a KV-transfer connector, and
 keeps the replicated C128 path as the default. Do not combine it with an
 unrelated DSA overlap or Mooncake A/B.
 
+`ENABLE_DSA_CP_LOCAL_CURRENT_KV=1` is the default-off E3 path for a single,
+unpadded, C128-aligned prefill. It replaces the full-hidden AllGather with
+local WKV/norm/RoPE plus a narrower finished-KV gather, and reuses the fixed
+local-compressor result exchange before writing the ordinary replicated C128
+cache. It does not require `ENABLE_C128_OWNER_SHARD`. See
+`docs/source/developer_guide/performance_and_debug/dsa_cp_local_current_kv_experiment.md`
+for the fixed controls and pass/kill criteria.
+
 Set `ENABLE_KV_CACHE_ALLOCATION_ACCOUNTING=1` to emit one
 `KV_CACHE_ALLOCATION` line per rank after cache initialization. The line
 deduplicates PyTorch backing storages and reports baseline raw KV, compact

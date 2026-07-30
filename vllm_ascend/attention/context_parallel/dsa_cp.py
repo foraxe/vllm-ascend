@@ -18,6 +18,8 @@ from vllm_ascend.attention.abstract import DSAAttentionImpl
 from vllm_ascend.attention.attention_v1 import AscendAttentionState
 from vllm_ascend.attention.context_parallel.c128_owner_cache import (
     C128LocalCompressorPlan,
+    c128_positions_are_contiguous,
+    can_use_c128_local_current_kv,
     get_c128_owner_cache,
     make_c128_local_compressor_plan,
     slice_c128_local_compressor_output,
@@ -196,6 +198,9 @@ class AscendDSACPMetadataBuilder(AttentionMetadataBuilder[AscendDSAMetadata]):
         self.seq_lens_cpu: torch.Tensor = None
 
         self.compressor_ratio = getattr(kv_cache_spec, "compress_ratio", 0)
+        self.enable_dsa_cp_local_current_kv = bool(
+            (vllm_config.additional_config or {}).get("enable_dsa_cp_local_current_kv", False)
+        )
         hf_config = self.model_config.hf_config
 
         if AscendDSACPMetadataBuilder.hadamard is None:
@@ -636,6 +641,14 @@ class AscendDSACPMetadataBuilder(AttentionMetadataBuilder[AscendDSAMetadata]):
                 tp_size=get_tp_group().world_size,
                 sequence_start_pos=sequence_start_pos,
             )
+            if (
+                self.enable_dsa_cp_local_current_kv
+                and c128_local_compressor_plan is not None
+                and not c128_positions_are_contiguous(
+                    input_positions_cpu[:num_input_tokens]
+                )
+            ):
+                c128_local_compressor_plan = None
 
         cp_metadata = DSACPMetadata(
             local_query_start_loc=local_query_start_loc,
@@ -969,6 +982,13 @@ class AscendDSACPImpl(DSAAttentionImpl):
         self.enable_c128_owner_local_compressor = bool(
             (self.vllm_config.additional_config or {}).get("enable_c128_owner_local_compressor", False)
         )
+        # C128-aligned, single-request prefill can compute WKV and compressor
+        # rows from the local SP shard, then exchange those smaller results
+        # into the established replicated SWA/C128 caches.  This is
+        # independent from persistent C128 owner sharding and defaults off.
+        self.enable_dsa_cp_local_current_kv = bool(
+            (self.vllm_config.additional_config or {}).get("enable_dsa_cp_local_current_kv", False)
+        )
         # indexer param
         if self.indexer is not None:
             self.indexer_heads: int = self.indexer.n_heads
@@ -1100,23 +1120,50 @@ class AscendDSACPImpl(DSAAttentionImpl):
                     c128_owner_cache is not None,
                 )
         common_attn_metadata = attn_metadata[0]
+        assert common_attn_metadata.req_metadata is not None
+        assert swa_metadata.req_metadata is not None
+        req_metadata = common_attn_metadata.req_metadata
+        cp_metadata = req_metadata.cp_metadata
+        has_prefill = _has_prefill(common_attn_metadata.attn_state)
+        c128_local_compressor_plan = cp_metadata.c128_local_compressor_plan
+        use_dsa_cp_local_current_kv = can_use_c128_local_current_kv(
+            enabled=self.enable_dsa_cp_local_current_kv,
+            has_prefill=has_prefill,
+            need_gather_q_kv=need_gather_q_kv,
+            compress_ratio=self.compress_ratio,
+            local_compressor_plan=c128_local_compressor_plan,
+            local_hidden_rows=hidden_states_local.shape[0],
+            tokens_per_rank=cp_metadata.tokens_per_rank,
+            num_tokens_pad=cp_metadata.num_tokens_pad,
+            num_input_tokens=req_metadata.input_positions.shape[0],
+            num_actual_tokens=common_attn_metadata.num_actual_tokens,
+        )
+        if use_dsa_cp_local_current_kv and self.tp_rank == 0:
+            logger.info_once(
+                "DSA-CP local-current-KV active: layer=%s; exchanging "
+                "RoPE-complete SWA KV and C128 compressor rows instead of hidden states.",
+                layer_name,
+            )
 
-        overlap_hidden_states_allgather = self.multistream_dsa_preprocess and need_gather_q_kv
+        overlap_hidden_states_allgather = (
+            self.multistream_dsa_preprocess
+            and need_gather_q_kv
+            and not use_dsa_cp_local_current_kv
+        )
         wait_hidden_states_local_event = (
             torch.npu.current_stream().record_event() if overlap_hidden_states_allgather else None
         )
         with npu_stream_switch(attention_calculation_stream(), enabled=overlap_hidden_states_allgather):
             if wait_hidden_states_local_event:
                 torch.npu.current_stream().wait_event(wait_hidden_states_local_event)
-            hidden_states = torch.ops.vllm.maybe_all_gather_and_maybe_unpad(hidden_states_local, need_gather_q_kv)
+            hidden_states = torch.ops.vllm.maybe_all_gather_and_maybe_unpad(
+                hidden_states_local,
+                need_gather_q_kv and not use_dsa_cp_local_current_kv,
+            )
             wait_hidden_states_allgather_event = (
                 torch.npu.current_stream().record_event() if overlap_hidden_states_allgather else None
             )
 
-        assert common_attn_metadata.req_metadata is not None
-        assert swa_metadata.req_metadata is not None
-        req_metadata = common_attn_metadata.req_metadata
-        cp_metadata = req_metadata.cp_metadata
         cos = req_metadata.cos[layer_name]
         sin = req_metadata.sin[layer_name]
         local_cos = cp_metadata.local_cos[layer_name]
@@ -1124,13 +1171,15 @@ class AscendDSACPImpl(DSAAttentionImpl):
         actual_seq_lengths_query = req_metadata.query_start_loc
         local_seq_lengths_query = cp_metadata.local_query_start_loc
         local_seq_lengths_key = cp_metadata.local_seq_lens
-        has_prefill = _has_prefill(common_attn_metadata.attn_state)
         trace_c128 = self.enable_c128_owner_debug and c128_owner_cache is not None and has_prefill
-        c128_local_compressor_plan = cp_metadata.c128_local_compressor_plan
         use_c128_local_compressor = (
-            self.enable_c128_owner_local_compressor
-            and c128_owner_cache is not None
-            and has_prefill
+            (
+                self.enable_c128_owner_local_compressor
+                and c128_owner_cache is not None
+            )
+            or use_dsa_cp_local_current_kv
+        ) and (
+            has_prefill
             and self.compress_ratio == 128
             and c128_local_compressor_plan is not None
         )
@@ -1248,17 +1297,28 @@ class AscendDSACPImpl(DSAAttentionImpl):
         if wait_hidden_states_allgather_event:
             torch.npu.current_stream().wait_event(wait_hidden_states_allgather_event)
 
-        kv = self.wkv(hidden_states)
+        kv = self.wkv(
+            hidden_states_local if use_dsa_cp_local_current_kv else hidden_states
+        )
         kv = self.kv_norm(kv)
         assert self.rope_head_dim is not None
         kv = kv.view(-1, 1, self.nope_head_dim + self.rope_head_dim)
         torch.ops._C_ascend.inplace_partial_rotary_mul(
             kv.unsqueeze(1),
-            cos,
-            sin,
+            local_cos if use_dsa_cp_local_current_kv else cos,
+            local_sin if use_dsa_cp_local_current_kv else sin,
             rotary_mode="interleave",
             partial_slice=[self.nope_head_dim, self.head_dim],
         )
+        if use_dsa_cp_local_current_kv:
+            # WKV is replicated across TP ranks.  Compute each token once on
+            # its SP owner, then gather the much narrower, RoPE-complete KV
+            # rows so the existing replicated SWA cache scatter is unchanged.
+            # The C128 alignment gate implies no token padding at this point.
+            kv = torch.ops.vllm.maybe_all_gather_and_maybe_unpad(
+                kv.contiguous(),
+                True,
+            )
         torch.ops._C_ascend.npu_scatter_nd_update_v2(swa_kv_cache, swa_metadata.req_metadata.slot_mapping, kv)
         trace_c128_stage("swa_ready")
 

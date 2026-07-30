@@ -90,6 +90,55 @@ def make_c128_local_compressor_plan(
     return C128LocalCompressorPlan(slot_start=slot_start, slot_end=slot_end)
 
 
+def c128_positions_are_contiguous(input_positions_cpu: torch.Tensor) -> bool:
+    """Whether rank-major exchange preserves the request's global row order."""
+    if input_positions_cpu.ndim != 1:
+        return False
+    positions = input_positions_cpu.to(device="cpu", dtype=torch.int64)
+    return positions.numel() <= 1 or torch.equal(
+        positions[1:],
+        positions[:-1] + 1,
+    )
+
+
+def can_use_c128_local_current_kv(
+    *,
+    enabled: bool,
+    has_prefill: bool,
+    need_gather_q_kv: bool,
+    compress_ratio: int,
+    local_compressor_plan: C128LocalCompressorPlan | None,
+    local_hidden_rows: int,
+    tokens_per_rank: int,
+    num_tokens_pad: int,
+    num_input_tokens: int,
+    num_actual_tokens: int,
+) -> bool:
+    """Whether DSA-CP can exchange current KV instead of full hidden rows.
+
+    The first runtime gate is intentionally narrow.  It accepts only the
+    single-request, fully C128-aligned layout already certified by
+    :func:`make_c128_local_compressor_plan`.  C4, decode, a caller that does
+    not require sequence gathering, mixed requests, and unaligned tails keep
+    the established hidden-state gather path.
+
+    The returned decision does not depend on owner-sharded persistent cache
+    storage.  The local producer can therefore feed the ordinary replicated
+    SWA and C128 consumer caches.
+    """
+    return (
+        enabled
+        and has_prefill
+        and need_gather_q_kv
+        and compress_ratio == 128
+        and local_compressor_plan is not None
+        and local_hidden_rows == tokens_per_rank
+        and num_tokens_pad == num_input_tokens
+        and num_input_tokens == num_actual_tokens
+        and local_compressor_plan.rows * compress_ratio == tokens_per_rank
+    )
+
+
 def slice_c128_local_compressor_rope(
     rope: torch.Tensor,
     plan: C128LocalCompressorPlan,

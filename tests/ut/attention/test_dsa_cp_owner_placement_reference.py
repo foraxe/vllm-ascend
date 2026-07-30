@@ -17,6 +17,8 @@ from vllm_ascend.attention.context_parallel.c128_owner_cache import (
     C128OwnerShardCache,
     c128_local_page,
     c128_owner,
+    c128_positions_are_contiguous,
+    can_use_c128_local_current_kv,
     get_c128_owner_cache,
     make_c128_local_compressor_plan,
     register_c128_owner_cache,
@@ -62,6 +64,97 @@ def test_owner_wkv_direct_placement_matches_allgather_baseline(world_size: int) 
         _place_kv(owner_direct, slots[start:end], owner_kv)
 
     torch.testing.assert_close(owner_direct, baseline)
+
+
+def test_local_current_kv_result_exchange_preserves_replicated_swa_slots() -> None:
+    """Local WKV plus result exchange matches gathered-hidden WKV placement.
+
+    The position-dependent addition models the requirement that RoPE is
+    applied with each shard's global positions before the KV rows are
+    exchanged.  Concatenation models the rank-major result of the production
+    TP gather; both paths then use the unchanged global SWA slot mapping.
+    """
+    torch.manual_seed(29)
+    world_size, tokens_per_rank, hidden_dim, kv_dim = 4, 8, 13, 3
+    total_tokens = world_size * tokens_per_rank
+    hidden = torch.randn(total_tokens, hidden_dim)
+    wkv = torch.randn(hidden_dim, kv_dim)
+    positions = torch.arange(total_tokens, dtype=hidden.dtype).unsqueeze(1)
+    slots = torch.randperm(total_tokens, generator=torch.Generator().manual_seed(31))
+
+    gathered_hidden_kv = hidden @ wkv + positions
+    baseline = torch.zeros(world_size, total_tokens, kv_dim)
+    _place_kv(baseline, slots, gathered_hidden_kv)
+
+    local_current_rows = []
+    for rank in range(world_size):
+        start = rank * tokens_per_rank
+        end = start + tokens_per_rank
+        local_current_rows.append(hidden[start:end] @ wkv + positions[start:end])
+    exchanged_kv = torch.cat(local_current_rows)
+    candidate = torch.zeros_like(baseline)
+    _place_kv(candidate, slots, exchanged_kv)
+
+    torch.testing.assert_close(candidate, baseline)
+    assert hidden.numel() > exchanged_kv.numel()
+
+
+@pytest.mark.parametrize(
+    (
+        "enabled",
+        "has_prefill",
+        "need_gather",
+        "compress_ratio",
+        "has_plan",
+        "local_hidden_rows",
+        "tokens_per_rank",
+        "num_tokens_pad",
+        "num_input_tokens",
+        "num_actual_tokens",
+        "expected",
+    ),
+    [
+        (False, True, True, 128, True, 256, 256, 2048, 2048, 2048, False),
+        (True, False, True, 128, True, 256, 256, 2048, 2048, 2048, False),
+        (True, True, False, 128, True, 256, 256, 2048, 2048, 2048, False),
+        (True, True, True, 4, True, 256, 256, 2048, 2048, 2048, False),
+        (True, True, True, 128, False, 256, 256, 2048, 2048, 2048, False),
+        (True, True, True, 128, True, 255, 256, 2048, 2048, 2048, False),
+        (True, True, True, 128, True, 256, 256, 2048, 2041, 2041, False),
+        (True, True, True, 128, True, 256, 256, 2048, 2048, 2041, False),
+        (True, True, True, 128, True, 256, 256, 2048, 2048, 2048, True),
+    ],
+)
+def test_local_current_kv_gate_is_exact(
+    enabled: bool,
+    has_prefill: bool,
+    need_gather: bool,
+    compress_ratio: int,
+    has_plan: bool,
+    local_hidden_rows: int,
+    tokens_per_rank: int,
+    num_tokens_pad: int,
+    num_input_tokens: int,
+    num_actual_tokens: int,
+    expected: bool,
+) -> None:
+    """Only aligned C128 prefill with an actual SP gather can enter E3."""
+    plan = C128LocalCompressorPlan(0, 2) if has_plan else None
+    assert (
+        can_use_c128_local_current_kv(
+            enabled=enabled,
+            has_prefill=has_prefill,
+            need_gather_q_kv=need_gather,
+            compress_ratio=compress_ratio,
+            local_compressor_plan=plan,
+            local_hidden_rows=local_hidden_rows,
+            tokens_per_rank=tokens_per_rank,
+            num_tokens_pad=num_tokens_pad,
+            num_input_tokens=num_input_tokens,
+            num_actual_tokens=num_actual_tokens,
+        )
+        is expected
+    )
 
 
 def test_direct_placement_rejects_colliding_slots() -> None:
@@ -265,6 +358,14 @@ def test_c128_local_compressor_plan_rejects_unaligned_tp8_tail() -> None:
         tp_size=8,
         sequence_start_pos=5120,
     ) is None
+
+
+def test_local_current_kv_rejects_noncontiguous_positions() -> None:
+    """Rank-major result exchange requires one contiguous global row order."""
+    positions = torch.arange(1024, dtype=torch.int64)
+    positions[640:] += 1
+    assert not c128_positions_are_contiguous(positions)
+    assert c128_positions_are_contiguous(torch.arange(1024, dtype=torch.int64))
 
 
 def test_c128_local_compressor_rope_retains_per_shard_padding_row() -> None:
