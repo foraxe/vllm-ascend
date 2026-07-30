@@ -329,6 +329,98 @@ The canonical G28 artifact is:
 /a3_inference/nyx/dsv4_dsa_cp/runs/204/g28_remote_tensor_20260730_043455/
 ```
 
+### Concrete ACL and Torch-NPU adapters
+
+The default-off runtime seam is implemented by:
+
+- `c128_packed_acl_backend.py`: `AscendAclPackedArenaBackend`;
+- `c128_packed_torch_npu.py`: `TorchNpuPackedArenaTensorFactory`.
+
+Importing either module does not load `libascendcl.so`, import `torch` or
+`torch_npu`, select a device, allocate memory, or create a tensor. The
+integration must construct both adapters only after its packed-arena feature
+gate passes. Construction fails closed when a required public symbol is
+absent. Tensor binding fails closed when either of the two G28-proven
+Torch-NPU external-storage constructors is absent.
+
+The ACL backend uses the public CANN 9.0 lifecycle and checks every return
+code:
+
+```text
+aclrtSetDevice
+aclrtMemGetAllocationGranularity == 2 MiB
+aclrtReserveMemAddress(alignment=0) -> verify returned VA is 2-MiB aligned
+aclrtMallocPhysical(2-MiB multiple)
+aclrtMapMem
+aclrtMemSetAccess(READWRITE, local device)
+aclrtMemset
+...
+aclrtUnmapMem
+aclrtFreePhysical
+aclrtReleaseMemAddress
+```
+
+CANN 9.0 documents the `aclrtReserveMemAddress` `alignment` argument as
+reserved and requires zero. The adapter therefore passes zero to ACL while
+requiring the arena contract to request 2-MiB alignment and checking the
+returned VA. An unaligned non-null VA is immediately released.
+
+`aclrtMemSetAccess` is failure-atomic with respect to the lease: if it fails
+after `aclrtMapMem` succeeds, the adapter calls `aclrtUnmapMem` before
+propagating the access error. If that rollback also fails,
+`AclVmmRollbackError` retains both errors and the backend keeps the mapping in
+its own registry. The lease rollback's `free_physical` call retries that
+unmap; physical free and VA release refuse to run while the mapping remains.
+If the retry also fails, `PackedArenaOpenError.lease` remains reachable and a
+later explicit `close()` can retry the same ordered cleanup.
+
+The Torch-NPU factory binds a root `uint8` tensor spanning the complete mapped
+range. It uses a local `npu:<device_index>` tag, verifies pointer, byte count,
+element size, dtype, and device, and retains the external storage object for
+exactly as long as the root tensor. Its binding never calls ACL or allocator
+free APIs. `close()` only drops the tensor reference followed by the storage
+reference, leaving the arena lease as the sole VMM owner.
+
+CPU mock coverage is in
+`tests/ut/attention/test_c128_packed_acl_adapter.py`. It proves canonical
+argument values, 2-MiB range checks, missing-capability failure, map/access
+rollback, non-owning binding behavior, and the complete
+`alias close -> fence -> unmap -> free physical -> release VA` order.
+
+The `.204` runtime gate is intentionally separate from model-runner
+integration:
+
+1. with no serving process using the selected device, create one 2-MiB lease;
+2. verify the root tensor pointer equals the reserved VA;
+3. run `zero -> fill -> clone -> compare` through ordinary Torch-NPU kernels;
+4. discard every derived view, close the lease, and synchronize;
+5. verify HBM returns to the pre-allocation level and no mapping or process is
+   left behind;
+6. inject one post-map access failure in a dedicated process and verify the
+   immediate-unmap rollback before enabling a worker feature flag.
+
+The success path passed on 2026-07-30 using logical NPU0:
+
+```text
+artifact = /a3_inference/nyx/dsv4_dsa_cp/runs/204/
+           20260730_g35_packed_acl_adapter_smoke_84f3da22/
+arena_bytes = 2097152
+tensor_data_ptr == reserved_va
+fill(37) -> clone -> compare = PASS
+tracked reservations after close = 0
+tracked physical handles after close = 0
+tracked mappings after close = 0
+```
+
+`npu_smi_before.txt` records eight idle NPUs. The controlling session's
+immediate post-run `npu-smi` also showed no running processes and NPU0 HBM use
+at 3130 MiB versus 3132 MiB before the run. The later redirected
+`npu_smi_after.txt` captured another session's newly started vLLM workers and
+is not the smoke teardown sample; the artifact README preserves that timing
+boundary. The real fault-injection step remains mock-proven only and must use
+a dedicated idle process before worker integration. This success-path result
+does not prove model cache equivalence, capacity, or TTFT.
+
 ### Line-anchored integration design
 
 The anchors below are for integration base
