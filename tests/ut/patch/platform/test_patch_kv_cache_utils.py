@@ -167,14 +167,30 @@ def _flash_groups():
     ]
 
 
-def _packed_vllm_config(*, enabled: bool = True):
+def _packed_vllm_config(
+    *,
+    enabled: bool = True,
+    activation: bool = False,
+):
+    additional_config = {
+        patch_kv_cache_utils.ENABLE_C128_PACKED_POOL_PLANNER: enabled,
+    }
+    if activation:
+        additional_config.update(
+            {
+                patch_kv_cache_utils.ENABLE_C128_PACKED_POOL_ACTIVATION: True,
+                patch_kv_cache_utils.ENABLE_C128_PACKED_VMM_ARENA: True,
+            }
+        )
     return SimpleNamespace(
-        additional_config={patch_kv_cache_utils.ENABLE_C128_PACKED_POOL_PLANNER: enabled},
+        additional_config=additional_config,
         parallel_config=SimpleNamespace(
             tensor_parallel_size=8,
             pipeline_parallel_size=1,
             decode_context_parallel_size=1,
             prefill_context_parallel_size=1,
+            enable_expert_parallel=True,
+            data_parallel_size=1,
         ),
         model_config=SimpleNamespace(
             model="/models/DeepSeek-V4-Flash-w8a8",
@@ -311,6 +327,10 @@ def test_packed_planner_serializes_exact_ranges_after_final_block_clamp() -> Non
     assert metadata["profile"] == "dsv4_flash_prefill_8200_tokens_1out"
     assert metadata["planner_only"] is True
     assert metadata["downstream_runtime_abi_ready"] is False
+    assert not hasattr(
+        cache_config,
+        patch_kv_cache_utils.FIXED_GROUP_BLOCK_QUOTAS_ATTR,
+    )
     assert metadata["global_block_capacity"] == 4_190
     assert metadata["used_logical_blocks"] == 955
     assert metadata["unused_logical_blocks"] == 3_234
@@ -367,6 +387,329 @@ def test_packed_planner_serializes_exact_ranges_after_final_block_clamp() -> Non
     assert metadata["total_physical_bytes_by_rank"] == expected_fixed_bytes
     assert metadata["aligned_quota_replicated_bytes_by_rank"] == expected_fixed_bytes
     assert json.loads(json.dumps(metadata, sort_keys=True)) == metadata
+
+
+def test_packed_activation_publishes_same_b_quota_transaction() -> None:
+    config = _packed_vllm_config(activation=True)
+    worker_configs = [
+        SimpleNamespace(
+            num_blocks=4_190,
+            kv_cache_groups=_flash_groups(),
+            kv_cache_tensors=[],
+        )
+        for _ in range(2)
+    ]
+
+    mla_patch, swa_patch, uniform_patch = _patch_packed_spec_types()
+    with (
+        mla_patch,
+        swa_patch,
+        uniform_patch,
+        patch.object(
+            patch_kv_cache_utils,
+            "_orig_get_kv_cache_configs",
+            return_value=worker_configs,
+        ),
+    ):
+        result = patch_kv_cache_utils._ascend_get_kv_cache_configs(
+            config,
+            [{"layer": object()}, {"layer": object()}],
+            [999_999, 999_999],
+        )
+
+    assert result is worker_configs
+    metadata = getattr(
+        worker_configs[0],
+        patch_kv_cache_utils.C128_PACKED_POOL_METADATA_KEY,
+    )
+    assert (
+        getattr(
+            worker_configs[1],
+            patch_kv_cache_utils.C128_PACKED_POOL_METADATA_KEY,
+        )
+        == metadata
+    )
+    assert config.additional_config[patch_kv_cache_utils.C128_PACKED_POOL_METADATA_KEY] is metadata
+    required_quotas = [17, 1, 65, 65, 642, 165]
+    assigned_quotas = [17, 3_235, 65, 65, 642, 165]
+    assert metadata["schema_version"] == 1
+    assert metadata["planner_only"] is False
+    assert metadata["downstream_runtime_abi_ready"] is True
+    assert metadata["expert_parallel_size"] == 8
+    assert metadata["global_block_capacity"] == 4_190
+    assert metadata["required_group_block_quotas"] == required_quotas
+    assert metadata["assigned_group_block_quotas"] == assigned_quotas
+    assert [group["identity"] for group in metadata["groups"]] == [
+        "c4_attention",
+        "c128_attention",
+        "dense_swa_a",
+        "dense_swa_b",
+        "c4_state",
+        "c128_state",
+    ]
+    assert [group["required_logical_blocks"] for group in metadata["groups"]] == required_quotas
+    assert [group["assigned_logical_blocks"] for group in metadata["groups"]] == assigned_quotas
+    assert [group["scheduler_shape"]["partition_blocks"] for group in metadata["groups"]] == assigned_quotas
+    assert [group["scheduler_shape"]["workload_required_blocks"] for group in metadata["groups"]] == required_quotas
+    assert [
+        (
+            group["logical_start"],
+            group["logical_stop"],
+        )
+        for group in metadata["groups"]
+    ] == [
+        (1, 18),
+        (18, 3_253),
+        (3_253, 3_318),
+        (3_318, 3_383),
+        (3_383, 4_025),
+        (4_025, 4_190),
+    ]
+    assert metadata["used_logical_blocks"] == 4_189
+    assert metadata["unused_logical_blocks"] == 0
+    assert sum(component["copies"] for group in metadata["groups"] for component in group["components"]) == 167
+    assert len(metadata["scratch"]) == 1
+    assert metadata["total_physical_bytes_by_rank"] == [4_215_275_520] * 8
+    assert metadata["scheduler_group_identities"] == [
+        {
+            "group_index": group_index,
+            "group_name": f"group_{group_index}",
+            "identity": identity,
+            "required_blocks": required,
+            "assigned_blocks": assigned,
+        }
+        for group_index, (identity, required, assigned) in enumerate(
+            zip(
+                [
+                    "c4_attention",
+                    "c128_attention",
+                    "dense_swa_a",
+                    "dense_swa_b",
+                    "c4_state",
+                    "c128_state",
+                ],
+                required_quotas,
+                assigned_quotas,
+            )
+        )
+    ]
+    for worker_config in worker_configs:
+        assert getattr(
+            worker_config,
+            patch_kv_cache_utils.FIXED_GROUP_BLOCK_QUOTAS_ATTR,
+        ) == tuple(assigned_quotas)
+    assert json.loads(json.dumps(metadata, sort_keys=True)) == metadata
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        (
+            patch_kv_cache_utils.ENABLE_C128_PACKED_POOL_PLANNER,
+            False,
+            "activation=true requires.*planner=true",
+        ),
+        (
+            patch_kv_cache_utils.ENABLE_C128_PACKED_VMM_ARENA,
+            False,
+            "activation=true requires.*arena=true",
+        ),
+    ],
+)
+def test_packed_activation_requires_coherent_feature_gates(
+    field: str,
+    value: bool,
+    message: str,
+) -> None:
+    config = _packed_vllm_config(activation=True)
+    config.additional_config[field] = value
+    cache_config = SimpleNamespace(
+        num_blocks=4_190,
+        kv_cache_groups=_flash_groups(),
+        kv_cache_tensors=[],
+    )
+
+    mla_patch, swa_patch, uniform_patch = _patch_packed_spec_types()
+    with (
+        mla_patch,
+        swa_patch,
+        uniform_patch,
+        patch.object(
+            patch_kv_cache_utils,
+            "_orig_get_kv_cache_configs",
+            return_value=[cache_config],
+        ),
+        pytest.raises(ValueError, match=message),
+    ):
+        patch_kv_cache_utils._ascend_get_kv_cache_configs(
+            config,
+            [{"layer": object()}],
+            [999_999],
+        )
+
+    assert not hasattr(
+        cache_config,
+        patch_kv_cache_utils.C128_PACKED_POOL_METADATA_KEY,
+    )
+    assert not hasattr(
+        cache_config,
+        patch_kv_cache_utils.FIXED_GROUP_BLOCK_QUOTAS_ATTR,
+    )
+
+
+@pytest.mark.parametrize(
+    ("drift", "message"),
+    [
+        ("blocks", "requires final global_block_capacity=4190"),
+        ("ep", "requires enable_expert_parallel=true"),
+        ("group_order", "c4_attention requires 17 workload blocks"),
+        ("component", "dense_swa_a component manifest drift"),
+    ],
+)
+def test_packed_activation_rejects_profile_or_manifest_drift(
+    drift: str,
+    message: str,
+) -> None:
+    config = _packed_vllm_config(activation=True)
+    groups = _flash_groups()
+    cache_config = SimpleNamespace(
+        num_blocks=4_190,
+        kv_cache_groups=groups,
+        kv_cache_tensors=[],
+    )
+    if drift == "blocks":
+        cache_config.num_blocks = 4_189
+    elif drift == "ep":
+        config.parallel_config.enable_expert_parallel = False
+    elif drift == "group_order":
+        groups[0], groups[1] = groups[1], groups[0]
+    else:
+        swa_spec = next(iter(groups[2].kv_cache_spec.kv_cache_specs.values()))
+        swa_spec.page_size_bytes = 16_640
+
+    mla_patch, swa_patch, uniform_patch = _patch_packed_spec_types()
+    with (
+        mla_patch,
+        swa_patch,
+        uniform_patch,
+        patch.object(
+            patch_kv_cache_utils,
+            "_orig_get_kv_cache_configs",
+            return_value=[cache_config],
+        ),
+        pytest.raises(ValueError, match=message),
+    ):
+        patch_kv_cache_utils._ascend_get_kv_cache_configs(
+            config,
+            [{"layer": object()}],
+            [999_999],
+        )
+
+    assert not hasattr(
+        cache_config,
+        patch_kv_cache_utils.C128_PACKED_POOL_METADATA_KEY,
+    )
+    assert not hasattr(
+        cache_config,
+        patch_kv_cache_utils.FIXED_GROUP_BLOCK_QUOTAS_ATTR,
+    )
+
+
+def test_packed_activation_worker_drift_publishes_nothing() -> None:
+    config = _packed_vllm_config(activation=True)
+    first = SimpleNamespace(
+        num_blocks=4_190,
+        kv_cache_groups=_flash_groups(),
+        kv_cache_tensors=[],
+    )
+    second_groups = _flash_groups()
+    second_groups[-1].layer_names[0] = "different.worker.layer"
+    second_groups[-1].kv_cache_spec.kv_cache_specs["different.worker.layer"] = second_groups[
+        -1
+    ].kv_cache_spec.kv_cache_specs.pop("c128_state.0")
+    second = SimpleNamespace(
+        num_blocks=4_190,
+        kv_cache_groups=second_groups,
+        kv_cache_tensors=[],
+    )
+
+    mla_patch, swa_patch, uniform_patch = _patch_packed_spec_types()
+    with (
+        mla_patch,
+        swa_patch,
+        uniform_patch,
+        patch.object(
+            patch_kv_cache_utils,
+            "_orig_get_kv_cache_configs",
+            return_value=[first, second],
+        ),
+        pytest.raises(ValueError, match="identical worker group schemas"),
+    ):
+        patch_kv_cache_utils._ascend_get_kv_cache_configs(
+            config,
+            [{"layer": object()}, {"layer": object()}],
+            [999_999, 999_999],
+        )
+
+    for cache_config in (first, second):
+        assert not hasattr(
+            cache_config,
+            patch_kv_cache_utils.C128_PACKED_POOL_METADATA_KEY,
+        )
+        assert not hasattr(
+            cache_config,
+            patch_kv_cache_utils.FIXED_GROUP_BLOCK_QUOTAS_ATTR,
+        )
+    assert patch_kv_cache_utils.C128_PACKED_POOL_METADATA_KEY not in config.additional_config
+
+
+def test_packed_activation_publication_rolls_back_partial_attributes() -> None:
+    class RejectQuotaConfig(SimpleNamespace):
+        def __setattr__(self, name, value):
+            if name == patch_kv_cache_utils.FIXED_GROUP_BLOCK_QUOTAS_ATTR:
+                raise RuntimeError("reject quota publication")
+            super().__setattr__(name, value)
+
+    config = _packed_vllm_config(activation=True)
+    first = SimpleNamespace(
+        num_blocks=4_190,
+        kv_cache_groups=_flash_groups(),
+        kv_cache_tensors=[],
+    )
+    second = RejectQuotaConfig(
+        num_blocks=4_190,
+        kv_cache_groups=_flash_groups(),
+        kv_cache_tensors=[],
+    )
+
+    mla_patch, swa_patch, uniform_patch = _patch_packed_spec_types()
+    with (
+        mla_patch,
+        swa_patch,
+        uniform_patch,
+        patch.object(
+            patch_kv_cache_utils,
+            "_orig_get_kv_cache_configs",
+            return_value=[first, second],
+        ),
+        pytest.raises(RuntimeError, match="reject quota publication"),
+    ):
+        patch_kv_cache_utils._ascend_get_kv_cache_configs(
+            config,
+            [{"layer": object()}, {"layer": object()}],
+            [999_999, 999_999],
+        )
+
+    for cache_config in (first, second):
+        assert not hasattr(
+            cache_config,
+            patch_kv_cache_utils.C128_PACKED_POOL_METADATA_KEY,
+        )
+        assert not hasattr(
+            cache_config,
+            patch_kv_cache_utils.FIXED_GROUP_BLOCK_QUOTAS_ATTR,
+        )
+    assert patch_kv_cache_utils.C128_PACKED_POOL_METADATA_KEY not in config.additional_config
 
 
 @pytest.mark.parametrize(

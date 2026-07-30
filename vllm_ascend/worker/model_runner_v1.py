@@ -22,7 +22,7 @@ import sys
 import time
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
-from contextlib import contextmanager, nullcontext
+from contextlib import contextmanager, nullcontext, suppress
 from copy import copy, deepcopy
 from dataclasses import dataclass, replace
 from functools import partial
@@ -282,14 +282,14 @@ class NPUModelRunner(GPUModelRunner):
                 f"got {packed_vmm_enabled!r}"
             )
         self.enable_c128_packed_vmm_arena = packed_vmm_enabled
-        # The lifecycle object, not a raw tensor, owns the VMM lease.  No
-        # production adapter installs it yet; the enabled initialization path
-        # below therefore fails closed before legacy cache allocation.
+        # The lifecycle object, not a raw tensor, owns the VMM lease. The
+        # default-off startup path opens concrete adapters only for the strict
+        # fixed-profile contract. Live capacity, correctness, and performance
+        # remain experiment gates.
         self._c128_packed_arena_runtime: Any | None = None
         # These maps describe aliases installed from a validated packed-arena
-        # manifest. Production activation remains fail-closed in
-        # ``initialize_kv_cache``; the internal transaction below exists so
-        # the allocator/reshape ABI can be tested before that gate moves.
+        # manifest. Startup remains fail-closed before CANN allocation for any
+        # metadata or runtime setting outside that contract.
         self._c128_packed_layer_page_counts: dict[str, int] = {}
         self._c128_packed_owner_layers: set[str] = set()
         self._c128_packed_layer_buckets: dict[str, str] = {}
@@ -3558,31 +3558,14 @@ class NPUModelRunner(GPUModelRunner):
             kv_cache_config: Configuration for the KV cache, including the KV
             cache size of each layer
         """
+        packed_startup_contract = None
         if self.enable_c128_packed_vmm_arena:
-            # Validate the worker-delivered metadata before rejecting the
-            # incomplete runtime.  The current planner emits planner_only=true
-            # and downstream_runtime_abi_ready=false, so it fails here without
-            # touching torch allocation, CANN, or a cache tensor.
-            from vllm_ascend.worker.c128_packed_runtime import (
-                C128_PACKED_POOL_METADATA_KEY,
-                packed_arena_contract_from_metadata,
-            )
-
-            metadata = getattr(
-                kv_cache_config,
-                C128_PACKED_POOL_METADATA_KEY,
-                None,
-            )
-            if metadata is None:
-                raise ValueError(
-                    f"{C128_PACKED_POOL_METADATA_KEY} is required when "
-                    "enable_c128_packed_vmm_arena=true"
-                )
-            packed_arena_contract_from_metadata(metadata)
-            raise RuntimeError(
-                "packed C128 VMM metadata is runtime-ready, but production "
-                "activation remains disabled pending live shared-view, "
-                "continuation, and allocator-replacement gates"
+            # This gate runs before attention/backend setup or any cache
+            # allocation. Generic planner metadata is not sufficient to open
+            # the production arena: it must match the reviewed same-capacity
+            # worker ABI byte-for-byte.
+            packed_startup_contract = (
+                self._validate_c128_packed_startup_metadata(kv_cache_config)
             )
         kv_cache_config = deepcopy(kv_cache_config)
         self.kv_cache_config = kv_cache_config
@@ -3598,8 +3581,26 @@ class NPUModelRunner(GPUModelRunner):
             [isinstance(attn_group[0].kv_cache_spec, MambaSpec) for attn_group in self.attn_groups]
         )
 
-        self.may_reinitialize_input_batch(kv_cache_config)
-        kv_caches = self.initialize_kv_cache_tensors(kv_cache_config)
+        if self.enable_c128_packed_vmm_arena:
+            assert packed_startup_contract is not None
+            runtime = self._open_c128_packed_arena_runtime(
+                kv_cache_config,
+                contract=packed_startup_contract,
+            )
+            kv_caches = self._initialize_kv_cache_from_c128_packed_arena(
+                runtime,
+                kv_cache_config,
+                bind_to_model=True,
+            )
+            # The pinned packed profile excludes speculative decoding,
+            # external KV transfer, and routed-expert capture. Returning here
+            # makes publication the last fallible startup transition; there
+            # is no post-publication setup that could leave live external
+            # aliases after a later failure.
+            return
+        else:
+            self.may_reinitialize_input_batch(kv_cache_config)
+            kv_caches = self.initialize_kv_cache_tensors(kv_cache_config)
         # TODO: refactor the logic of attention
         # Initialize drafter attention group initialization
         if self.speculative_config and (
@@ -3615,6 +3616,119 @@ class NPUModelRunner(GPUModelRunner):
 
         if self.model_config.enable_return_routed_experts:
             self.init_routed_experts_capturer()
+
+    def _validate_c128_packed_startup_metadata(
+        self,
+        kv_cache_config: KVCacheConfig,
+    ) -> Any:
+        """Validate the fixed worker ABI without opening CANN or Torch-NPU."""
+        from vllm_ascend.worker.c128_packed_runtime import (
+            C128_PACKED_POOL_METADATA_KEY,
+            packed_arena_contract_from_metadata,
+            validate_c128_packed_startup_contract,
+        )
+
+        metadata = getattr(
+            kv_cache_config,
+            C128_PACKED_POOL_METADATA_KEY,
+            None,
+        )
+        if metadata is None:
+            raise ValueError(
+                f"{C128_PACKED_POOL_METADATA_KEY} is required when "
+                "enable_c128_packed_vmm_arena=true"
+            )
+        contract = validate_c128_packed_startup_contract(
+            packed_arena_contract_from_metadata(metadata),
+            metadata,
+        )
+        if self.speculative_config is not None:
+            raise ValueError(
+                "packed C128 VMM runtime requires speculative decoding "
+                "disabled"
+            )
+        if self.vllm_config.kv_transfer_config is not None:
+            raise ValueError(
+                "packed C128 VMM runtime does not support external KV "
+                "transfer"
+            )
+        if self.model_config.enable_return_routed_experts:
+            raise ValueError(
+                "packed C128 VMM runtime requires routed-expert capture "
+                "disabled"
+            )
+        return contract
+
+    def _open_c128_packed_arena_runtime(
+        self,
+        kv_cache_config: KVCacheConfig,
+        *,
+        contract: Any,
+    ) -> Any:
+        """Open the concrete startup-only VMM runtime exactly once."""
+        if not self.enable_c128_packed_vmm_arena:
+            raise RuntimeError("packed C128 VMM arena is disabled")
+        if self._c128_packed_arena_runtime is not None:
+            raise RuntimeError("packed C128 VMM arena is already open")
+
+        from vllm_ascend.attention.context_parallel.c128_packed_acl_backend import (
+            AscendAclPackedArenaBackend,
+        )
+        from vllm_ascend.attention.context_parallel.c128_packed_torch_npu import (
+            TorchNpuPackedArenaTensorFactory,
+        )
+        from vllm_ascend.worker.c128_packed_runtime import (
+            C128_PACKED_POOL_METADATA_KEY,
+            PackedArenaRuntime,
+            packed_arena_contract_from_metadata,
+            validate_c128_packed_startup_contract,
+        )
+
+        metadata = getattr(
+            kv_cache_config,
+            C128_PACKED_POOL_METADATA_KEY,
+            None,
+        )
+        if metadata is None:
+            raise ValueError(
+                f"{C128_PACKED_POOL_METADATA_KEY} is required when opening "
+                "the packed runtime"
+            )
+        current_contract = validate_c128_packed_startup_contract(
+            packed_arena_contract_from_metadata(metadata),
+            metadata,
+        )
+        if (
+            current_contract.metadata_fingerprint
+            != contract.metadata_fingerprint
+        ):
+            raise ValueError(
+                "packed C128 VMM metadata changed after startup validation"
+            )
+        device_index = self.device.index
+        if device_index is None:
+            raise ValueError(
+                "packed C128 VMM runtime requires an indexed NPU device"
+            )
+        tp_rank = get_tp_group().rank_in_group
+
+        def synchronize_npu() -> None:
+            # Mapping occurs once during startup and unmapping once during
+            # shutdown. Both boundaries fence the current worker device; no
+            # request-time map/unmap or host synchronization is introduced.
+            torch.npu.synchronize()
+
+        backend = AscendAclPackedArenaBackend()
+        tensor_factory = TorchNpuPackedArenaTensorFactory()
+        return PackedArenaRuntime.open_from_contract(
+            contract=contract,
+            tp_rank=tp_rank,
+            device_index=device_index,
+            backend=backend,
+            tensor_factory=tensor_factory,
+            arena_fence=synchronize_npu,
+            quiesce=synchronize_npu,
+        )
 
     def _install_c128_packed_arena_runtime(
         self,
@@ -3830,19 +3944,16 @@ class NPUModelRunner(GPUModelRunner):
         self,
         runtime: Any,
         kv_cache_config: KVCacheConfig,
+        *,
+        bind_to_model: bool = False,
     ) -> dict[str, torch.Tensor]:
-        """Build exact cache aliases from an OPEN synthetic packed runtime.
-
-        This is the allocator/reshape proof seam, not the production
-        activation seam. ``initialize_kv_cache`` continues to reject the
-        packed feature before opening CANN VMM. A future activation can call
-        this transaction only after the planner publishes runtime-ready
-        metadata and the attention route consumes the same global-ID ABI.
+        """Build exact cache aliases from an OPEN packed runtime.
 
         Ownership is published only after every component-copy and scratch
-        view is installed and every cache reshapes successfully. Any failure
-        drops aliases, closes the caller-provided runtime, and leaves the
-        model runner without a packed runtime.
+        view is installed, every cache reshapes successfully, and production
+        bindings are complete. Any failure drops aliases, restores input and
+        model bindings, closes the caller-provided runtime, and leaves the
+        model runner without a published packed runtime.
         """
         if not self.enable_c128_packed_vmm_arena:
             raise RuntimeError("packed C128 VMM arena is disabled")
@@ -3915,6 +4026,11 @@ class NPUModelRunner(GPUModelRunner):
         previous_translators = (
             self._c128_packed_block_table_translators
         )
+        previous_bound_kv_caches: tuple[Any, ...] | None = None
+        previous_context_bindings: tuple[
+            tuple[object, bool, object],
+            ...,
+        ] = ()
         try:
             serialized_groups = self._c128_packed_sequence(
                 metadata.get("groups"),
@@ -3929,6 +4045,32 @@ class NPUModelRunner(GPUModelRunner):
                 for cache_group in kv_cache_config.kv_cache_groups
                 for layer_name in cache_group.layer_names
             }
+            if bind_to_model:
+                previous_bound_kv_caches = tuple(self.kv_caches)
+                binding_layers = configured_layers | set(
+                    self.shared_kv_cache_layers
+                )
+                missing_binding = object()
+                context_bindings = []
+                for layer_name in binding_layers:
+                    context = (
+                        self.compilation_config.static_forward_context[
+                            layer_name
+                        ]
+                    )
+                    previous_value = getattr(
+                        context,
+                        "kv_cache",
+                        missing_binding,
+                    )
+                    context_bindings.append(
+                        (
+                            context,
+                            previous_value is not missing_binding,
+                            previous_value,
+                        )
+                    )
+                previous_context_bindings = tuple(context_bindings)
             ordered_group_layers = tuple(
                 tuple(cache_group.layer_names)
                 for cache_group in kv_cache_config.kv_cache_groups
@@ -4163,6 +4305,11 @@ class NPUModelRunner(GPUModelRunner):
                 kv_cache_config,
                 raw_tensors,
             )
+            if bind_to_model:
+                self._bind_initialized_kv_caches(
+                    kv_cache_config,
+                    kv_caches,
+                )
             runtime.seal_views()
             self._install_c128_packed_arena_runtime(
                 runtime,
@@ -4180,6 +4327,19 @@ class NPUModelRunner(GPUModelRunner):
             )
             return kv_caches
         except BaseException as construction_error:
+            if previous_bound_kv_caches is not None:
+                self.kv_caches.clear()
+                self.kv_caches.extend(previous_bound_kv_caches)
+                for (
+                    context,
+                    had_binding,
+                    previous_value,
+                ) in previous_context_bindings:
+                    if had_binding:
+                        context.kv_cache = previous_value
+                    else:
+                        with suppress(AttributeError):
+                            del context.kv_cache
             kv_caches.clear()
             self._c128_owner_stage_caches.clear()
             self._c128_owner_stage_caches.update(
@@ -4361,6 +4521,15 @@ class NPUModelRunner(GPUModelRunner):
         if getattr(self, "enable_kv_cache_allocation_accounting", False):
             self._log_kv_cache_allocation_accounting(kv_cache_config, kv_cache_raw_tensors)
 
+        self._bind_initialized_kv_caches(kv_cache_config, kv_caches)
+        return kv_caches
+
+    def _bind_initialized_kv_caches(
+        self,
+        kv_cache_config: KVCacheConfig,
+        kv_caches: dict[str, torch.Tensor],
+    ) -> None:
+        """Bind reshaped caches after either legacy or packed allocation."""
         # Set up cross-layer KV cache sharing
         for layer_name, target_layer_name in self.shared_kv_cache_layers.items():
             logger.debug("%s reuses KV cache of %s", layer_name, target_layer_name)
@@ -4394,8 +4563,6 @@ class NPUModelRunner(GPUModelRunner):
                 compilation_config=self.compilation_config,
                 kvcomp_meta_data=self.kvcomp_meta_data
             )
-
-        return kv_caches
 
     def _log_kv_cache_allocation_accounting(
         self,

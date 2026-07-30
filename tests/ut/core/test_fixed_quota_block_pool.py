@@ -51,6 +51,22 @@ def test_ranges_reserve_block_zero_and_translate_deterministically() -> None:
     assert make_fixed_group_block_ranges((3, 6)) == pool.group_block_ranges
 
 
+def test_flash_same_b_quotas_cover_the_pinned_global_id_domain() -> None:
+    quotas = (17, 3_235, 65, 65, 642, 165)
+    pool = _pool(num_blocks=4_190, quotas=quotas)
+
+    assert pool.group_block_quotas == quotas
+    assert [(block_range.start, block_range.stop) for block_range in pool.group_block_ranges] == [
+        (1, 18),
+        (18, 3_253),
+        (3_253, 3_318),
+        (3_318, 3_383),
+        (3_383, 4_025),
+        (4_025, 4_190),
+    ]
+    assert sum(quotas) == pool.num_gpu_blocks - 1
+
+
 def test_group_exhaustion_never_borrows_another_groups_blocks() -> None:
     pool = _pool()
     group0 = pool.get_group_view(0)

@@ -2,6 +2,8 @@
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM-Ascend project
 import math
 from collections import defaultdict
+from contextlib import suppress
+from dataclasses import dataclass
 from typing import Any
 
 import vllm.v1.core.kv_cache_utils
@@ -18,10 +20,16 @@ from vllm.v1.kv_cache_interface import (
     UniformTypeKVCacheSpecs,
 )
 
+from vllm_ascend.core.fixed_quota_block_pool import (
+    FIXED_GROUP_BLOCK_QUOTAS_ATTR,
+)
+
 _orig_resolve_kv_cache_block_sizes = vllm.v1.core.kv_cache_utils.resolve_kv_cache_block_sizes
 _orig_get_kv_cache_configs = vllm.v1.core.kv_cache_utils.get_kv_cache_configs
 
 ENABLE_C128_PACKED_POOL_PLANNER = "enable_c128_packed_pool_planner"
+ENABLE_C128_PACKED_POOL_ACTIVATION = "enable_c128_packed_pool_activation"
+ENABLE_C128_PACKED_VMM_ARENA = "enable_c128_packed_vmm_arena"
 C128_PACKED_POOL_METADATA_KEY = "c128_packed_pool_metadata"
 C128_PACKED_POOL_SCHEMA_VERSION = 1
 C128_PACKED_POOL_PROFILE = "dsv4_flash_prefill_8200_tokens_1out"
@@ -30,16 +38,123 @@ C128_PACKED_POOL_OUTPUT_TOKENS = 1
 C128_PACKED_POOL_MAX_MODEL_LEN = C128_PACKED_POOL_PROMPT_TOKENS + C128_PACKED_POOL_OUTPUT_TOKENS
 C128_PACKED_POOL_MAX_CONCURRENT_REQUESTS = 1
 C128_PACKED_POOL_VMM_GRANULARITY_BYTES = 2 * 1024 * 1024
+C128_PACKED_POOL_ACTIVATION_GLOBAL_BLOCK_CAPACITY = 4_190
 
 
-def _is_c128_packed_pool_planner_enabled(vllm_config: VllmConfig) -> bool:
+@dataclass(frozen=True)
+class _PackedActivationGroupContract:
+    identity: str
+    required_blocks: int
+    assigned_blocks: int
+    kind: str
+    layer_count: int
+    block_size: int
+    compress_ratio: int | None
+    sliding_window: int | None
+    components: tuple[tuple[int, int, str], ...]
+
+
+_C128_PACKED_POOL_ACTIVATION_GROUPS = (
+    _PackedActivationGroupContract(
+        identity="c4_attention",
+        required_blocks=17,
+        assigned_blocks=17,
+        kind="compressed_mla",
+        layer_count=42,
+        block_size=128,
+        compress_ratio=4,
+        sliding_window=None,
+        components=(
+            (16_640, 21, "replicated"),
+            (128 * 1024, 21, "replicated"),
+        ),
+    ),
+    _PackedActivationGroupContract(
+        identity="c128_attention",
+        required_blocks=1,
+        assigned_blocks=3_235,
+        kind="compressed_mla",
+        layer_count=20,
+        block_size=128,
+        compress_ratio=128,
+        sliding_window=None,
+        components=((128 * 1024, 20, "c128_owner"),),
+    ),
+    _PackedActivationGroupContract(
+        identity="dense_swa_a",
+        required_blocks=65,
+        assigned_blocks=65,
+        kind="sliding_window_mla",
+        layer_count=22,
+        block_size=128,
+        compress_ratio=None,
+        sliding_window=4_096,
+        components=((128 * 1024, 22, "replicated"),),
+    ),
+    _PackedActivationGroupContract(
+        identity="dense_swa_b",
+        required_blocks=65,
+        assigned_blocks=65,
+        kind="sliding_window_mla",
+        layer_count=21,
+        block_size=128,
+        compress_ratio=None,
+        sliding_window=4_096,
+        components=((128 * 1024, 21, "replicated"),),
+    ),
+    _PackedActivationGroupContract(
+        identity="c4_state",
+        required_blocks=642,
+        assigned_blocks=642,
+        kind="sliding_window_mla",
+        layer_count=42,
+        block_size=8,
+        compress_ratio=None,
+        sliding_window=8,
+        components=(
+            (16_640, 21, "replicated"),
+            (128 * 1024, 21, "replicated"),
+        ),
+    ),
+    _PackedActivationGroupContract(
+        identity="c128_state",
+        required_blocks=165,
+        assigned_blocks=165,
+        kind="sliding_window_mla",
+        layer_count=20,
+        block_size=32,
+        compress_ratio=None,
+        sliding_window=128,
+        components=((128 * 1024, 20, "replicated"),),
+    ),
+)
+
+
+def _c128_packed_pool_boolean_flag(
+    vllm_config: VllmConfig,
+    flag: str,
+) -> bool:
     additional_config = vllm_config.additional_config
     if not additional_config:
         return False
-    enabled = additional_config.get(ENABLE_C128_PACKED_POOL_PLANNER, False)
+    enabled = additional_config.get(flag, False)
     if not isinstance(enabled, bool):
-        raise ValueError(f"{ENABLE_C128_PACKED_POOL_PLANNER} must be a JSON boolean, " f"got {enabled!r}")
+        raise ValueError(f"{flag} must be a JSON boolean, got {enabled!r}")
     return enabled
+
+
+def _is_c128_packed_pool_planner_enabled(vllm_config: VllmConfig) -> bool:
+    return _c128_packed_pool_boolean_flag(
+        vllm_config,
+        ENABLE_C128_PACKED_POOL_PLANNER,
+    )
+
+
+def _is_c128_packed_pool_activation_enabled(vllm_config: VllmConfig) -> bool:
+    return _c128_packed_pool_boolean_flag(
+        vllm_config,
+        ENABLE_C128_PACKED_POOL_ACTIVATION,
+    )
 
 
 def _validate_c128_packed_pool_profile(vllm_config: VllmConfig) -> int:
@@ -256,11 +371,153 @@ def _packed_group_components(
     return tuple(components), layer_names_by_component
 
 
+def _validate_c128_packed_pool_activation_manifest(
+    *,
+    vllm_config: VllmConfig,
+    kv_cache_config: KVCacheConfig,
+    packed_groups: list[Any],
+    group_profiles: list[dict[str, Any]],
+) -> tuple[int, ...]:
+    """Validate and return the only scheduler quota assignment we can run.
+
+    The planner-only path is intentionally more useful for inspection. Runtime
+    activation is narrower: it requires the measured Flash TP8/EP8 six-group
+    manifest, the original B=4190 logical ID domain, and an exact component
+    inventory. Any group-order or cache-spec drift must fail before metadata or
+    scheduler configuration is published.
+    """
+    parallel_config = vllm_config.parallel_config
+    if not _c128_packed_pool_boolean_flag(
+        vllm_config,
+        ENABLE_C128_PACKED_VMM_ARENA,
+    ):
+        raise ValueError(f"{ENABLE_C128_PACKED_POOL_ACTIVATION}=true requires " f"{ENABLE_C128_PACKED_VMM_ARENA}=true")
+    if getattr(parallel_config, "enable_expert_parallel", None) is not True:
+        raise ValueError(f"{C128_PACKED_POOL_PROFILE} activation requires " "enable_expert_parallel=true")
+    data_parallel_size = getattr(parallel_config, "data_parallel_size", None)
+    if type(data_parallel_size) is not int or data_parallel_size != 1:
+        raise ValueError(
+            f"{C128_PACKED_POOL_PROFILE} activation requires " f"data_parallel_size=1 for EP8, got {data_parallel_size}"
+        )
+    expert_parallel_size = parallel_config.tensor_parallel_size * data_parallel_size
+    if expert_parallel_size != 8:
+        raise ValueError(f"{C128_PACKED_POOL_PROFILE} activation requires EP8, " f"got EP{expert_parallel_size}")
+
+    if kv_cache_config.num_blocks != C128_PACKED_POOL_ACTIVATION_GLOBAL_BLOCK_CAPACITY:
+        raise ValueError(
+            f"{C128_PACKED_POOL_PROFILE} activation requires final "
+            "global_block_capacity=4190 after the B clamp, "
+            f"got {kv_cache_config.num_blocks}"
+        )
+    if len(packed_groups) != len(_C128_PACKED_POOL_ACTIVATION_GROUPS):
+        raise ValueError(
+            f"{C128_PACKED_POOL_PROFILE} activation requires exactly "
+            f"{len(_C128_PACKED_POOL_ACTIVATION_GROUPS)} cache groups in "
+            f"the pinned order, got {len(packed_groups)}"
+        )
+    if len(group_profiles) != len(packed_groups):
+        raise AssertionError("packed group profiles must match packed groups")
+
+    seen_layers: set[str] = set()
+    for group_index, (group, profile, contract) in enumerate(
+        zip(
+            packed_groups,
+            group_profiles,
+            _C128_PACKED_POOL_ACTIVATION_GROUPS,
+        )
+    ):
+        group_name = f"group_{group_index}"
+        if group.name != group_name:
+            raise ValueError(
+                "packed activation group identity drift: "
+                f"index {group_index} must be {group_name!r}, "
+                f"got {group.name!r}"
+            )
+        if group.logical_blocks != contract.required_blocks:
+            raise ValueError(
+                f"packed activation {contract.identity} requires "
+                f"{contract.required_blocks} workload blocks, "
+                f"got {group.logical_blocks}"
+            )
+
+        scheduler_shape = profile["scheduler_shape"]
+        expected_shape = {
+            "kind": contract.kind,
+            "block_size": contract.block_size,
+            "compress_ratio": contract.compress_ratio,
+            "sliding_window": contract.sliding_window,
+            "partition_blocks": contract.required_blocks,
+        }
+        for field, expected in expected_shape.items():
+            if expected is None:
+                if field in scheduler_shape:
+                    raise ValueError(
+                        f"packed activation {contract.identity} must not " f"define scheduler_shape.{field}"
+                    )
+            elif scheduler_shape.get(field) != expected:
+                raise ValueError(
+                    f"packed activation {contract.identity} requires "
+                    f"scheduler_shape.{field}={expected!r}, "
+                    f"got {scheduler_shape.get(field)!r}"
+                )
+
+        layer_names = profile["layer_names"]
+        if (
+            len(layer_names) != contract.layer_count
+            or not all(isinstance(layer_name, str) for layer_name in layer_names)
+            or len(set(layer_names)) != contract.layer_count
+        ):
+            raise ValueError(
+                f"packed activation {contract.identity} requires " f"{contract.layer_count} unique string layer names"
+            )
+        duplicate_layers = seen_layers.intersection(layer_names)
+        if duplicate_layers:
+            raise ValueError(
+                "packed activation layer identity appears in multiple groups: " f"{sorted(duplicate_layers)!r}"
+            )
+        seen_layers.update(layer_names)
+
+        component_signature = tuple(
+            (
+                component.page_size_bytes,
+                component.copies,
+                component.placement.value,
+            )
+            for component in group.components
+        )
+        if component_signature != contract.components:
+            raise ValueError(
+                f"packed activation {contract.identity} component manifest "
+                f"drift: expected {contract.components!r}, "
+                f"got {component_signature!r}"
+            )
+        layer_names_by_component = profile["_layer_names_by_component"]
+        component_layers = [
+            layer_name for component in group.components for layer_name in layer_names_by_component[component.name]
+        ]
+        if len(component_layers) != len(set(component_layers)) or set(component_layers) != set(layer_names):
+            raise ValueError(
+                f"packed activation {contract.identity} components must " "cover every group layer exactly once"
+            )
+
+        profile["identity"] = contract.identity
+        profile["required_logical_blocks"] = contract.required_blocks
+        profile["assigned_logical_blocks"] = contract.assigned_blocks
+        scheduler_shape["workload_required_blocks"] = contract.required_blocks
+        scheduler_shape["partition_blocks"] = contract.assigned_blocks
+
+    assigned_quotas = tuple(contract.assigned_blocks for contract in _C128_PACKED_POOL_ACTIVATION_GROUPS)
+    if sum(assigned_quotas) != kv_cache_config.num_blocks - 1:
+        raise AssertionError("packed activation assigned quotas must cover B-1 data IDs")
+    return assigned_quotas
+
+
 def _serialize_c128_packed_pool_plan(
     *,
     plan: Any,
     group_profiles: list[dict[str, Any]],
     max_num_batched_tokens: int,
+    runtime_activation_enabled: bool,
 ) -> dict[str, Any]:
     groups = []
     range_by_name = {logical_range.group_name: logical_range for logical_range in plan.group_ranges}
@@ -351,11 +608,11 @@ def _serialize_c128_packed_pool_plan(
             }
         )
 
-    return {
+    metadata = {
         "schema_version": C128_PACKED_POOL_SCHEMA_VERSION,
         "profile": C128_PACKED_POOL_PROFILE,
-        "planner_only": True,
-        "downstream_runtime_abi_ready": False,
+        "planner_only": not runtime_activation_enabled,
+        "downstream_runtime_abi_ready": runtime_activation_enabled,
         "prompt_tokens": C128_PACKED_POOL_PROMPT_TOKENS,
         "output_tokens": C128_PACKED_POOL_OUTPUT_TOKENS,
         "kv_slot_tokens": C128_PACKED_POOL_PROMPT_TOKENS,
@@ -380,11 +637,36 @@ def _serialize_c128_packed_pool_plan(
         "quota_replicated_bytes_by_rank": list(plan.quota_replicated_bytes_by_rank()),
         "aligned_quota_replicated_bytes_by_rank": list(plan.aligned_quota_replicated_bytes_by_rank()),
     }
+    if runtime_activation_enabled:
+        metadata.update(
+            {
+                "expert_parallel_size": 8,
+                "required_group_block_quotas": [
+                    contract.required_blocks for contract in _C128_PACKED_POOL_ACTIVATION_GROUPS
+                ],
+                "assigned_group_block_quotas": [
+                    contract.assigned_blocks for contract in _C128_PACKED_POOL_ACTIVATION_GROUPS
+                ],
+                "scheduler_group_identities": [
+                    {
+                        "group_index": group_index,
+                        "group_name": f"group_{group_index}",
+                        "identity": contract.identity,
+                        "required_blocks": contract.required_blocks,
+                        "assigned_blocks": contract.assigned_blocks,
+                    }
+                    for group_index, contract in enumerate(_C128_PACKED_POOL_ACTIVATION_GROUPS)
+                ],
+            }
+        )
+    return metadata
 
 
 def _build_c128_packed_pool_metadata(
     vllm_config: VllmConfig,
     kv_cache_config: KVCacheConfig,
+    *,
+    runtime_activation_enabled: bool,
 ) -> dict[str, Any]:
     from vllm_ascend.attention.context_parallel.c128_packed_pool import (
         PackedPlacement,
@@ -433,6 +715,24 @@ def _build_c128_packed_pool_metadata(
 
     if c128_scratch_bucket is None:
         raise ValueError("packed C128 planner requires a compress_ratio=128 cache group")
+    if runtime_activation_enabled:
+        assigned_quotas = _validate_c128_packed_pool_activation_manifest(
+            vllm_config=vllm_config,
+            kv_cache_config=kv_cache_config,
+            packed_groups=packed_groups,
+            group_profiles=group_profiles,
+        )
+        packed_groups = [
+            PackedPoolGroupSpec(
+                name=group.name,
+                logical_blocks=assigned_blocks,
+                components=group.components,
+            )
+            for group, assigned_blocks in zip(
+                packed_groups,
+                assigned_quotas,
+            )
+        ]
     scratch_bucket, scratch_page_size = c128_scratch_bucket
     selected_c128_rows = cdiv(C128_PACKED_POOL_PROMPT_TOKENS, 128)
     plan = PackedPoolPlan(
@@ -452,7 +752,70 @@ def _build_c128_packed_pool_metadata(
         plan=plan,
         group_profiles=group_profiles,
         max_num_batched_tokens=max_num_batched_tokens,
+        runtime_activation_enabled=runtime_activation_enabled,
     )
+
+
+def _publish_c128_packed_pool_contract(
+    *,
+    vllm_config: VllmConfig,
+    kv_cache_configs: list[KVCacheConfig],
+    worker_metadata: list[dict[str, Any]],
+    activation_enabled: bool,
+) -> None:
+    """Publish metadata and scheduler quotas as one rollback-safe transaction."""
+    missing = object()
+    previous_config_attributes: list[tuple[KVCacheConfig, str, object]] = []
+    additional_config = vllm_config.additional_config
+    assert additional_config is not None
+    previous_additional_metadata = additional_config.get(
+        C128_PACKED_POOL_METADATA_KEY,
+        missing,
+    )
+
+    def set_config_attribute(
+        kv_cache_config: KVCacheConfig,
+        name: str,
+        value: object,
+    ) -> None:
+        previous_config_attributes.append(
+            (
+                kv_cache_config,
+                name,
+                getattr(kv_cache_config, name, missing),
+            )
+        )
+        setattr(kv_cache_config, name, value)
+
+    try:
+        for kv_cache_config, current in zip(
+            kv_cache_configs,
+            worker_metadata,
+        ):
+            set_config_attribute(
+                kv_cache_config,
+                C128_PACKED_POOL_METADATA_KEY,
+                current,
+            )
+            if activation_enabled:
+                set_config_attribute(
+                    kv_cache_config,
+                    FIXED_GROUP_BLOCK_QUOTAS_ATTR,
+                    tuple(current["assigned_group_block_quotas"]),
+                )
+        additional_config[C128_PACKED_POOL_METADATA_KEY] = worker_metadata[0]
+    except BaseException:
+        if previous_additional_metadata is missing:
+            additional_config.pop(C128_PACKED_POOL_METADATA_KEY, None)
+        else:
+            additional_config[C128_PACKED_POOL_METADATA_KEY] = previous_additional_metadata
+        for kv_cache_config, name, previous in reversed(previous_config_attributes):
+            if previous is missing:
+                with suppress(AttributeError):
+                    delattr(kv_cache_config, name)
+            else:
+                setattr(kv_cache_config, name, previous)
+        raise
 
 
 def _ascend_get_kv_cache_configs(
@@ -466,7 +829,13 @@ def _ascend_get_kv_cache_configs(
         kv_cache_specs,
         available_memory,
     )
-    if not _is_c128_packed_pool_planner_enabled(vllm_config):
+    planner_enabled = _is_c128_packed_pool_planner_enabled(vllm_config)
+    activation_enabled = _is_c128_packed_pool_activation_enabled(vllm_config)
+    if activation_enabled and not planner_enabled:
+        raise ValueError(
+            f"{ENABLE_C128_PACKED_POOL_ACTIVATION}=true requires " f"{ENABLE_C128_PACKED_POOL_PLANNER}=true"
+        )
+    if not planner_enabled:
         return kv_cache_configs
     if not kv_cache_configs:
         raise ValueError("packed C128 planner requires at least one KV cache config")
@@ -475,6 +844,7 @@ def _ascend_get_kv_cache_configs(
         _build_c128_packed_pool_metadata(
             vllm_config,
             kv_cache_config,
+            runtime_activation_enabled=activation_enabled,
         )
         for kv_cache_config in kv_cache_configs
     ]
@@ -483,15 +853,16 @@ def _ascend_get_kv_cache_configs(
         raise ValueError(
             "packed C128 planner requires identical worker group schemas, " "ranges, and final block counts"
         )
-    for kv_cache_config, current in zip(kv_cache_configs, worker_metadata):
-        setattr(kv_cache_config, C128_PACKED_POOL_METADATA_KEY, current)
 
     # This mutation is EngineCore-local because worker processes have already
     # spawned. The worker ABI is the metadata attribute on the KVCacheConfig
     # passed by initialize_from_config's RPC.
-    additional_config = vllm_config.additional_config
-    assert additional_config is not None
-    additional_config[C128_PACKED_POOL_METADATA_KEY] = metadata
+    _publish_c128_packed_pool_contract(
+        vllm_config=vllm_config,
+        kv_cache_configs=kv_cache_configs,
+        worker_metadata=worker_metadata,
+        activation_enabled=activation_enabled,
+    )
     return kv_cache_configs
 
 

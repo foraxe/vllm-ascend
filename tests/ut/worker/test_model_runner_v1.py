@@ -267,24 +267,296 @@ class TestNPUModelRunnerPackedArenaLifecycle(unittest.TestCase):
         self.assertEqual(runner._c128_owner_stage_caches, {})
         self.assertIsNone(runner._c128_packed_arena_runtime)
 
+    def _configure_initialize_path(self, runner):
+        runner.speculative_config = None
+        runner.vllm_config = SimpleNamespace(
+            kv_transfer_config=None,
+        )
+        runner.model_config = SimpleNamespace(
+            enable_return_routed_experts=False,
+        )
+        runner.may_add_encoder_only_layers_to_kv_cache_config = MagicMock()
+        runner.maybe_add_kv_sharing_layers_to_kv_cache_groups = MagicMock()
+
+        def initialize_backend(_config):
+            runner.attn_groups = [[SimpleNamespace(kv_cache_spec=object())]]
+
+        runner.initialize_attn_backend = MagicMock(side_effect=initialize_backend)
+        runner._mamba_bufs = object()
+        runner._mamba_copy_bufs = object()
+        runner.initialize_kv_cache_tensors = MagicMock(return_value={"legacy": object()})
+        runner.may_reinitialize_input_batch = MagicMock()
+        runner._allocate_kv_cache_tensors = MagicMock()
+        runner._get_c128_owner_stage_cache = MagicMock()
+
+    def _strict_startup_contract_and_metadata(self):
+        from vllm_ascend.worker.c128_packed_runtime import (
+            C128_PACKED_POOL_ASSIGNED_GROUP_QUOTAS,
+            C128_PACKED_POOL_COMPONENT_SIGNATURES,
+            C128_PACKED_POOL_GROUP_IDENTITIES,
+            C128_PACKED_POOL_REQUIRED_GROUP_QUOTAS,
+        )
+
+        groups = tuple(
+            SimpleNamespace(
+                logical_blocks=logical_blocks,
+                components=tuple(
+                    SimpleNamespace(
+                        bucket=bucket,
+                        page_size_bytes=page_size_bytes,
+                        copies=copies,
+                        placement=placement,
+                    )
+                    for (
+                        bucket,
+                        page_size_bytes,
+                        copies,
+                        placement,
+                    ) in signatures
+                ),
+            )
+            for logical_blocks, signatures in zip(
+                C128_PACKED_POOL_ASSIGNED_GROUP_QUOTAS,
+                C128_PACKED_POOL_COMPONENT_SIGNATURES,
+            )
+        )
+        plan = SimpleNamespace(
+            global_block_capacity=4_190,
+            groups=groups,
+            scratch=(
+                SimpleNamespace(
+                    bucket="page_131072",
+                    max_pages_per_rank=65,
+                ),
+            ),
+        )
+        expected_views = tuple(
+            SimpleNamespace(
+                key=(f"component/group_{group_index}/" f"component_{component_index}/{copy_index}"),
+                bucket=bucket,
+            )
+            for group_index, signatures in enumerate(C128_PACKED_POOL_COMPONENT_SIGNATURES)
+            for component_index, (
+                bucket,
+                _page_size_bytes,
+                copies,
+                _placement,
+            ) in enumerate(signatures)
+            for copy_index in range(copies)
+        ) + (
+            SimpleNamespace(
+                key="scratch/page_131072",
+                bucket="page_131072",
+            ),
+        )
+        narrow = SimpleNamespace(
+            bucket="page_16640",
+            persistent_allocated_bytes=308_281_344,
+            scratch_region_bytes=0,
+            total_allocated_bytes=308_281_344,
+        )
+        wide = SimpleNamespace(
+            bucket="page_131072",
+            persistent_allocated_bytes=3_896_508_416,
+            scratch_region_bytes=10_485_760,
+            total_allocated_bytes=3_906_994_176,
+        )
+        contract = SimpleNamespace(
+            plan=plan,
+            expected_views=expected_views,
+            rank_accounting=tuple(
+                SimpleNamespace(
+                    total_allocated_bytes=4_215_275_520,
+                    buckets=(narrow, wide),
+                )
+                for _ in range(8)
+            ),
+            metadata_fingerprint="strict",
+        )
+        metadata = {
+            "expert_parallel_size": 8,
+            "required_group_block_quotas": list(C128_PACKED_POOL_REQUIRED_GROUP_QUOTAS),
+            "assigned_group_block_quotas": list(C128_PACKED_POOL_ASSIGNED_GROUP_QUOTAS),
+            "groups": [],
+            "scheduler_group_identities": [],
+        }
+        for index, (identity, required, assigned) in enumerate(
+            zip(
+                C128_PACKED_POOL_GROUP_IDENTITIES,
+                C128_PACKED_POOL_REQUIRED_GROUP_QUOTAS,
+                C128_PACKED_POOL_ASSIGNED_GROUP_QUOTAS,
+            )
+        ):
+            metadata["groups"].append(
+                {
+                    "group_index": index,
+                    "name": f"group_{index}",
+                    "identity": identity,
+                    "required_logical_blocks": required,
+                    "assigned_logical_blocks": assigned,
+                }
+            )
+            metadata["scheduler_group_identities"].append(
+                {
+                    "group_index": index,
+                    "group_name": f"group_{index}",
+                    "identity": identity,
+                    "required_blocks": required,
+                    "assigned_blocks": assigned,
+                }
+            )
+        return contract, metadata
+
+    @patch("vllm_ascend.worker.c128_packed_runtime." "validate_c128_packed_startup_contract")
     @patch("vllm_ascend.worker.c128_packed_runtime." "packed_arena_contract_from_metadata")
-    def test_production_activation_remains_fail_closed(
+    @patch("vllm_ascend.worker.c128_packed_runtime." "PackedArenaRuntime.open_from_contract")
+    @patch("vllm_ascend.attention.context_parallel." "c128_packed_torch_npu.TorchNpuPackedArenaTensorFactory")
+    @patch("vllm_ascend.attention.context_parallel." "c128_packed_acl_backend.AscendAclPackedArenaBackend")
+    @patch("vllm_ascend.worker.model_runner_v1.get_tp_group")
+    def test_production_activation_opens_once_and_bypasses_legacy(
         self,
+        mock_get_tp_group,
+        mock_backend_type,
+        mock_tensor_factory_type,
+        mock_open_from_contract,
         mock_contract_from_metadata,
+        mock_validate_contract,
     ):
         runner = self._build_runner()
+        self._configure_initialize_path(runner)
+        runner.device = SimpleNamespace(index=3)
+        runtime = object()
+        contract = SimpleNamespace(metadata_fingerprint="same")
+        mock_contract_from_metadata.return_value = contract
+        mock_validate_contract.return_value = contract
+        mock_open_from_contract.return_value = runtime
+        mock_get_tp_group.return_value.rank_in_group = 2
+        runner._initialize_kv_cache_from_c128_packed_arena = MagicMock(return_value={"packed": object()})
         kv_cache_config = SimpleNamespace(
             c128_packed_pool_metadata={"runtime_ready": True},
         )
 
-        with self.assertRaisesRegex(
-            RuntimeError,
-            "production activation remains disabled",
+        runner.initialize_kv_cache(kv_cache_config)
+
+        mock_backend_type.assert_called_once_with()
+        mock_tensor_factory_type.assert_called_once_with()
+        mock_open_from_contract.assert_called_once_with(
+            contract=contract,
+            tp_rank=2,
+            device_index=3,
+            backend=mock_backend_type.return_value,
+            tensor_factory=mock_tensor_factory_type.return_value,
+            arena_fence=unittest.mock.ANY,
+            quiesce=unittest.mock.ANY,
+        )
+        packed_config = runner._initialize_kv_cache_from_c128_packed_arena.call_args.args[1]
+        self.assertIsNot(packed_config, kv_cache_config)
+        runner._initialize_kv_cache_from_c128_packed_arena.assert_called_once_with(
+            runtime,
+            packed_config,
+            bind_to_model=True,
+        )
+        runner.initialize_kv_cache_tensors.assert_not_called()
+        runner._allocate_kv_cache_tensors.assert_not_called()
+        runner._get_c128_owner_stage_cache.assert_not_called()
+        runner.may_reinitialize_input_batch.assert_not_called()
+
+    @patch("vllm_ascend.attention.context_parallel." "c128_packed_acl_backend.AscendAclPackedArenaBackend")
+    def test_feature_off_preserves_legacy_initialization(
+        self,
+        mock_backend_type,
+    ):
+        runner = self._build_runner()
+        self._configure_initialize_path(runner)
+        runner.enable_c128_packed_vmm_arena = False
+        kv_cache_config = SimpleNamespace()
+
+        with patch(
+            "vllm_ascend.worker.model_runner_v1.has_kv_transfer_group",
+            return_value=False,
         ):
             runner.initialize_kv_cache(kv_cache_config)
 
-        mock_contract_from_metadata.assert_called_once_with(kv_cache_config.c128_packed_pool_metadata)
-        self.assertIsNone(runner._c128_packed_arena_runtime)
+        mock_backend_type.assert_not_called()
+        runner.may_reinitialize_input_batch.assert_called_once()
+        runner.initialize_kv_cache_tensors.assert_called_once()
+        runner._allocate_kv_cache_tensors.assert_not_called()
+
+    @patch("vllm_ascend.attention.context_parallel." "c128_packed_acl_backend.AscendAclPackedArenaBackend")
+    def test_semantic_contract_failure_precedes_backend_open(
+        self,
+        mock_backend_type,
+    ):
+        from vllm_ascend.worker.c128_packed_runtime import (
+            PackedArenaMetadataError,
+        )
+
+        runner = self._build_runner()
+        self._configure_initialize_path(runner)
+        contract, metadata = self._strict_startup_contract_and_metadata()
+        metadata["assigned_group_block_quotas"] = [
+            17,
+            3_234,
+            65,
+            65,
+            642,
+            166,
+        ]
+        kv_cache_config = SimpleNamespace(
+            c128_packed_pool_metadata=metadata,
+        )
+
+        with (
+            patch(
+                "vllm_ascend.worker.c128_packed_runtime." "packed_arena_contract_from_metadata",
+                return_value=contract,
+            ),
+            self.assertRaisesRegex(
+                PackedArenaMetadataError,
+                "assigned_group_block_quotas",
+            ),
+        ):
+            runner.initialize_kv_cache(kv_cache_config)
+
+        mock_backend_type.assert_not_called()
+
+    @patch("vllm_ascend.attention.context_parallel." "c128_packed_acl_backend.AscendAclPackedArenaBackend")
+    def test_metadata_fingerprint_drift_precedes_backend_open(
+        self,
+        mock_backend_type,
+    ):
+        runner = self._build_runner()
+        runner.device = SimpleNamespace(index=3)
+        expected_contract = SimpleNamespace(
+            metadata_fingerprint="expected",
+        )
+        changed_contract = SimpleNamespace(
+            metadata_fingerprint="changed",
+        )
+        kv_cache_config = SimpleNamespace(
+            c128_packed_pool_metadata={"runtime_ready": True},
+        )
+
+        with (
+            patch(
+                "vllm_ascend.worker.c128_packed_runtime." "packed_arena_contract_from_metadata",
+                return_value=changed_contract,
+            ),
+            patch(
+                "vllm_ascend.worker.c128_packed_runtime." "validate_c128_packed_startup_contract",
+                return_value=changed_contract,
+            ),
+            self.assertRaisesRegex(
+                ValueError,
+                "changed after startup validation",
+            ),
+        ):
+            runner._open_c128_packed_arena_runtime(
+                kv_cache_config,
+                contract=expected_contract,
+            )
+
+        mock_backend_type.assert_not_called()
 
 
 class _FakePackedArenaRuntime:
@@ -597,6 +869,171 @@ class TestNPUModelRunnerPackedAllocatorReshape(unittest.TestCase):
         runner.vllm_config.additional_config = {}
         return owner_spec
 
+    def _many_view_plan_and_metadata(self):
+        layer_names = [f"model.layers.{index}.packed" for index in range(167)]
+        component = PackedPoolComponentSpec(
+            name="component",
+            bucket="packed",
+            page_size_bytes=1,
+            copies=len(layer_names),
+            placement=PackedPlacement.REPLICATED,
+            allocation_granularity_bytes=1,
+        )
+        plan = PackedPoolPlan(
+            global_block_capacity=2,
+            tp_size=2,
+            groups=(
+                PackedPoolGroupSpec(
+                    name="group_0",
+                    logical_blocks=1,
+                    components=(component,),
+                ),
+            ),
+            scratch=(
+                PackedPoolScratchSpec(
+                    bucket="packed",
+                    page_size_bytes=1,
+                    max_pages_per_rank=65,
+                    allocation_granularity_bytes=1,
+                ),
+            ),
+        )
+        ranks_by_copy = []
+        for copy_index in range(component.copies):
+            ranks = []
+            for rank in range(plan.tp_size):
+                sentinel = plan.sentinel_address(
+                    "group_0",
+                    "component",
+                    tp_rank=rank,
+                    copy_index=copy_index,
+                )
+                ranks.append(
+                    {
+                        "rank": rank,
+                        "segment_base_bytes": (sentinel.segment_base_bytes),
+                        "segment_allocated_bytes": (sentinel.segment_allocated_bytes),
+                        "sentinel_offset_bytes": (sentinel.physical_offset_bytes),
+                    }
+                )
+            ranks_by_copy.append(
+                {
+                    "copy_index": copy_index,
+                    "ranks": ranks,
+                }
+            )
+        accounting = plan.bucket_accounting[0]
+        metadata = {
+            "groups": [
+                {
+                    "group_index": 0,
+                    "name": "group_0",
+                    "logical_blocks": 1,
+                    "layer_names": layer_names,
+                    "components": [
+                        {
+                            "name": "component",
+                            "bucket": "packed",
+                            "page_size_bytes": 1,
+                            "copies": len(layer_names),
+                            "placement": "replicated",
+                            "layer_names": layer_names,
+                            "segments": ranks_by_copy,
+                        }
+                    ],
+                }
+            ],
+            "scratch": [
+                {
+                    "bucket": "packed",
+                    "page_size_bytes": 1,
+                    "max_pages_per_rank": 65,
+                    "segments": [
+                        {
+                            "rank": rank,
+                            "segment_base_bytes": (accounting.total_allocated_bytes_by_rank[rank] - 65),
+                            "segment_allocated_bytes": 65,
+                        }
+                        for rank in range(plan.tp_size)
+                    ],
+                }
+            ],
+        }
+        return plan, metadata, layer_names
+
+    def test_transaction_installs_167_persistent_views_and_scratch(self):
+        plan, metadata, layer_names = self._many_view_plan_and_metadata()
+        runner = NPUModelRunner.__new__(NPUModelRunner)
+        runner.enable_c128_packed_vmm_arena = True
+        runner._c128_packed_arena_runtime = None
+        runner._c128_owner_stage_caches = {}
+        runner._c128_packed_layer_page_counts = {}
+        runner._c128_packed_owner_layers = set()
+        runner._c128_packed_layer_buckets = {}
+        runner._c128_packed_scratch_raw_tensors = {}
+        runner._c128_packed_owner_route_table = None
+        runner._c128_packed_registered_owner_caches = {}
+        runner._c128_registered_owner_caches_by_layer = {}
+        runner._c128_packed_block_table_translators = ()
+        runner.vllm_config = SimpleNamespace(
+            parallel_config=SimpleNamespace(tensor_parallel_size=2),
+        )
+        runner.may_reinitialize_input_batch = MagicMock()
+        runner._allocate_kv_cache_tensors = MagicMock()
+        runner._get_c128_owner_stage_cache = MagicMock()
+        runner._reshape_kv_cache_tensors = MagicMock(side_effect=lambda _config, raw_tensors: dict(raw_tensors))
+        roots = {
+            "packed": torch.zeros(
+                plan.bucket_accounting[0].total_allocated_bytes_by_rank[0],
+                dtype=torch.uint8,
+            )
+        }
+        view_buckets = {f"component/group_0/component/{copy_index}": "packed" for copy_index in range(167)}
+        view_buckets["scratch/packed"] = "packed"
+        runtime = _FakePackedArenaRuntime(
+            plan=plan,
+            tp_rank=0,
+            roots=roots,
+            view_buckets=view_buckets,
+        )
+        kv_cache_config = SimpleNamespace(
+            kv_cache_groups=[
+                SimpleNamespace(layer_names=layer_names),
+            ],
+            c128_packed_pool_metadata=metadata,
+        )
+
+        def install_runtime(installed_runtime, _config):
+            installed_runtime.publish()
+            runner._c128_packed_arena_runtime = installed_runtime
+
+        runner._install_c128_packed_arena_runtime = install_runtime
+        with (
+            patch(
+                "vllm_ascend.attention.context_parallel."
+                "c128_packed_owner_route."
+                "C128PackedOwnerRouteTable.from_serialized_plan",
+                return_value=MagicMock(),
+            ),
+            patch(
+                "vllm_ascend.worker.packed_block_table." "packed_block_table_translators_from_metadata",
+                return_value=(object(),),
+            ),
+        ):
+            kv_caches = runner._initialize_kv_cache_from_c128_packed_arena(
+                runtime,
+                kv_cache_config,
+            )
+
+        self.assertEqual(len(runtime.installed_keys), 168)
+        self.assertEqual(len(kv_caches), 167)
+        self.assertEqual(
+            runner._c128_packed_scratch_raw_tensors["packed"].numel(),
+            65,
+        )
+        runner._allocate_kv_cache_tensors.assert_not_called()
+        runner._get_c128_owner_stage_cache.assert_not_called()
+
     def test_exact_component_and_scratch_aliases_replace_raw_allocation(self):
         plan, metadata = self._plan_and_metadata()
         runner, runtime, kv_cache_config = self._build_runner(
@@ -783,6 +1220,7 @@ class TestNPUModelRunnerPackedAllocatorReshape(unittest.TestCase):
             runner,
             kv_cache_config,
         )
+        runner._get_c128_owner_stage_cache = MagicMock()
 
         def install_runtime(installed_runtime, _config):
             installed_runtime.publish()
@@ -811,6 +1249,7 @@ class TestNPUModelRunnerPackedAllocatorReshape(unittest.TestCase):
             runner._c128_packed_registered_owner_caches["owner_attn"],
             owner_cache,
         )
+        runner._get_c128_owner_stage_cache.assert_not_called()
 
         kv_caches.clear()
         runner._c128_owner_stage_caches.clear()
@@ -880,6 +1319,60 @@ class TestNPUModelRunnerPackedAllocatorReshape(unittest.TestCase):
             runner.kernel_block_sizes,
             original_kernel_block_sizes,
         )
+
+    def test_binding_failure_restores_model_state_and_closes_runtime(self):
+        plan, metadata = self._plan_and_metadata()
+        runner, runtime, kv_cache_config = self._build_runner(
+            plan,
+            metadata,
+        )
+        self._configure_representative_compressed_reshape(
+            runner,
+            kv_cache_config,
+        )
+        old_cache = object()
+        old_binding = object()
+        replicated_context = SimpleNamespace(kv_cache=old_binding)
+        owner_context = SimpleNamespace()
+        runner.kv_caches = [old_cache]
+        runner.shared_kv_cache_layers = {}
+        runner.compilation_config = SimpleNamespace(
+            static_forward_context={
+                "replicated_attn": replicated_context,
+                "owner_attn": owner_context,
+            }
+        )
+
+        def fail_binding(_config, _kv_caches):
+            runner.kv_caches.append(object())
+            replicated_context.kv_cache = object()
+            owner_context.kv_cache = object()
+            raise RuntimeError("synthetic binding failure")
+
+        runner._bind_initialized_kv_caches = MagicMock(side_effect=fail_binding)
+        runner._install_c128_packed_arena_runtime = MagicMock()
+        with (
+            patch(
+                "vllm_ascend.worker.packed_block_table." "packed_block_table_translators_from_metadata",
+                return_value=(object(), object()),
+            ),
+            self.assertRaisesRegex(
+                RuntimeError,
+                "synthetic binding failure",
+            ),
+        ):
+            runner._initialize_kv_cache_from_c128_packed_arena(
+                runtime,
+                kv_cache_config,
+                bind_to_model=True,
+            )
+
+        self.assertTrue(runtime.closed)
+        self.assertEqual(runner.kv_caches, [old_cache])
+        self.assertIs(replicated_context.kv_cache, old_binding)
+        self.assertFalse(hasattr(owner_context, "kv_cache"))
+        self.assertIsNone(runner._c128_packed_arena_runtime)
+        runner._install_c128_packed_arena_runtime.assert_not_called()
 
     def test_cleanup_failure_restores_state_and_preserves_retry(self):
         plan, metadata = self._plan_and_metadata()

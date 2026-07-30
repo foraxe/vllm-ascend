@@ -45,6 +45,38 @@ C128_PACKED_POOL_OUTPUT_TOKENS = 1
 C128_PACKED_POOL_MAX_MODEL_LEN = 8_201
 C128_PACKED_POOL_MAX_NUM_BATCHED_TOKENS = 5_120
 C128_PACKED_POOL_TP_SIZE = 8
+C128_PACKED_POOL_REQUIRED_GROUP_QUOTAS = (17, 1, 65, 65, 642, 165)
+C128_PACKED_POOL_ASSIGNED_GROUP_QUOTAS = (17, 3_235, 65, 65, 642, 165)
+C128_PACKED_POOL_GROUP_IDENTITIES = (
+    "c4_attention",
+    "c128_attention",
+    "dense_swa_a",
+    "dense_swa_b",
+    "c4_state",
+    "c128_state",
+)
+C128_PACKED_POOL_COMPONENT_SIGNATURES = (
+    (
+        ("page_16640", 16_640, 21, PackedPlacement.REPLICATED),
+        ("page_131072", 131_072, 21, PackedPlacement.REPLICATED),
+    ),
+    (("page_131072", 131_072, 20, PackedPlacement.C128_OWNER),),
+    (("page_131072", 131_072, 22, PackedPlacement.REPLICATED),),
+    (("page_131072", 131_072, 21, PackedPlacement.REPLICATED),),
+    (
+        ("page_16640", 16_640, 21, PackedPlacement.REPLICATED),
+        ("page_131072", 131_072, 21, PackedPlacement.REPLICATED),
+    ),
+    (("page_131072", 131_072, 20, PackedPlacement.REPLICATED),),
+)
+C128_PACKED_POOL_GLOBAL_BLOCK_CAPACITY = 4_190
+C128_PACKED_POOL_PERSISTENT_VIEW_COUNT = 167
+C128_PACKED_POOL_SCRATCH_VIEW_COUNT = 1
+C128_PACKED_POOL_SCRATCH_PAGES_PER_RANK = 65
+C128_PACKED_POOL_NARROW_PERSISTENT_BYTES_PER_RANK = 308_281_344
+C128_PACKED_POOL_WIDE_PERSISTENT_BYTES_PER_RANK = 3_896_508_416
+C128_PACKED_POOL_SCRATCH_BYTES_PER_RANK = 10_485_760
+C128_PACKED_POOL_TOTAL_BYTES_PER_RANK = 4_215_275_520
 
 
 class PackedArenaMetadataError(ValueError):
@@ -132,6 +164,200 @@ class PackedArenaRuntimeContract:
         if not 0 <= tp_rank < len(self.rank_accounting):
             raise ValueError(f"tp_rank {tp_rank} is outside [0, " f"{len(self.rank_accounting)})")
         return self.rank_accounting[tp_rank]
+
+
+def validate_c128_packed_startup_contract(
+    contract: PackedArenaRuntimeContract,
+    metadata: Mapping[str, object],
+) -> PackedArenaRuntimeContract:
+    """Require the one fixed same-capacity worker activation contract.
+
+    The generic metadata parser is also used by synthetic/unit plans.  The
+    production startup path is deliberately narrower: no VMM or Torch-NPU
+    adapter may be opened unless the scheduler quotas, complete component
+    manifest, scratch window, and exact rank allocation all match the
+    reviewed DSV4-Flash TP8 profile.
+    """
+    plan = contract.plan
+    if plan.global_block_capacity != C128_PACKED_POOL_GLOBAL_BLOCK_CAPACITY:
+        raise PackedArenaMetadataError(
+            "global_block_capacity: production packed runtime requires "
+            f"{C128_PACKED_POOL_GLOBAL_BLOCK_CAPACITY}, got "
+            f"{plan.global_block_capacity}"
+        )
+    if metadata.get("expert_parallel_size") != C128_PACKED_POOL_TP_SIZE:
+        raise PackedArenaMetadataError("expert_parallel_size: production packed runtime requires EP8")
+    required_quotas = metadata.get("required_group_block_quotas")
+    if (
+        not isinstance(required_quotas, (list, tuple))
+        or tuple(required_quotas) != C128_PACKED_POOL_REQUIRED_GROUP_QUOTAS
+    ):
+        raise PackedArenaMetadataError(
+            "required_group_block_quotas: production packed runtime requires "
+            f"{C128_PACKED_POOL_REQUIRED_GROUP_QUOTAS!r}"
+        )
+    serialized_assigned_quotas = metadata.get("assigned_group_block_quotas")
+    if (
+        not isinstance(serialized_assigned_quotas, (list, tuple))
+        or tuple(serialized_assigned_quotas) != C128_PACKED_POOL_ASSIGNED_GROUP_QUOTAS
+    ):
+        raise PackedArenaMetadataError(
+            "assigned_group_block_quotas: production packed runtime requires "
+            f"{C128_PACKED_POOL_ASSIGNED_GROUP_QUOTAS!r}"
+        )
+
+    assigned_quotas = tuple(group.logical_blocks for group in plan.groups)
+    if assigned_quotas != C128_PACKED_POOL_ASSIGNED_GROUP_QUOTAS:
+        raise PackedArenaMetadataError(
+            "groups.logical_blocks: production packed runtime requires "
+            f"{C128_PACKED_POOL_ASSIGNED_GROUP_QUOTAS!r}, got "
+            f"{assigned_quotas!r}"
+        )
+    serialized_groups = metadata.get("groups")
+    if not isinstance(serialized_groups, (list, tuple)):
+        raise PackedArenaMetadataError("groups: production packed runtime requires six groups")
+    if len(serialized_groups) != len(C128_PACKED_POOL_GROUP_IDENTITIES):
+        raise PackedArenaMetadataError("groups: production packed runtime requires exactly six groups")
+    expected_scheduler_identities = []
+    for group_index, (
+        raw_group,
+        identity,
+        required_blocks,
+        assigned_blocks,
+    ) in enumerate(
+        zip(
+            serialized_groups,
+            C128_PACKED_POOL_GROUP_IDENTITIES,
+            C128_PACKED_POOL_REQUIRED_GROUP_QUOTAS,
+            C128_PACKED_POOL_ASSIGNED_GROUP_QUOTAS,
+        )
+    ):
+        if not isinstance(raw_group, Mapping):
+            raise PackedArenaMetadataError(f"groups[{group_index}]: expected object")
+        expected_group = {
+            "group_index": group_index,
+            "name": f"group_{group_index}",
+            "identity": identity,
+            "required_logical_blocks": required_blocks,
+            "assigned_logical_blocks": assigned_blocks,
+        }
+        for field, expected_value in expected_group.items():
+            if raw_group.get(field) != expected_value:
+                raise PackedArenaMetadataError(
+                    f"groups[{group_index}].{field}: expected " f"{expected_value!r}, got {raw_group.get(field)!r}"
+                )
+        expected_scheduler_identities.append(
+            {
+                "group_index": group_index,
+                "group_name": f"group_{group_index}",
+                "identity": identity,
+                "required_blocks": required_blocks,
+                "assigned_blocks": assigned_blocks,
+            }
+        )
+    if metadata.get("scheduler_group_identities") != expected_scheduler_identities:
+        raise PackedArenaMetadataError(
+            "scheduler_group_identities: production packed runtime group " "identity/order contract changed"
+        )
+
+    owner_component_groups = {
+        group_index
+        for group_index, group in enumerate(plan.groups)
+        for component in group.components
+        if component.placement is PackedPlacement.C128_OWNER
+    }
+    if owner_component_groups != {1}:
+        raise PackedArenaMetadataError(
+            "groups.components.placement: only group_1 C128 attention may " "use c128_owner placement"
+        )
+    component_signatures = tuple(
+        tuple(
+            (
+                component.bucket,
+                component.page_size_bytes,
+                component.copies,
+                component.placement,
+            )
+            for component in group.components
+        )
+        for group in plan.groups
+    )
+    if component_signatures != C128_PACKED_POOL_COMPONENT_SIGNATURES:
+        raise PackedArenaMetadataError("groups.components: production packed runtime component " "signature changed")
+
+    persistent_views = tuple(view for view in contract.expected_views if view.key.startswith("component/"))
+    scratch_views = tuple(view for view in contract.expected_views if view.key.startswith("scratch/"))
+    if len(persistent_views) != C128_PACKED_POOL_PERSISTENT_VIEW_COUNT:
+        raise PackedArenaMetadataError(
+            "expected_views: production packed runtime requires exactly "
+            f"{C128_PACKED_POOL_PERSISTENT_VIEW_COUNT} persistent component "
+            f"views, got {len(persistent_views)}"
+        )
+    if len(scratch_views) != C128_PACKED_POOL_SCRATCH_VIEW_COUNT:
+        raise PackedArenaMetadataError(
+            "expected_views: production packed runtime requires exactly "
+            f"{C128_PACKED_POOL_SCRATCH_VIEW_COUNT} scratch view, got "
+            f"{len(scratch_views)}"
+        )
+    if len(persistent_views) + len(scratch_views) != len(contract.expected_views):
+        raise PackedArenaMetadataError("expected_views: contains an unsupported view kind")
+
+    active_scratch = tuple(scratch for scratch in plan.scratch if scratch.max_pages_per_rank)
+    if len(active_scratch) != C128_PACKED_POOL_SCRATCH_VIEW_COUNT:
+        raise PackedArenaMetadataError(
+            "scratch: production packed runtime requires exactly one active " "scratch region"
+        )
+    scratch = active_scratch[0]
+    if scratch.max_pages_per_rank != C128_PACKED_POOL_SCRATCH_PAGES_PER_RANK:
+        raise PackedArenaMetadataError(
+            "scratch.max_pages_per_rank: production packed runtime requires "
+            f"{C128_PACKED_POOL_SCRATCH_PAGES_PER_RANK}, got "
+            f"{scratch.max_pages_per_rank}"
+        )
+    if scratch.bucket != "page_131072":
+        raise PackedArenaMetadataError("scratch.bucket: production packed runtime requires " "'page_131072'")
+    if scratch_views[0].key != f"scratch/{scratch.bucket}":
+        raise PackedArenaMetadataError(
+            "expected_views: scratch view does not match the active scratch " f"bucket {scratch.bucket!r}"
+        )
+
+    if len(contract.rank_accounting) != C128_PACKED_POOL_TP_SIZE:
+        raise PackedArenaMetadataError(
+            "rank_accounting: production packed runtime requires exactly " f"{C128_PACKED_POOL_TP_SIZE} ranks"
+        )
+    rank_bytes = tuple(accounting.total_allocated_bytes for accounting in contract.rank_accounting)
+    expected_rank_bytes = (C128_PACKED_POOL_TOTAL_BYTES_PER_RANK,) * C128_PACKED_POOL_TP_SIZE
+    if rank_bytes != expected_rank_bytes:
+        raise PackedArenaMetadataError(
+            "rank_accounting.total_allocated_bytes: production packed "
+            f"runtime requires {expected_rank_bytes!r}, got {rank_bytes!r}"
+        )
+    for accounting in contract.rank_accounting:
+        buckets = {bucket.bucket: bucket for bucket in accounting.buckets}
+        if set(buckets) != {"page_16640", "page_131072"}:
+            raise PackedArenaMetadataError(
+                "rank_accounting.buckets: production packed runtime requires " "exactly page_16640 and page_131072"
+            )
+        narrow = buckets["page_16640"]
+        wide = buckets["page_131072"]
+        if (
+            narrow.persistent_allocated_bytes != C128_PACKED_POOL_NARROW_PERSISTENT_BYTES_PER_RANK
+            or narrow.scratch_region_bytes != 0
+            or narrow.total_allocated_bytes != C128_PACKED_POOL_NARROW_PERSISTENT_BYTES_PER_RANK
+        ):
+            raise PackedArenaMetadataError(
+                "rank_accounting.buckets[narrow]: allocation does not match " "the production packed runtime"
+            )
+        if (
+            wide.persistent_allocated_bytes != C128_PACKED_POOL_WIDE_PERSISTENT_BYTES_PER_RANK
+            or wide.scratch_region_bytes != C128_PACKED_POOL_SCRATCH_BYTES_PER_RANK
+            or wide.total_allocated_bytes
+            != (C128_PACKED_POOL_WIDE_PERSISTENT_BYTES_PER_RANK + C128_PACKED_POOL_SCRATCH_BYTES_PER_RANK)
+        ):
+            raise PackedArenaMetadataError(
+                "rank_accounting.buckets[wide]: allocation does not match " "the production packed runtime"
+            )
+    return contract
 
 
 @dataclass(frozen=True)
@@ -689,6 +915,29 @@ class PackedArenaRuntime:
         quiesce: Callable[[], None],
     ) -> PackedArenaRuntime:
         contract = packed_arena_contract_from_metadata(metadata)
+        return cls.open_from_contract(
+            contract=contract,
+            tp_rank=tp_rank,
+            device_index=device_index,
+            backend=backend,
+            tensor_factory=tensor_factory,
+            arena_fence=arena_fence,
+            quiesce=quiesce,
+        )
+
+    @classmethod
+    def open_from_contract(
+        cls,
+        *,
+        contract: PackedArenaRuntimeContract,
+        tp_rank: int,
+        device_index: int,
+        backend: PackedArenaBackend,
+        tensor_factory: PackedArenaTensorFactory,
+        arena_fence: Callable[[], None],
+        quiesce: Callable[[], None],
+    ) -> PackedArenaRuntime:
+        """Open a lease from an already validated immutable contract."""
         lease = PackedArenaLease.open(
             plan=contract.plan,
             tp_rank=tp_rank,

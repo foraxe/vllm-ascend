@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from copy import deepcopy
+from types import SimpleNamespace
 
 import pytest
 
@@ -21,6 +22,11 @@ from vllm_ascend.attention.context_parallel.c128_packed_pool import (
     PackedPoolScratchSpec,
 )
 from vllm_ascend.worker.c128_packed_runtime import (
+    C128_PACKED_POOL_ASSIGNED_GROUP_QUOTAS,
+    C128_PACKED_POOL_COMPONENT_SIGNATURES,
+    C128_PACKED_POOL_GROUP_IDENTITIES,
+    C128_PACKED_POOL_REQUIRED_GROUP_QUOTAS,
+    C128_PACKED_POOL_TOTAL_BYTES_PER_RANK,
     PackedArenaMetadataError,
     PackedArenaRuntime,
     PackedArenaRuntimeCleanupError,
@@ -28,6 +34,7 @@ from vllm_ascend.worker.c128_packed_runtime import (
     PackedArenaRuntimeState,
     maybe_open_packed_arena_runtime,
     packed_arena_contract_from_metadata,
+    validate_c128_packed_startup_contract,
 )
 
 pytestmark = pytest.mark.cpu_test
@@ -43,6 +50,193 @@ EXPECTED_VIEW_KEYS = (
     OWNER_VIEW_KEY_1,
     SCRATCH_VIEW_KEY,
 )
+
+
+def _production_startup_contract():
+    groups = tuple(
+        SimpleNamespace(
+            logical_blocks=logical_blocks,
+            components=tuple(
+                SimpleNamespace(
+                    bucket=bucket,
+                    page_size_bytes=page_size_bytes,
+                    copies=copies,
+                    placement=placement,
+                )
+                for (
+                    bucket,
+                    page_size_bytes,
+                    copies,
+                    placement,
+                ) in component_signatures
+            ),
+        )
+        for logical_blocks, component_signatures in zip(
+            C128_PACKED_POOL_ASSIGNED_GROUP_QUOTAS,
+            C128_PACKED_POOL_COMPONENT_SIGNATURES,
+        )
+    )
+    plan = SimpleNamespace(
+        global_block_capacity=4_190,
+        groups=groups,
+        scratch=(
+            SimpleNamespace(
+                bucket="page_131072",
+                max_pages_per_rank=65,
+            ),
+        ),
+    )
+    expected_views = tuple(
+        SimpleNamespace(
+            key=f"component/group_{group_index}/component_{component_index}/{copy_index}",
+            bucket=bucket,
+        )
+        for group_index, component_signatures in enumerate(C128_PACKED_POOL_COMPONENT_SIGNATURES)
+        for component_index, (
+            bucket,
+            _page_size_bytes,
+            copies,
+            _placement,
+        ) in enumerate(component_signatures)
+        for copy_index in range(copies)
+    ) + (
+        SimpleNamespace(
+            key="scratch/page_131072",
+            bucket="page_131072",
+        ),
+    )
+    narrow = SimpleNamespace(
+        bucket="page_16640",
+        persistent_allocated_bytes=308_281_344,
+        scratch_region_bytes=0,
+        total_allocated_bytes=308_281_344,
+    )
+    wide = SimpleNamespace(
+        bucket="page_131072",
+        persistent_allocated_bytes=3_896_508_416,
+        scratch_region_bytes=10_485_760,
+        total_allocated_bytes=3_906_994_176,
+    )
+    rank_accounting = tuple(
+        SimpleNamespace(
+            total_allocated_bytes=C128_PACKED_POOL_TOTAL_BYTES_PER_RANK,
+            buckets=(narrow, wide),
+        )
+        for _ in range(8)
+    )
+    metadata_groups = [
+        {
+            "group_index": index,
+            "name": f"group_{index}",
+            "identity": identity,
+            "required_logical_blocks": required,
+            "assigned_logical_blocks": assigned,
+        }
+        for index, (identity, required, assigned) in enumerate(
+            zip(
+                C128_PACKED_POOL_GROUP_IDENTITIES,
+                C128_PACKED_POOL_REQUIRED_GROUP_QUOTAS,
+                C128_PACKED_POOL_ASSIGNED_GROUP_QUOTAS,
+            )
+        )
+    ]
+    scheduler_identities = [
+        {
+            "group_index": index,
+            "group_name": f"group_{index}",
+            "identity": identity,
+            "required_blocks": required,
+            "assigned_blocks": assigned,
+        }
+        for index, (identity, required, assigned) in enumerate(
+            zip(
+                C128_PACKED_POOL_GROUP_IDENTITIES,
+                C128_PACKED_POOL_REQUIRED_GROUP_QUOTAS,
+                C128_PACKED_POOL_ASSIGNED_GROUP_QUOTAS,
+            )
+        )
+    ]
+    contract = SimpleNamespace(
+        plan=plan,
+        expected_views=expected_views,
+        rank_accounting=rank_accounting,
+    )
+    metadata = {
+        "expert_parallel_size": 8,
+        "required_group_block_quotas": list(C128_PACKED_POOL_REQUIRED_GROUP_QUOTAS),
+        "assigned_group_block_quotas": list(C128_PACKED_POOL_ASSIGNED_GROUP_QUOTAS),
+        "scheduler_group_identities": scheduler_identities,
+        "groups": metadata_groups,
+    }
+    return contract, metadata
+
+
+def test_production_startup_contract_pins_manifest_and_bytes() -> None:
+    contract, metadata = _production_startup_contract()
+
+    assert validate_c128_packed_startup_contract(contract, metadata) is contract
+    assert len(contract.expected_views) == 168
+    assert all(accounting.total_allocated_bytes == 4_215_275_520 for accounting in contract.rank_accounting)
+
+
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    [
+        (
+            lambda _contract, metadata: metadata.__setitem__(
+                "required_group_block_quotas",
+                [17, 2, 65, 65, 642, 165],
+            ),
+            "required_group_block_quotas",
+        ),
+        (
+            lambda _contract, metadata: metadata.__setitem__(
+                "assigned_group_block_quotas",
+                [17, 3_234, 65, 65, 642, 166],
+            ),
+            "assigned_group_block_quotas",
+        ),
+        (
+            lambda _contract, metadata: metadata.__setitem__(
+                "expert_parallel_size",
+                4,
+            ),
+            "expert_parallel_size",
+        ),
+        (
+            lambda _contract, metadata: metadata["groups"][1].__setitem__(
+                "identity",
+                "wrong",
+            ),
+            r"groups\[1\]\.identity",
+        ),
+        (
+            lambda contract, _metadata: setattr(
+                contract.plan.groups[1].components[0],
+                "page_size_bytes",
+                65_536,
+            ),
+            "component signature",
+        ),
+        (
+            lambda contract, _metadata: setattr(
+                contract.rank_accounting[0],
+                "total_allocated_bytes",
+                4_215_275_519,
+            ),
+            "total_allocated_bytes",
+        ),
+    ],
+)
+def test_production_startup_contract_rejects_semantic_drift(
+    mutation,
+    message: str,
+) -> None:
+    contract, metadata = _production_startup_contract()
+    mutation(contract, metadata)
+
+    with pytest.raises(PackedArenaMetadataError, match=message):
+        validate_c128_packed_startup_contract(contract, metadata)
 
 
 def _plan() -> PackedPoolPlan:
