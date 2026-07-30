@@ -48,6 +48,18 @@ release. The historical Pro P-side reproduction leaves it enabled by default;
 a direct standalone DSV4-Flash service must use
 `ENABLE_DSA_LAYER_SHARDING=0`.
 
+The two multistream controls are independent and default off:
+
+- `ENABLE_MULTISTREAM_DSA_PREPROCESS=1` reaches the DSA-CP hidden-state
+  all-gather/local-Q overlap in
+  `attention/context_parallel/dsa_cp.py`.
+- `ENABLE_MULTISTREAM_OVERLAP_SHARED_EXPERT=1` moves shared-expert compute to
+  its separate stream while routed FusedMC2 executes.
+
+`ENABLE_PREFILL_COMM_COMPUTE_OVERLAP=1` is retained for the non-CP DSA
+implementation in `attention/dsa_v1.py`; it is not a DSA-CP overlap switch in
+this code revision. Pin all three values in every A/B launch log.
+
 ## Deploy to an A3 iTask pod
 
 Run these commands from the repository root after resolving the role directory
@@ -84,6 +96,8 @@ SYNTHETIC_ROUTED_EXPERTS=64 \
 ALLOW_SYNTHETIC_WEIGHTS=1 \
 ENABLE_DSA_LAYER_SHARDING=1 \
 ENABLE_PREFILL_COMM_COMPUTE_OVERLAP=0 \
+ENABLE_MULTISTREAM_DSA_PREPROCESS=0 \
+ENABLE_MULTISTREAM_OVERLAP_SHARED_EXPERT=0 \
 ENABLE_FUSED_MC2=1 \
 ENABLE_MTP=0 \
 ENABLE_TORCH_PROFILER=0 \
@@ -113,6 +127,8 @@ ENABLE_DSA_LAYER_SHARDING=0 \
 ENABLE_MOONCAKE_KV_CONNECTOR=0 \
 ENABLE_C128_OWNER_SHARD=0 \
 ENABLE_PREFILL_COMM_COMPUTE_OVERLAP=0 \
+ENABLE_MULTISTREAM_DSA_PREPROCESS=0 \
+ENABLE_MULTISTREAM_OVERLAP_SHARED_EXPERT=0 \
 ENABLE_FUSED_MC2=1 \
 ENABLE_MTP=0 \
 ENABLE_TORCH_PROFILER=0 \
@@ -128,6 +144,19 @@ This run is valid only after `GET /health` returns `200`, the launcher log
 contains `dsa_layer_sharding=0`, `mooncake_kv_connector=0`, and every recorded
 request has a nonzero TTFT and a first text token. Keep its JSON next to the
 launch log; do not compare it with a synthetic 64-expert row.
+
+Run the two existing multistream candidates as separate single-variable A/Bs:
+
+```bash
+# Shared expert versus routed FusedMC2.
+ENABLE_MULTISTREAM_OVERLAP_SHARED_EXPERT=1
+
+# DSA-CP hidden all-gather versus local Q projection.
+ENABLE_MULTISTREAM_DSA_PREPROCESS=1
+```
+
+Keep the other multistream switch at `0` in each candidate. Do not combine
+them until both independent candidates pass their TTFT and output gates.
 
 The historical Pro role uses `SAFETENSORS_LOAD_STRATEGY=prefetch`. If that
 specific NFS prefetch path fails before any shard loads, rerun the identical

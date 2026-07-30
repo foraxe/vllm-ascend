@@ -18,6 +18,11 @@ PID_FILE=${ROLE_DIR}/.vllm_pids_single_node
 # Pure-prefill DSA-CP optimization gate. This is intentionally independent
 # from layer sharding.
 ENABLE_PREFILL_COMM_COMPUTE_OVERLAP=${ENABLE_PREFILL_COMM_COMPUTE_OVERLAP:-0}
+# DSA-CP reads this switch for its hidden-state all-gather / local-Q overlap.
+# Keep it separate from the non-CP prefill_comm_compute_overlap control.
+ENABLE_MULTISTREAM_DSA_PREPROCESS=${ENABLE_MULTISTREAM_DSA_PREPROCESS:-0}
+# Run the shared expert on a separate stream while routed FusedMC2 executes.
+ENABLE_MULTISTREAM_OVERLAP_SHARED_EXPERT=${ENABLE_MULTISTREAM_OVERLAP_SHARED_EXPERT:-0}
 # C128 only: retain canonical compressed pages on one TP owner and stage the
 # pages needed by prefill attention through HCCL.  This is independent of
 # Mooncake and stays off until its replicated fallback has been compared.
@@ -77,7 +82,7 @@ NUM_GPU_BLOCKS_OVERRIDE=${NUM_GPU_BLOCKS_OVERRIDE:-}
 SYNTHETIC_ROUTED_EXPERTS=${SYNTHETIC_ROUTED_EXPERTS:-0}
 ALLOW_SYNTHETIC_WEIGHTS=${ALLOW_SYNTHETIC_WEIGHTS:-0}
 
-for boolean_name in ENABLE_PREFILL_COMM_COMPUTE_OVERLAP ENABLE_C128_OWNER_SHARD ENABLE_C128_OWNER_COMPACT_ALLOCATION ENABLE_C128_OWNER_DEBUG ENABLE_C128_OWNER_SELECTIVE_STAGE ENABLE_C128_OWNER_LOCAL_COMPRESSOR ENABLE_KV_CACHE_ALLOCATION_ACCOUNTING \
+for boolean_name in ENABLE_PREFILL_COMM_COMPUTE_OVERLAP ENABLE_MULTISTREAM_DSA_PREPROCESS ENABLE_MULTISTREAM_OVERLAP_SHARED_EXPERT ENABLE_C128_OWNER_SHARD ENABLE_C128_OWNER_COMPACT_ALLOCATION ENABLE_C128_OWNER_DEBUG ENABLE_C128_OWNER_SELECTIVE_STAGE ENABLE_C128_OWNER_LOCAL_COMPRESSOR ENABLE_KV_CACHE_ALLOCATION_ACCOUNTING \
     ENABLE_DSA_LAYER_SHARDING ENABLE_FUSED_MC2 ENABLE_MTP \
     ENABLE_TORCH_PROFILER ENABLE_MOONCAKE_KV_CONNECTOR; do
     boolean_value=${!boolean_name}
@@ -256,6 +261,8 @@ MODEL_LOADER_CONFIG='{"enable_multithread_load":true,"num_threads":8}'
 SPECULATIVE_CONFIG='{"num_speculative_tokens":1,"method":"mtp","enforce_eager":true}'
 ADDITIONAL_CONFIG=$(jq -cn \
     --argjson prefill_overlap "${ENABLE_PREFILL_COMM_COMPUTE_OVERLAP}" \
+    --argjson multistream_dsa_preprocess "${ENABLE_MULTISTREAM_DSA_PREPROCESS}" \
+    --argjson multistream_overlap_shared_expert "${ENABLE_MULTISTREAM_OVERLAP_SHARED_EXPERT}" \
     --argjson c128_owner_shard "${ENABLE_C128_OWNER_SHARD}" \
     --argjson c128_owner_compact_allocation "${ENABLE_C128_OWNER_COMPACT_ALLOCATION}" \
     --argjson c128_owner_debug "${ENABLE_C128_OWNER_DEBUG}" \
@@ -269,6 +276,8 @@ ADDITIONAL_CONFIG=$(jq -cn \
       enable_dsa_cp:true,
       enable_shared_expert_dp:true,
       prefill_comm_compute_overlap:$prefill_overlap,
+      multistream_dsa_preprocess:$multistream_dsa_preprocess,
+      multistream_overlap_shared_expert:$multistream_overlap_shared_expert,
       enable_c128_owner_shard:$c128_owner_shard,
       enable_c128_owner_compact_allocation:$c128_owner_compact_allocation,
       enable_c128_owner_debug:$c128_owner_debug,
@@ -404,8 +413,8 @@ ENV_KEYS=(
 
 print_effective_config() {
     local key
-    printf 'role=%s local_ip=%s prefill_comm_compute_overlap=%s c128_owner_shard=%s c128_owner_compact_allocation=%s c128_owner_debug=%s c128_owner_selective_stage=%s c128_owner_local_compressor=%s kv_cache_allocation_accounting=%s dsa_layer_sharding=%s enable_fused_mc2=%s enable_mtp=%s mooncake_kv_connector=%s synthetic_routed_experts=%s torch_profiler=%s\n' \
-        "${ROLE_NAME}" "${LOCAL_IP}" "${ENABLE_PREFILL_COMM_COMPUTE_OVERLAP}" "${ENABLE_C128_OWNER_SHARD}" "${ENABLE_C128_OWNER_COMPACT_ALLOCATION}" "${ENABLE_C128_OWNER_DEBUG}" "${ENABLE_C128_OWNER_SELECTIVE_STAGE}" "${ENABLE_C128_OWNER_LOCAL_COMPRESSOR}" "${ENABLE_KV_CACHE_ALLOCATION_ACCOUNTING}" "${ENABLE_DSA_LAYER_SHARDING}" "${ENABLE_FUSED_MC2}" "${ENABLE_MTP}" "${ENABLE_MOONCAKE_KV_CONNECTOR}" "${SYNTHETIC_ROUTED_EXPERTS}" "${ENABLE_TORCH_PROFILER}"
+    printf 'role=%s local_ip=%s prefill_comm_compute_overlap=%s multistream_dsa_preprocess=%s multistream_overlap_shared_expert=%s c128_owner_shard=%s c128_owner_compact_allocation=%s c128_owner_debug=%s c128_owner_selective_stage=%s c128_owner_local_compressor=%s kv_cache_allocation_accounting=%s dsa_layer_sharding=%s enable_fused_mc2=%s enable_mtp=%s mooncake_kv_connector=%s synthetic_routed_experts=%s torch_profiler=%s\n' \
+        "${ROLE_NAME}" "${LOCAL_IP}" "${ENABLE_PREFILL_COMM_COMPUTE_OVERLAP}" "${ENABLE_MULTISTREAM_DSA_PREPROCESS}" "${ENABLE_MULTISTREAM_OVERLAP_SHARED_EXPERT}" "${ENABLE_C128_OWNER_SHARD}" "${ENABLE_C128_OWNER_COMPACT_ALLOCATION}" "${ENABLE_C128_OWNER_DEBUG}" "${ENABLE_C128_OWNER_SELECTIVE_STAGE}" "${ENABLE_C128_OWNER_LOCAL_COMPRESSOR}" "${ENABLE_KV_CACHE_ALLOCATION_ACCOUNTING}" "${ENABLE_DSA_LAYER_SHARDING}" "${ENABLE_FUSED_MC2}" "${ENABLE_MTP}" "${ENABLE_MOONCAKE_KV_CONNECTOR}" "${SYNTHETIC_ROUTED_EXPERTS}" "${ENABLE_TORCH_PROFILER}"
     printf 'dp_size=%s dp_rank=%s tp_size=%s api_port=%s\n' \
         "${DP_SIZE}" "${DP_RANK}" "${TP_SIZE}" "${VLLM_PORT}"
     printf 'safetensors_load_strategy=%s gpu_memory_utilization=%s max_model_len=%s max_num_batched_tokens=%s num_gpu_blocks_override=%s\n' \
