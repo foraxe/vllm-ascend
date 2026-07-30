@@ -1,6 +1,7 @@
 # DSA-CP packed-pool planning prototype
 
-Status: CPU contract only; no runtime path imports this module.
+Status: feature-gated planner/config propagation is implemented; scheduler and
+worker consumption remain disabled.
 
 ## Hypothesis and gate
 
@@ -28,6 +29,108 @@ The contract lives in
 `vllm_ascend/attention/context_parallel/c128_packed_pool.py`.  It intentionally
 imports neither torch nor vLLM, so it cannot affect model bootstrap or a hot
 path.
+
+## Fixed Flash 8K/1 planner slice
+
+`patch_kv_cache_utils._ascend_get_kv_cache_configs` now builds a packed plan
+only when the vLLM JSON `additional_config` contains:
+
+```json
+{"enable_c128_packed_pool_planner": true}
+```
+
+This first profile is deliberately narrow:
+
+- model: DeepSeek-V4-Flash;
+- topology: TP8, PP1, upstream DCP1/PCP1; DSA layer sharding remains the
+  model's TP-local DSA-CP mechanism;
+- scheduler: `max_num_seqs=1`, chunked prefill on,
+  `max_num_batched_tokens=5120`, effective
+  `max_num_scheduled_tokens=5120`, one partial prefill, and long-prefill
+  threshold zero;
+- admission bound: `max_model_len=8201`, exactly the 8200 prompt slots plus
+  one sampled output, so a longer request cannot overrun a fixed group range;
+- client shape: 8192 repetitions of `" hello"`, which the validated client
+  request represents as 8200 prompt tokens, followed by one sampled output;
+- MTP and prefix caching: disabled;
+- chunk schedule: exactly 5120 then 3080 prompt tokens.
+
+The output token is sampled by the final prefill invocation and does not need a
+new KV slot.  The planner mirrors both existing cache-manager contracts.
+Compressed MLA first floors by `compress_ratio` and then takes the block
+ceiling.  Sliding-window groups are simulated one scheduler chunk at a time,
+including whole-block reclamation before the next chunk.  Their partition also
+honors `can_fit_full_sequence`:
+
+```text
+admission_cap =
+  ceil(min(window - 1 + max_num_batched_tokens, max_model_len) / block_size)
+  + 1
+admission_blocks = min(ceil(prompt_tokens / block_size), admission_cap)
+partition_blocks = max(peak_live_blocks, admission_blocks)
+```
+
+For the representative six-group Flash fixture, the exact one-request quotas
+under that pinned scheduler are:
+
+| group | scheduler shape | live peak | admission | partition |
+|---|---|---:|---:|---:|
+| C4 MLA | block 128, compression 4 | 17 | 17 | 17 |
+| C128 MLA | block 128, compression 128 | 1 | 1 | 1 |
+| C4 compressor state | block 8, window 8 | 640 | 642 | 642 |
+| C128 compressor state | block 32, window 128 | 160 | 165 | 165 |
+| dense SWA A | block 128, window 4096 | 57 | 65 | 65 |
+| dense SWA B | block 128, window 4096 | 57 | 65 | 65 |
+
+Their partition sum is 955 positive data IDs.  At the measured B0 block count
+`B=4190`, declaration order assigns ranges `[1,18)`, `[18,19)`,
+`[19,661)`, `[661,826)`, `[826,891)`, and `[891,956)`, leaving 3234
+unassigned data IDs after the global block-zero sentinel.
+
+The `window=4096` and two dense-SWA rows in this table remain fixture evidence,
+not a captured live `config.json`/group dump.  Runtime planning reads every
+group's actual block size, compression ratio, window, and layer order from the
+resolved `KVCacheConfig`; it will recompute or fail closed rather than apply
+these fixture constants.  The A3 activation gate must preserve the emitted
+group dump next to the result.
+
+The planner runs after vLLM clamps all worker configs to the minimum final
+`num_blocks`; it cannot serialize a stale per-rank pre-clamp capacity.  It
+attaches one JSON-safe `c128_packed_pool_metadata` object to every worker
+`KVCacheConfig`.  `initialize_from_config` sends those configs to already
+spawned workers through the multiprocess RPC; that attribute is the declared
+worker ABI.  Deep-copying the worker config into the scheduler config preserves
+the metadata.  The later write to EngineCore's
+`vllm_config.additional_config` is diagnostic only and is not a worker
+propagation mechanism.  Every worker independently rebuilds the plan, and
+startup fails if group schemas, ranges, or final block counts differ.
+
+The schema includes group ranges; component placement; the exact ordered
+`layer_names` mapping copy index to layer; every copy/rank's aligned segment
+base and size; bucket accounting; explicit per-rank scratch base, allocated
+size, and granularity; and exact bytes per rank.
+
+This slice is metadata-only.  It leaves `num_blocks`, every
+`KVCacheTensor.size`, and `shared_by` unchanged and marks the metadata
+`planner_only=true` and `downstream_runtime_abi_ready=false`.  A consumer must
+fail closed until the scheduler, block-table, worker allocator, and C128
+scatter/materialize ABI land together.
+
+The experiment gate is:
+
+- hypothesis: fixed group quotas plus owner-local C128 placement fit inside the
+  existing final block capacity and produce deterministic JSON metadata;
+- baseline: feature disabled, using the existing shared `BlockPool` and raw
+  `KVCacheTensor` layout;
+- metric: exact quota/range values, JSON round trip, post-clamp block count,
+  and unchanged baseline object/tensor identity;
+- pass: the quota sum is at most `B-1`, all ranges are disjoint, every worker
+  emits the same schema, metadata serializes, and feature-off returns the
+  original config objects without mutation;
+- fail: any quota/range/accounting mismatch or non-JSON metadata;
+- kill: unsupported topology/workload state, quota sum above `B-1`, missing
+  C128 group, mixed manager semantics inside a group, or any attempted tensor
+  resize before the downstream ABI exists.
 
 ## Logical and physical contract
 
@@ -108,13 +211,12 @@ validated together.  Feature-off means no `PackedPoolPlan` is constructed;
 `translate_group_block_ids(None, ...)` is an unconditional identity over the
 existing shared-pool IDs.
 
-1. Planner:
-   `vllm_ascend.patch.platform.patch_kv_cache_utils._get_kv_cache_config_deepseek_v4`
-   currently derives one `num_blocks` from the fully replicated layer-tuple
-   denominator and emits `KVCacheTensor(size=page_size * num_blocks)`.
-   It must choose the `N_g` quotas, serialize the range/component metadata,
-   size tensors from `BucketPhysicalBytes`, and keep the old output bit-for-bit
-   when the feature is disabled.
+1. Planner (partial):
+   `vllm_ascend.patch.platform.patch_kv_cache_utils` now chooses the fixed
+   Flash `N_g` quotas after final block-count clamping and serializes the
+   range/component metadata.  It deliberately does not size tensors from
+   `BucketPhysicalBytes`; that activation belongs with the worker allocator
+   ABI.  Feature-off returns the original configs without metadata mutation.
 2. Scheduler:
    `vllm_ascend.patch.platform.patch_kv_cache_coordinator.AscendHybridKVCacheCoordinator.__init__`
    currently constructs one shared `BlockPool(kv_cache_config.num_blocks)`.

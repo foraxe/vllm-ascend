@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM-Ascend project
 
+import json
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -24,8 +25,7 @@ def _vllm_config(block_size, dcp=1, pcp=1):
 def _kv_cache_config(*block_sizes):
     return SimpleNamespace(
         kv_cache_groups=[
-            SimpleNamespace(kv_cache_spec=SimpleNamespace(block_size=block_size))
-            for block_size in block_sizes
+            SimpleNamespace(kv_cache_spec=SimpleNamespace(block_size=block_size)) for block_size in block_sizes
         ]
     )
 
@@ -63,3 +63,426 @@ def test_multiple_groups_without_context_parallelism_delegate_upstream() -> None
 
     assert result == (64, 32)
     original.assert_called_once_with(config, vllm_config)
+
+
+class _FakeMLASpec:
+    def __init__(
+        self,
+        *,
+        block_size: int,
+        compress_ratio: int,
+        page_size_bytes: int,
+    ) -> None:
+        self.block_size = block_size
+        self.compress_ratio = compress_ratio
+        self.page_size_bytes = page_size_bytes
+
+
+class _FakeSlidingWindowMLASpec:
+    def __init__(
+        self,
+        *,
+        block_size: int,
+        sliding_window: int,
+        page_size_bytes: int,
+    ) -> None:
+        self.block_size = block_size
+        self.sliding_window = sliding_window
+        self.page_size_bytes = page_size_bytes
+
+
+class _FakeUniformTypeKVCacheSpecs:
+    def __init__(self, kv_cache_specs: dict[str, object]) -> None:
+        self.kv_cache_specs = kv_cache_specs
+
+
+def _fake_group(prefix: str, count: int, spec_factory):
+    layer_names = [f"{prefix}.{index}" for index in range(count)]
+    return SimpleNamespace(
+        layer_names=layer_names,
+        kv_cache_spec=_FakeUniformTypeKVCacheSpecs(
+            {name: spec_factory(index) for index, name in enumerate(layer_names)}
+        ),
+    )
+
+
+def _flash_groups():
+    wide_page = 128 * 1024
+    narrow_page = 16_640
+    return [
+        _fake_group(
+            "c4",
+            42,
+            lambda index: _FakeMLASpec(
+                block_size=128,
+                compress_ratio=4,
+                page_size_bytes=narrow_page if index < 21 else wide_page,
+            ),
+        ),
+        _fake_group(
+            "c128",
+            20,
+            lambda _index: _FakeMLASpec(
+                block_size=128,
+                compress_ratio=128,
+                page_size_bytes=wide_page,
+            ),
+        ),
+        _fake_group(
+            "c4_state",
+            21,
+            lambda _index: _FakeSlidingWindowMLASpec(
+                block_size=8,
+                sliding_window=8,
+                page_size_bytes=wide_page,
+            ),
+        ),
+        _fake_group(
+            "c128_state",
+            20,
+            lambda _index: _FakeSlidingWindowMLASpec(
+                block_size=32,
+                sliding_window=128,
+                page_size_bytes=wide_page,
+            ),
+        ),
+        _fake_group(
+            "dense_swa_a",
+            1,
+            lambda _index: _FakeSlidingWindowMLASpec(
+                block_size=128,
+                sliding_window=4096,
+                page_size_bytes=wide_page,
+            ),
+        ),
+        _fake_group(
+            "dense_swa_b",
+            1,
+            lambda _index: _FakeSlidingWindowMLASpec(
+                block_size=128,
+                sliding_window=4096,
+                page_size_bytes=wide_page,
+            ),
+        ),
+    ]
+
+
+def _packed_vllm_config(*, enabled: bool = True):
+    return SimpleNamespace(
+        additional_config={patch_kv_cache_utils.ENABLE_C128_PACKED_POOL_PLANNER: enabled},
+        parallel_config=SimpleNamespace(
+            tensor_parallel_size=8,
+            pipeline_parallel_size=1,
+            decode_context_parallel_size=1,
+            prefill_context_parallel_size=1,
+        ),
+        model_config=SimpleNamespace(
+            model="/models/DeepSeek-V4-Flash-w8a8",
+            max_model_len=8_201,
+        ),
+        scheduler_config=SimpleNamespace(
+            max_num_batched_tokens=5_120,
+            max_num_scheduled_tokens=None,
+            max_num_seqs=1,
+            enable_chunked_prefill=True,
+            max_num_partial_prefills=1,
+            long_prefill_token_threshold=0,
+        ),
+        speculative_config=None,
+        cache_config=SimpleNamespace(enable_prefix_caching=False),
+    )
+
+
+def _patch_packed_spec_types():
+    return (
+        patch.object(
+            patch_kv_cache_utils,
+            "MLAAttentionSpec",
+            _FakeMLASpec,
+        ),
+        patch.object(
+            patch_kv_cache_utils,
+            "SlidingWindowMLASpec",
+            _FakeSlidingWindowMLASpec,
+        ),
+        patch.object(
+            patch_kv_cache_utils,
+            "UniformTypeKVCacheSpecs",
+            _FakeUniformTypeKVCacheSpecs,
+        ),
+    )
+
+
+def test_fixed_flash_quotas_match_current_manager_chunk_semantics() -> None:
+    config = _packed_vllm_config()
+    expected_quotas = [17, 1, 642, 165, 65, 65]
+
+    mla_patch, swa_patch, uniform_patch = _patch_packed_spec_types()
+    with mla_patch, swa_patch, uniform_patch:
+        quota_and_shape = [
+            patch_kv_cache_utils._packed_group_quota(
+                group,
+                max_num_batched_tokens=(config.scheduler_config.max_num_batched_tokens),
+            )
+            for group in _flash_groups()
+        ]
+
+    actual_quotas = [quota for quota, _shape in quota_and_shape]
+    assert actual_quotas == expected_quotas
+    # The one generated output token is sampled after prefill; it does not
+    # consume a new KV slot. C4 still uses the manager's floor-before-ceil rule:
+    # ceil(floor(8200 / 4) / 128) == 17.
+    assert [
+        (
+            shape["peak_live_blocks"],
+            shape["admission_blocks"],
+            shape["partition_blocks"],
+        )
+        for _quota, shape in quota_and_shape
+    ] == [
+        (17, 17, 17),
+        (1, 1, 1),
+        (640, 642, 642),
+        (160, 165, 165),
+        (57, 65, 65),
+        (57, 65, 65),
+    ]
+    assert sum(actual_quotas) == 955
+
+
+def test_packed_planner_feature_off_returns_exact_original_objects() -> None:
+    config = SimpleNamespace(
+        additional_config={patch_kv_cache_utils.C128_PACKED_POOL_METADATA_KEY: {"caller_owned": True}}
+    )
+    original_configs = [SimpleNamespace(marker=object())]
+    with patch.object(
+        patch_kv_cache_utils,
+        "_orig_get_kv_cache_configs",
+        return_value=original_configs,
+    ) as original:
+        result = patch_kv_cache_utils._ascend_get_kv_cache_configs(
+            config,
+            [{"layer": object()}],
+            [123],
+        )
+
+    assert result is original_configs
+    assert config.additional_config == {patch_kv_cache_utils.C128_PACKED_POOL_METADATA_KEY: {"caller_owned": True}}
+    assert not hasattr(
+        original_configs[0],
+        patch_kv_cache_utils.C128_PACKED_POOL_METADATA_KEY,
+    )
+    original.assert_called_once()
+
+
+def test_packed_planner_serializes_exact_ranges_after_final_block_clamp() -> None:
+    config = _packed_vllm_config()
+    cache_config = SimpleNamespace(
+        num_blocks=4_190,
+        kv_cache_groups=_flash_groups(),
+        kv_cache_tensors=[SimpleNamespace(size=123, shared_by=["unchanged"])],
+    )
+
+    mla_patch, swa_patch, uniform_patch = _patch_packed_spec_types()
+    with (
+        mla_patch,
+        swa_patch,
+        uniform_patch,
+        patch.object(
+            patch_kv_cache_utils,
+            "_orig_get_kv_cache_configs",
+            return_value=[cache_config],
+        ),
+    ):
+        result = patch_kv_cache_utils._ascend_get_kv_cache_configs(
+            config,
+            [{"layer": object()}],
+            [999_999],
+        )
+
+    assert result == [cache_config]
+    assert cache_config.kv_cache_tensors[0].size == 123
+    metadata = getattr(
+        cache_config,
+        patch_kv_cache_utils.C128_PACKED_POOL_METADATA_KEY,
+    )
+    assert config.additional_config[patch_kv_cache_utils.C128_PACKED_POOL_METADATA_KEY] is metadata
+    assert metadata["schema_version"] == 1
+    assert metadata["profile"] == "dsv4_flash_prefill_8200_tokens_1out"
+    assert metadata["planner_only"] is True
+    assert metadata["downstream_runtime_abi_ready"] is False
+    assert metadata["global_block_capacity"] == 4_190
+    assert metadata["used_logical_blocks"] == 955
+    assert metadata["unused_logical_blocks"] == 3_234
+    assert [
+        (
+            group["logical_blocks"],
+            group["logical_start"],
+            group["logical_stop"],
+        )
+        for group in metadata["groups"]
+    ] == [
+        (17, 1, 18),
+        (1, 18, 19),
+        (642, 19, 661),
+        (165, 661, 826),
+        (65, 826, 891),
+        (65, 891, 956),
+    ]
+    assert {component["placement"] for component in metadata["groups"][1]["components"]} == {"c128_owner"}
+    assert metadata["groups"][0]["components"][0]["layer_names"] == [f"c4.{index}" for index in range(21)]
+    assert metadata["groups"][0]["components"][1]["layer_names"] == [f"c4.{index}" for index in range(21, 42)]
+    assert metadata["groups"][1]["components"][0]["layer_names"] == [f"c128.{index}" for index in range(20)]
+    assert metadata["buckets"]
+    assert len(metadata["scratch"]) == 1
+    assert metadata["scratch"][0]["max_pages_per_rank"] == 65
+    assert metadata["scratch"][0]["allocation_granularity_bytes"] == 2 * 1024 * 1024
+    assert len(metadata["scratch"][0]["segments"]) == 8
+    for segment in metadata["scratch"][0]["segments"]:
+        assert segment["segment_base_bytes"] % (2 * 1024 * 1024) == 0
+        assert segment["segment_allocated_bytes"] == 10 * 1024 * 1024
+    assert len(metadata["total_physical_bytes_by_rank"]) == 8
+    assert json.loads(json.dumps(metadata, sort_keys=True)) == metadata
+
+
+@pytest.mark.parametrize(
+    ("field_path", "value", "message"),
+    [
+        (
+            ("parallel_config", "prefill_context_parallel_size"),
+            2,
+            "cache managers scale block_size",
+        ),
+        (
+            ("scheduler_config", "max_num_seqs"),
+            2,
+            "requires max_num_seqs=1",
+        ),
+        (
+            ("scheduler_config", "max_num_scheduled_tokens"),
+            4_096,
+            "effective max_num_scheduled_tokens=5120",
+        ),
+        (
+            ("scheduler_config", "max_num_partial_prefills"),
+            2,
+            "requires max_num_partial_prefills=1",
+        ),
+        (
+            ("model_config", "max_model_len"),
+            32_768,
+            "requires max_model_len=8201",
+        ),
+    ],
+)
+def test_packed_planner_rejects_unpinned_runtime_shape(
+    field_path: tuple[str, str],
+    value: int,
+    message: str,
+) -> None:
+    config = _packed_vllm_config()
+    setattr(getattr(config, field_path[0]), field_path[1], value)
+    cache_config = SimpleNamespace(
+        num_blocks=4_190,
+        kv_cache_groups=_flash_groups(),
+        kv_cache_tensors=[],
+    )
+
+    mla_patch, swa_patch, uniform_patch = _patch_packed_spec_types()
+    with (
+        mla_patch,
+        swa_patch,
+        uniform_patch,
+        patch.object(
+            patch_kv_cache_utils,
+            "_orig_get_kv_cache_configs",
+            return_value=[cache_config],
+        ),
+        pytest.raises(ValueError, match=message),
+    ):
+        patch_kv_cache_utils._ascend_get_kv_cache_configs(
+            config,
+            [{"layer": object()}],
+            [999_999],
+        )
+
+
+def test_packed_planner_rejects_worker_group_schema_drift() -> None:
+    config = _packed_vllm_config()
+    first = SimpleNamespace(
+        num_blocks=4_190,
+        kv_cache_groups=_flash_groups(),
+        kv_cache_tensors=[],
+    )
+    second_groups = _flash_groups()
+    second_groups[-1].layer_names[0] = "different.worker.layer"
+    second_groups[-1].kv_cache_spec.kv_cache_specs["different.worker.layer"] = second_groups[
+        -1
+    ].kv_cache_spec.kv_cache_specs.pop("dense_swa_b.0")
+    second = SimpleNamespace(
+        num_blocks=4_190,
+        kv_cache_groups=second_groups,
+        kv_cache_tensors=[],
+    )
+
+    mla_patch, swa_patch, uniform_patch = _patch_packed_spec_types()
+    with (
+        mla_patch,
+        swa_patch,
+        uniform_patch,
+        patch.object(
+            patch_kv_cache_utils,
+            "_orig_get_kv_cache_configs",
+            return_value=[first, second],
+        ),
+        pytest.raises(ValueError, match="identical worker group schemas"),
+    ):
+        patch_kv_cache_utils._ascend_get_kv_cache_configs(
+            config,
+            [{"layer": object()}, {"layer": object()}],
+            [999_999, 999_999],
+        )
+
+
+def test_packed_planner_fails_closed_when_group_quotas_exceed_pool() -> None:
+    config = _packed_vllm_config()
+    cache_config = SimpleNamespace(
+        num_blocks=900,
+        kv_cache_groups=_flash_groups(),
+        kv_cache_tensors=[],
+    )
+
+    mla_patch, swa_patch, uniform_patch = _patch_packed_spec_types()
+    with (
+        mla_patch,
+        swa_patch,
+        uniform_patch,
+        patch.object(
+            patch_kv_cache_utils,
+            "_orig_get_kv_cache_configs",
+            return_value=[cache_config],
+        ),
+        pytest.raises(ValueError, match="exceeds usable data capacity"),
+    ):
+        patch_kv_cache_utils._ascend_get_kv_cache_configs(
+            config,
+            [{"layer": object()}],
+            [999_999],
+        )
+
+
+def test_packed_planner_rejects_non_boolean_feature_gate() -> None:
+    config = SimpleNamespace(additional_config={patch_kv_cache_utils.ENABLE_C128_PACKED_POOL_PLANNER: "1"})
+    with (
+        patch.object(
+            patch_kv_cache_utils,
+            "_orig_get_kv_cache_configs",
+            return_value=[],
+        ),
+        pytest.raises(ValueError, match="must be a JSON boolean"),
+    ):
+        patch_kv_cache_utils._ascend_get_kv_cache_configs(
+            config,
+            [],
+            [],
+        )
