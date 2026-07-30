@@ -2,10 +2,12 @@
 
 ## Status
 
-`RUNTIME_PATH_PASS`: the aligned-prefix admission, unaligned-tail fallback,
-target-image unit tests, real-Flash output, and matched TTFT budget passed on
-the `.204` A3 node. A causal NPU trace of the collective payloads remains a
-profiling gate, not a runtime-selection gate.
+`RUNTIME_SELECTION_PASS`, `PROFILE_GATE_PENDING`: the aligned-prefix
+admission, unaligned-tail fallback, target-image unit tests, real-Flash
+output, and matched TTFT budget passed on the `.204` A3 node.  A causal NPU
+trace has not yet proved removal of the full-hidden collective or the exact
+replacement payloads, so the experiment does not yet satisfy the full
+structural `PASS` criteria below.
 
 ## Hypothesis
 
@@ -56,7 +58,7 @@ The causal variable is only `ENABLE_DSA_CP_LOCAL_CURRENT_KV`.
 
 ## Pass, fail, and kill criteria
 
-`PASS` requires all of the following:
+Full structural `PASS` requires all of the following:
 
 1. the service reaches health `200` and the debug-only admission run proves
    every TP rank admits the aligned prefix and rejects the tail;

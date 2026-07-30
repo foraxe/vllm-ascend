@@ -4,18 +4,24 @@ Owner: Codex session `019fa36a-956a-7372-aceb-19d91f08f990`.
 
 ## Scope and acceptance gates
 
-This is a prefill-only DSV4-Pro experiment. Its objective is to reduce
+This is a prefill-only DSV4 DSA-CP project.  Its objective is to reduce
 persistent DSA KV storage without adding a remote-pointer dependency to the
-stock attention kernel or regressing TTFT.
+stock attention kernel.  Current executable evidence is DSV4-Flash TP8/EP8
+on the `.204` A3 node; DSV4-Pro remains the final model target.
 
-- Frozen service baseline: `codex/a3-dsv4-pro-prefill-019fa36a` at `cd2803e`.
+- Versioned bootstrap anchor:
+  `codex/a3-dsv4-pro-prefill-019fa36a` at `cd2803e`.
+- Matched performance control: the r49 Flash TP8/EP8 sequences documented
+  below.  The branch has advanced beyond the bootstrap anchor.
 - Correctness: owner-sharded, selected-row materialization equals the current
   replicated C128 history for the same logical rows.
-- Capacity: count persistent C128 pages only; the BF16 local materialization
-  workspace is bounded and transient.
-- TTFT gate: 8K input, one output token, FusedMC2-on baseline, p50 must not
-  regress by more than 1%. Production runs are not yet valid without the Pro
-  checkpoint.
+- Capacity: report unique physical bytes per rank, prove the original
+  replicated backing is absent, and measure usable request/token capacity.
+  Report bounded materialization scratch separately.
+- TTFT gate: 8K input, one output token, FusedMC2-on matched baseline; both
+  median and p90 must regress by less than 5%.
+- TPOT gate: a separate multi-token run must regress by less than 5%.
+- Production claims are not valid for Pro until the Pro checkpoint is run.
 
 ## C128 prefill contract
 
@@ -131,10 +137,11 @@ metric is time to the first nonempty streamed text delta:
 
 The live allocator reported 12.68--12.69 GiB current KV-cache memory per
 NPU, or about 101.5 GiB across TP8. This is the service's total current KV
-cache allocation, not a C128-only owner-shard saving. The C128 oracle remains
-the capacity proof: for a CP8 owner shard, persistent quantized C128 pages
-plus scales are `1/8` (12.5%) of eight replicated copies; the selected-row
-BF16 workspace is transient and excluded.
+cache allocation, not a C128-only owner-shard saving. The C128 oracle proves
+only the logical owner-page ratio: for a CP8 owner shard, persistent
+quantized C128 pages plus scales are `1/8` (12.5%) of eight replicated
+copies. It is not a service-capacity proof because the live allocator may
+retain aliased replicated backing and materialization storage.
 
 Durable raw evidence is on NFS:
 
@@ -152,9 +159,9 @@ Artifact checksums are respectively
 `17b8d3e8f6189deb3d02c804a1bb32484ec0c99de154a27bb358c73c908f6634`
 (KV/load excerpt).
 
-This is a valid Flash B0 and a correctness/capacity gate for C128. It is not
-yet an owner-sharded allocator implementation, a DSA-CP TTFT comparison, or
-a DeepSeek-V4-Pro result.
+This is a valid Flash B0 and a logical owner-placement correctness gate. It
+is not an owner-sharded allocator implementation, a service-capacity result,
+a DSA-CP TTFT comparison, or a DeepSeek-V4-Pro result.
 
 ### G5: production C128 DSA-CP seam — identified
 
@@ -230,7 +237,7 @@ with explicit lifetime/capacity accounting, followed by a true selected-row
 or VMM peer-read kernel path. Do not run another 8K TTFT comparison until the
 feature-on request returns an output and its allocator accounting is proven.
 
-### G7: tensor-ABI retry and overlap-only B1
+### G7: tensor-ABI retry and overlap-only B1 — B1 later invalidated
 
 The r3/r4 feature-on runs had put a Python `C128OwnerShardCache` wrapper into
 the model's `static_forward_context` cache slot. That slot is consumed by the
@@ -280,20 +287,24 @@ DSA-CP seam has run. The next diagnostic must instrument the model/executor
 boundary before `AscendDSACPImpl.forward()`, or split compact allocation from
 owner-placement execution, rather than repeat another cold feature-on smoke.
 
-In parallel, B1 isolated the existing implementation's
+In parallel, B1 attempted to isolate the existing implementation's
 `prefill_comm_compute_overlap` switch. It retained TP8/EP8, Flash, 8K input,
 one output token, FusedMC2, lazy weight loading, no Mooncake, and the
 replicated C128 path; the only change from B0 was
 `ENABLE_PREFILL_COMM_COMPUTE_OVERLAP=1`. It passed correctness (5/5 timed
-requests delivered nonempty text), but did not improve TTFT:
+requests delivered nonempty text), and reported:
 
 | Run | Median TTFT | Relative to B0 |
 |---|---:|---:|
 | B0 overlap=0 | 597.932 ms | baseline |
 | B1 overlap=1 | 601.532 ms | -0.60% |
 
-The >8% target is at most 550.097 ms against this B0. B1 is consequently a
-valid negative result, not a production optimization. Raw evidence:
+G32 later proved that this switch is read by `attention/dsa_v1.py`, not the
+real Flash DSA-CP implementation in `attention/context_parallel/dsa_cp.py`.
+B1 is therefore `INVALID_CONFIGURATION` as an overlap experiment: its
+service samples remain valid observations, but the intended independent
+variable did not reach the measured path.  G32 supersedes the earlier
+"valid negative result" interpretation. Raw evidence:
 
 ```text
 /a3_inference/nyx/dsv4_dsa_cp/20260728_prefill_owner/flash_overlap/
@@ -1248,7 +1259,7 @@ were idle after cleanup.  Raw evidence:
   20260730_r49_b0_a_after_shared_overlap_75b54627/
 ```
 
-### G34: E3 local-current-KV — PASS mechanism, PASS <5% TTFT budget
+### G34: E3 local-current-KV — runtime selected, profile pending, TTFT PASS
 
 Hypothesis: the aligned 5,120-token C128 prefix computes WKV, norm, RoPE, and
 compressor rows from each TP-local hidden shard, exchanges the narrow
@@ -1310,8 +1321,11 @@ w5/r10 steady       569.910 ms      572.990 ms        0.540%
 
 The steady p90 was 583.646 ms versus 575.609 ms, a 1.396% regression.  E3
 does not improve TTFT, but it stays within the project's revised hard budget
-of less than 5% TTFT regression.  It is retained as a mechanism dependency for
-the packed owner-capacity path, not as a standalone TTFT optimization.
+of less than 5% TTFT regression.  Admission proves runtime branch selection;
+a causal NPU trace is still required to prove removal of the full-hidden
+collective and the exact narrower replacement payloads.  E3 is retained as a
+candidate dependency for the owner-capacity path, not as a standalone TTFT
+optimization or a complete structural proof.
 All 30 measured completions were nonempty, post-benchmark health was 200,
 the fatal scan was empty, TERM was clean, and a retry snapshot showed all
 eight NPUs idle.
@@ -1322,4 +1336,151 @@ Raw evidence:
 /a3_inference/nyx/dsv4_dsa_cp/runs/204/
   20260730_r51_e3_admission_diag_6419fa00/
   20260730_r52_e3_ttft_clean_6419fa00/
+```
+
+### G35: concrete ACL/Torch-NPU packed arena adapter — PASS
+
+Hypothesis: the abstract packed arena can use the `.204` CANN 9.0 VMM API and
+Torch-NPU external-storage constructors without an owning Torch allocation or
+teardown residue.
+
+The default-off adapters load ACL and Torch-NPU lazily, enforce the measured
+2-MiB granularity, check every public `aclrtMem*` return status, retain failed
+map/access rollback state for retry, and bind a non-owning root `uint8`
+tensor over the reserved VA.  The target NPU0 smoke created one 2-MiB arena,
+proved the tensor pointer exactly matched the reserved VA, ran
+`fill(37) -> clone -> compare`, fenced, dropped tensor/storage aliases, and
+closed in `unmap -> physical free -> VA release` order.  Reservation,
+physical-handle, and mapping registries were empty afterward.
+
+The immediate post-run inspection had no experiment process.  A later
+redirected `npu_smi_after.txt` overlapped the independently launched r51
+service and is explicitly not teardown evidence.
+
+Raw evidence:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/runs/204/
+  20260730_g35_packed_acl_adapter_smoke_84f3da22/
+```
+
+### G36: packed capacity attribution — corrected, runtime pending
+
+Source reconciliation corrected the real Flash group order and copy matrix.
+With MTP disabled, B0 has 21 narrow and 22 wide raw tensors.  The final wide
+tensor is SWA layer 42, not MTP.  The required group quotas in runtime order
+are:
+
+```text
+C4 MLA, C128 MLA, SWA-A, SWA-B, C4 state, C128 state
+[17,     1,        65,    65,    642,      165]
+```
+
+The real component matrix has 167 views: C4 has 21 narrow plus 21 wide
+copies; C128 has 20 owner-wide copies; SWA-A/SWA-B have 22/21 wide copies;
+C4 state has 21 narrow plus 21 wide copies; and C128 state has 20 wide
+copies.  The required-only 955-ID plan therefore occupies exactly
+`3,166,699,520` bytes/rank (`2.94921875 GiB`) including 65-page scratch, not
+the earlier undercounted `2,472,542,208` bytes.  Its large difference from
+B0's `13,546,370,560` bytes/rank is still primarily workload-envelope
+specialization because only 955 of 4,189 data IDs are assigned.
+
+It is not an owner-sharding saving.  The C128 group has one global data page;
+each of its 20 owner segments and each hypothetical replicated segment rounds
+to the same 2 MiB.  Owner placement therefore saves zero aligned bytes/rank
+for the required-only profile.
+
+The first same-aggregate-ID owner experiment instead assigns all 3,234 slack
+IDs to C128 by semantic group name:
+
+```text
+assigned quotas = [17, 3235, 65, 65, 642, 165]
+sum(data quotas) = 4189
+block 0 remains sentinel
+```
+
+Its exact owner arena including scratch is `4,215,275,520` bytes/rank
+(`3.92578125 GiB`).  The identical-layout aligned replicated counterfactual
+is `11,639,193,600` bytes/rank, so `7,423,918,080` bytes/rank
+(`6.9140625 GiB`) are attributable to owner placement.  Relative to B0 the
+total candidate reduction is `9,331,095,040` bytes/rank, or `68.8826206%`.
+These are static exact-plan values, not measured runtime savings.
+
+This preserves the aggregate `B=4190` ID domain and the fixed one-request
+admission profile, but removes arbitrary cross-group borrowing.  It is a
+fixed-profile capacity experiment; general serving still needs
+allocator-coupled dynamic placement or resident-slot indirection.
+
+The naive same-B attention sidecar cannot reclaim B0 storage.  Every
+C128-bearing wide raw tuple also aliases C4 attention and both C4/C128
+compressor-state consumers and SWA.  Any surviving alias keeps the full
+`B x 128 KiB` raw tensor alive.  The fixed experiment must therefore replace
+all raw buckets with compact replicated or owner components, install all 167
+views, and omit both the legacy 43 roots and full-B stage.  Production stays
+fail-closed until that replacement, state continuation, cache/output
+equivalence, live ACL-byte manifest, and performance gates pass.
+
+### G37: packed runtime seam — PASS code/target units, production blocked
+
+Commit `8129053f` composes the packed arena aliases and reshape transaction,
+dual-domain block tables, C128 owner-local scatter, selected-page
+materialization, retry-safe rollback, and packed/legacy owner-cache teardown.
+Replicated execution tables use component-local IDs; C128 owner tables keep
+scheduler-global IDs until materialization returns a scratch-local table.
+Independent architecture and test reviews found no remaining P0/P1 issue.
+
+Two target-image assertions initially constructed `int64` expected scatter
+indices while the runtime correctly preserved `int32`; commit `6528695c`
+fixed those assertions.  The target model-runner fixture also omitted the
+normal owner-feature defaults, used invalid `block_size < compress_ratio`
+specs, and retained two calls to a renamed helper.  Commit `64553b0f` fixed
+the synthetic fixture without changing production.
+
+Exact `.204` target-image results:
+
+```text
+packed pool/route/runtime/DSA seams: 126 passed
+model-runner allocator/reshape/lifecycle: 22 passed
+relevant worker shutdown/cleanup cases: 4 passed
+```
+
+The worker shutdown cases source the CANN environment and prepend the source
+overlay to its existing `PYTHONPATH`; an earlier full-worker attempt replaced
+that path, failed to import `acl`, and is `INVALID_ENVIRONMENT`, not a code
+result.  Production remains deliberately unreachable:
+
+```text
+planner_only = true
+downstream_runtime_abi_ready = false
+```
+
+No model service was launched for this mechanism-only commit, so it proves no
+allocator replacement, capacity saving, cache equivalence, TTFT, or TPOT.
+Raw evidence:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/runs/204/
+  20260730_g37_packed_e2e_unit_6528695c_final/
+  20260730_g37_packed_runner_unit_64553b0f/
+```
+
+### G38: real Flash packed fixture/accounting — PASS static, runtime pending
+
+Commit `9af9a983` reconciles the fake six-group fixture with the live
+DSV4-Flash cache schema.  It removes the false MTP component, uses the real
+group order `[C4, C128, SWA-A, SWA-B, C4-state, C128-state]`, pins required
+quotas `[17,1,65,65,642,165]`, and accounts for all 167 component views.
+The same-`B` owner oracle assigns `[17,3235,65,65,642,165]`.
+
+The planner implementation itself was already schema-driven; the defect was
+limited to fake tests and documentation, and production stayed fail-closed.
+The corrected target-image packed-pool and planner suite passed `39/39`,
+including feature-off identity and the exact required-only and same-`B`
+physical-byte assertions.
+
+Raw evidence:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/runs/204/
+  20260730_g38_flash_fixture_9af9a983/
 ```
