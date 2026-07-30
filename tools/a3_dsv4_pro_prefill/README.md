@@ -31,6 +31,15 @@ temporary local view. It requires TP > 1, forbids a KV-transfer connector, and
 keeps the replicated C128 path as the default. Do not combine it with an
 unrelated DSA overlap or Mooncake A/B.
 
+Set `ENABLE_KV_CACHE_ALLOCATION_ACCOUNTING=1` to emit one
+`KV_CACHE_ALLOCATION` line per rank after cache initialization. The line
+deduplicates PyTorch backing storages and reports baseline raw KV, compact
+C128 owner, reusable C128 stage, total bytes, and configured block count.
+Keep all other allocation settings fixed for a fixed-block A/B; then repeat
+without `NUM_GPU_BLOCKS_OVERRIDE` to compare planner capacity. This diagnostic
+does not measure allocator reservation granularity or sparse-VMM committed
+pages.
+
 `layer_sharding` is a PD-disaggregated prefill-role option in this vLLM
 release. The historical Pro P-side reproduction leaves it enabled by default;
 a direct standalone DSV4-Flash service must use

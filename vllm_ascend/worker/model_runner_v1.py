@@ -154,6 +154,9 @@ from vllm_ascend.utils import (
     set_weight_prefetch_method,
     should_skip_allreduce_across_dp_group,
 )
+from vllm_ascend.worker.kv_cache_allocation_accounting import (
+    summarize_kv_cache_allocations,
+)
 from vllm_ascend.worker.npu_input_batch import NPUInputBatch
 from vllm_ascend.worker.pcp_utils import PCPManager
 
@@ -277,6 +280,12 @@ class NPUModelRunner(GPUModelRunner):
         # failure during that first gate.
         self.enable_c128_owner_compact_allocation = bool(
             additional_config.get("enable_c128_owner_compact_allocation", False)
+        )
+        # Diagnostic-only, one-shot physical storage accounting. The default
+        # stays off so normal cache initialization and forward paths are
+        # unchanged.
+        self.enable_kv_cache_allocation_accounting = bool(
+            additional_config.get("enable_kv_cache_allocation_accounting", False)
         )
         if self.enable_c128_owner_shard:
             if vllm_config.kv_transfer_config is not None:
@@ -3577,6 +3586,8 @@ class NPUModelRunner(GPUModelRunner):
         kv_cache_raw_tensors = self._allocate_kv_cache_tensors(kv_cache_config)
         # Change the memory buffer to the desired shape
         kv_caches = self._reshape_kv_cache_tensors(kv_cache_config, kv_cache_raw_tensors)
+        if getattr(self, "enable_kv_cache_allocation_accounting", False):
+            self._log_kv_cache_allocation_accounting(kv_cache_config, kv_cache_raw_tensors)
 
         # Set up cross-layer KV cache sharing
         for layer_name, target_layer_name in self.shared_kv_cache_layers.items():
@@ -3613,6 +3624,41 @@ class NPUModelRunner(GPUModelRunner):
             )
 
         return kv_caches
+
+    def _log_kv_cache_allocation_accounting(
+        self,
+        kv_cache_config: KVCacheConfig,
+        kv_cache_raw_tensors: dict[str, Any],
+    ) -> None:
+        """Emit one physical allocation summary after KV initialization."""
+        layer_kv_cache_spec = self._get_layer_kv_cache_specs(kv_cache_config)
+        compact_owner_layers: set[str] = set()
+        if self.enable_c128_owner_compact_allocation:
+            for kv_cache_tensor in kv_cache_config.kv_cache_tensors:
+                if self._is_c128_owner_tensor(kv_cache_tensor.shared_by, layer_kv_cache_spec):
+                    compact_owner_layers.update(kv_cache_tensor.shared_by)
+
+        baseline_raw = []
+        compact_owner = []
+        for layer_name, value in kv_cache_raw_tensors.items():
+            if layer_name in compact_owner_layers:
+                compact_owner.append(value)
+            else:
+                baseline_raw.append(value)
+
+        rank = dist.get_rank() if dist.is_initialized() else 0
+        summary = summarize_kv_cache_allocations(
+            baseline_raw=baseline_raw,
+            compact_owner=compact_owner,
+            c128_stages=self._c128_owner_stage_caches.values(),
+        )
+        logger.info(
+            "%s",
+            summary.format_log_line(
+                rank=rank,
+                num_blocks=kv_cache_config.num_blocks,
+            ),
+        )
 
     def _get_layer_kv_cache_specs(self, kv_cache_config: KVCacheConfig) -> dict[str, KVCacheSpec]:
         layer_kv_cache_spec: dict[str, KVCacheSpec] = {}
