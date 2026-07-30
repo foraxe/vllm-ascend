@@ -562,7 +562,7 @@ def test_packed_activation_requires_coherent_feature_gates(
     [
         ("blocks", "requires final global_block_capacity=4190"),
         ("ep", "requires enable_expert_parallel=true"),
-        ("group_order", "c4_attention requires 17 workload blocks"),
+        ("group_order", "workload block vector drift"),
         ("component", "dense_swa_a component manifest drift"),
     ],
 )

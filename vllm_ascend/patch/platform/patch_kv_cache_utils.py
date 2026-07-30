@@ -418,6 +418,20 @@ def _validate_c128_packed_pool_activation_manifest(
     if len(group_profiles) != len(packed_groups):
         raise AssertionError("packed group profiles must match packed groups")
 
+    expected_required_blocks = tuple(
+        contract.required_blocks
+        for contract in _C128_PACKED_POOL_ACTIVATION_GROUPS
+    )
+    actual_required_blocks = tuple(
+        group.logical_blocks for group in packed_groups
+    )
+    if actual_required_blocks != expected_required_blocks:
+        raise ValueError(
+            "packed activation workload block vector drift: "
+            f"expected {expected_required_blocks!r}, "
+            f"got {actual_required_blocks!r}"
+        )
+
     seen_layers: set[str] = set()
     for group_index, (group, profile, contract) in enumerate(
         zip(
