@@ -155,3 +155,133 @@ fixed block count: deduplicate raw storage pointers, compare allocated bytes to
 this plan, reconstruct every component from its inverse mapping, and then prove
 continuation/cache equivalence.  Only after that gate may the service-capacity
 and 8K/one-output TTFT comparisons run.
+
+## Packed physical-arena lease slice
+
+`vllm_ascend/attention/context_parallel/c128_packed_arena.py` implements the
+CPU-testable lifetime boundary for seam 4 without connecting it to the worker.
+It has no torch import and no concrete ACL adapter.  Production modules do not
+import it, so feature-off bootstrap and hot paths are unchanged.
+
+For one TP rank, the lease:
+
+- requires every component and scratch segment to use the measured 2-MiB VMM
+  granularity;
+- reserves one contiguous VA range for each page-size bucket, using exactly
+  `BucketPhysicalBytes.total_allocated_bytes_by_rank[rank]`;
+- queries `aclrtMemGetAllocationGranularity`, rejects anything other than the
+  plan's measured 2 MiB, and allocates/maps/zeros one locally owned physical
+  handle per range;
+- binds one opaque, non-owning local-device tensor over the complete range;
+- resolves plan addresses only when `address.tp_rank` equals the lease's local
+  rank and the requested bytes fit both the component segment and bucket;
+- derives scratch from the aligned allocation at the arena tail and reports
+  payload and allocated bytes separately;
+- closes explicitly in the G28-proven order: stop exposing the lease, drop
+  owned tensor/storage aliases, synchronize queued NPU work, unmap, free the
+  physical handle, and release the VA.
+
+There is deliberately no `__del__` driver cleanup.  A failed unmap retains its
+physical handle and VA so an explicit `close()` retry cannot create a
+use-after-free.  `close()` changes the lease to `CLOSING` before calling the
+binding or fence, so reentrant code cannot borrow a new tensor/view while
+teardown is in progress.  Already borrowed tensor views must be quiesced by
+the integration before close; enforcing that pin count in a concrete C++/torch
+binding is still a runtime gate.  If construction fails after a partial
+allocation, the same stage-aware close path rolls back every completed bucket.
+If rollback also fails, `PackedArenaOpenError.lease` keeps the remaining
+handles reachable for an explicit retry.
+
+`PackedArenaBackend` maps directly to the validated ACL lifecycle:
+
+```text
+reserve_address   -> aclrtReserveMemAddress
+allocation_granularity -> aclrtMemGetAllocationGranularity
+allocate_physical      -> aclrtMallocPhysical
+map_physical      -> aclrtMapMem
+zero_mapped       -> an ACL memset on the mapped local VA
+unmap             -> aclrtUnmapMem
+free_physical     -> aclrtFreePhysical
+release_address   -> aclrtReleaseMemAddress
+```
+
+This lease does not import peer physical handles.  A shared-handle lease needs
+an explicit owner/importer role, owner-outlives-importers coordination, and a
+policy that prevents an importer from zeroing already-published owner data.
+That protocol is a later gate.
+
+`PackedArenaTensorFactory.bind` is the only torch_npu seam.  The G28 probe
+proved that the installed runtime can wrap a mapped pointer with
+`_construct_storage_from_data_pointer` and
+`_construct_NPU_Tensor_From_Storage_And_Metadata`, then run ordinary clone and
+fill kernels.  G28 also proved that an imported peer mapping must still use
+`npu:<local rank>`; this local-owning lease follows the same device-tag rule.
+The tensor is non-owning: the lease owns ACL resources, while
+`PackedArenaTensorBinding.close` must discard every
+tensor/storage alias owned by the binding before the injected NPU fence runs.
+`zero_mapped` must also complete before it returns, so no tensor is exposed
+while initialization is still pending.
+The canonical G28 artifact is:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/runs/204/g28_remote_tensor_20260730_043455/
+```
+
+### Line-anchored integration design
+
+The anchors below are for integration base
+`7355d108f96bda578440a196bf7136140e010427`; re-resolve the symbols after a
+rebase.
+
+1. Feature gate and lifetime owner:
+   `vllm_ascend/worker/model_runner_v1.py:271-300` reads the current C128
+   `additional_config` flags and initializes owner-stage state.  A later
+   integration adds a default-false `enable_c128_packed_vmm_arena` there and a
+   nullable `_c128_packed_arena_lease`.  Import the arena module only inside
+   the enabled branch.  The runner or worker must expose an explicit shutdown
+   hook that drops every derived KV view and calls `lease.close()` before
+   device reset; do not put ACL calls in `__del__`.
+2. Allocation switch:
+   `model_runner_v1.py:3515-3537` owns KV-cache initialization, and
+   `model_runner_v1.py:3575-3588` currently allocates then reshapes raw
+   tensors.  The enabled branch must construct the serialized
+   `PackedPoolPlan`, create the rank-local lease, and hand root bucket tensors
+   to the reshape adapter.  Commit the lease to the runner only after all
+   bucket bindings succeed.  Feature-off must continue directly into the
+   existing calls.
+3. Raw allocation replacement:
+   `model_runner_v1.py:3695-3720` is the exact allocation entry, while
+   `model_runner_v1.py:3748-3768` creates the current compressed/C128 raw
+   tensor.  The enabled branch replaces only plan-owned components with
+   byte/shape views over the lease bucket tensor.  It must not allocate a
+   second `torch.zeros` backing for those components.  The existing path
+   remains untouched when disabled.
+4. Shape ABI:
+   `model_runner_v1.py:3926-3975` derives `num_blocks` from raw-tensor bytes and
+   assumes one contiguous component.  A packed integration must instead use
+   the plan's segment base/size for each component copy, then call the existing
+   layout adapter on that segment.  It must not infer a bucket-wide block count
+   from the root arena tensor.
+5. C128 execution scratch:
+   `model_runner_v1.py:3882-3895` allocates a full `num_blocks` stage cache, and
+   `model_runner_v1.py:3995-4002` installs it in `C128OwnerShardCache`.
+   Replace this only after the lease's bounded scratch view is shaped for the
+   attention backend.  `c128_owner_cache.py:257-284` and
+   `c128_owner_cache.py:421-455` still use the legacy zero-based owner-local
+   formula; scheduler/block-table integration must pass plan-aware owner slots
+   before packed persistent storage can be enabled.
+
+The next `.204` experiment is an allocator/lifetime gate, not an end-to-end
+TTFT claim:
+
+```text
+baseline: feature off, existing torch allocations
+candidate: packed feature on, fixed plan and block count
+metric: unique backing bytes, base/segment/page offsets, zero initialization,
+        exact tensor read/write, and cleanup event order
+PASS: measured bytes equal BucketPhysicalBytes on every rank; every segment
+      and scratch view round-trips; no NPU process or VMM mapping remains
+FAIL: wrong bytes/offset/value, alias after close, or teardown-order violation
+BLOCKED: missing concrete ACL/tensor adapter or worker shutdown hook
+kill: first incorrect address/value or any 60-second lifecycle-stage timeout
+```
