@@ -1484,3 +1484,53 @@ Raw evidence:
 /a3_inference/nyx/dsv4_dsa_cp/runs/204/
   20260730_g38_flash_fixture_9af9a983/
 ```
+
+### G39: fixed same-B activation — PASS target units, live capacity pending
+
+Commit `1002e175` activates the pinned Flash TP8/EP8 replacement behind three
+default-off flags: planner, activation, and VMM arena.  Startup validates the
+complete six-group schema before opening CANN, publishes the fixed quotas
+transactionally, opens one arena, installs 167 persistent aliases plus the
+65-page scratch alias, reshapes and binds every consumer, then seals and
+publishes ownership.  It bypasses both the legacy raw allocator and the
+full-B owner stage.  Rollback restores worker/model bindings and retains a
+failed cleanup lease for shutdown retry.
+
+The CPU continuation gate applies prefix and tail scheduler updates to the
+same request row.  Replicated C4/SWA/state tables remain component-local,
+C128 attention remains scheduler-global until materialization, the prefix
+mapping survives append, and poisoning scratch between the `5120` and `3080`
+chunks is repaired by the next materialization.  This is an interface and
+lifetime oracle, not numerical proof of the real CANN compressor.
+
+The first two target attempts used the full repository package over the image
+and failed during `conftest` import because the image vLLM lacked
+`expert_map_manager` and `rejection_sampler_utils`; both are
+`INVALID_ENVIRONMENT`.  The valid target harness starts from the image's
+installed package, overlays only the 18 DSA-CP production files, preserves
+`VLLM_VERSION=0.20.2`, and prepends that package root.
+
+The first valid run reached tests: `74 passed, 5 failed`.  All five failures
+were synthetic model-runner fixture defects exposed by the target
+`MLAAttentionSpec`: inconsistent page-size geometry and a 65-page scratch
+bound with global capacity two.  Commit `d25116f8` fixes only those fixtures.
+The matched rerun passed:
+
+```text
+fixed quota/planner/runtime/continuation/model-runner: 79 passed
+```
+
+No model process was launched, and the NPUs remained idle.  Therefore G39
+proves target-image activation composition only.  The
+`4,215,275,520 B/rank` value remains a static exact manifest until a real
+service logs it on all ranks, proves the legacy allocations absent, reaches
+health, and completes the `8200/1` two-chunk request.
+
+Raw evidence:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/runs/204/
+  20260730_g39_same_b_target_1002e175/
+    target_pytest_r4.log
+    target_pytest_r6.log
+```

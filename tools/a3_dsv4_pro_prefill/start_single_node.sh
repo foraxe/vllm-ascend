@@ -47,6 +47,12 @@ ENABLE_DSA_CP_LOCAL_CURRENT_KV=${ENABLE_DSA_CP_LOCAL_CURRENT_KV:-0}
 # One-shot physical backing-storage accounting after KV cache allocation.
 # This diagnostic stays out of every forward path and is disabled by default.
 ENABLE_KV_CACHE_ALLOCATION_ACCOUNTING=${ENABLE_KV_CACHE_ALLOCATION_ACCOUNTING:-0}
+# Fixed-profile C128 capacity replacement. All three flags are required
+# together: planner emits the six-group manifest, activation installs fixed
+# scheduler quotas, and the VMM arena replaces the legacy raw allocation.
+ENABLE_C128_PACKED_POOL_PLANNER=${ENABLE_C128_PACKED_POOL_PLANNER:-0}
+ENABLE_C128_PACKED_POOL_ACTIVATION=${ENABLE_C128_PACKED_POOL_ACTIVATION:-0}
+ENABLE_C128_PACKED_VMM_ARENA=${ENABLE_C128_PACKED_VMM_ARENA:-0}
 # `layer_sharding` is accepted only by a PD-disaggregated prefill (P) role in
 # this vLLM release. Keep the historical P-side default, but set this to 0 for
 # a direct standalone service such as the DSV4-Flash single-node baseline.
@@ -79,14 +85,18 @@ GPU_MEMORY_UTILIZATION=${GPU_MEMORY_UTILIZATION:-0.9}
 # both unset for B0/candidate TTFT measurements.
 MAX_MODEL_LEN=${MAX_MODEL_LEN:-1048576}
 MAX_NUM_BATCHED_TOKENS=${MAX_NUM_BATCHED_TOKENS:-5120}
+MAX_NUM_SEQS=${MAX_NUM_SEQS:-}
 NUM_GPU_BLOCKS_OVERRIDE=${NUM_GPU_BLOCKS_OVERRIDE:-}
+# Optional source overlay used by pod experiments. The directory must contain
+# the `vllm_ascend` package and is prepended ahead of image site-packages.
+VLLM_ASCEND_SOURCE_OVERLAY=${VLLM_ASCEND_SOURCE_OVERLAY:-}
 # Explicit synthetic-model gate for capacity and DSA-CP path experiments.
 # A reduced routed-expert count changes gate/hash tensor shapes, so it must
 # never be paired with the production checkpoint weights.
 SYNTHETIC_ROUTED_EXPERTS=${SYNTHETIC_ROUTED_EXPERTS:-0}
 ALLOW_SYNTHETIC_WEIGHTS=${ALLOW_SYNTHETIC_WEIGHTS:-0}
 
-for boolean_name in ENABLE_PREFILL_COMM_COMPUTE_OVERLAP ENABLE_MULTISTREAM_DSA_PREPROCESS ENABLE_MULTISTREAM_OVERLAP_SHARED_EXPERT ENABLE_C128_OWNER_SHARD ENABLE_C128_OWNER_COMPACT_ALLOCATION ENABLE_C128_OWNER_DEBUG ENABLE_C128_OWNER_SELECTIVE_STAGE ENABLE_C128_OWNER_LOCAL_COMPRESSOR ENABLE_DSA_CP_LOCAL_CURRENT_KV ENABLE_KV_CACHE_ALLOCATION_ACCOUNTING \
+for boolean_name in ENABLE_PREFILL_COMM_COMPUTE_OVERLAP ENABLE_MULTISTREAM_DSA_PREPROCESS ENABLE_MULTISTREAM_OVERLAP_SHARED_EXPERT ENABLE_C128_OWNER_SHARD ENABLE_C128_OWNER_COMPACT_ALLOCATION ENABLE_C128_OWNER_DEBUG ENABLE_C128_OWNER_SELECTIVE_STAGE ENABLE_C128_OWNER_LOCAL_COMPRESSOR ENABLE_DSA_CP_LOCAL_CURRENT_KV ENABLE_KV_CACHE_ALLOCATION_ACCOUNTING ENABLE_C128_PACKED_POOL_PLANNER ENABLE_C128_PACKED_POOL_ACTIVATION ENABLE_C128_PACKED_VMM_ARENA \
     ENABLE_DSA_LAYER_SHARDING ENABLE_FUSED_MC2 ENABLE_MTP \
     ENABLE_TORCH_PROFILER ENABLE_MOONCAKE_KV_CONNECTOR; do
     boolean_value=${!boolean_name}
@@ -117,11 +127,21 @@ PY
     echo "MAX_NUM_BATCHED_TOKENS must be a positive integer, got ${MAX_NUM_BATCHED_TOKENS}" >&2
     exit 2
 }
+if [[ -n "${MAX_NUM_SEQS}" ]]; then
+    [[ "${MAX_NUM_SEQS}" =~ ^[1-9][0-9]*$ ]] || {
+        echo "MAX_NUM_SEQS must be a positive integer when set" >&2
+        exit 2
+    }
+fi
 if [[ -n "${NUM_GPU_BLOCKS_OVERRIDE}" ]]; then
     [[ "${NUM_GPU_BLOCKS_OVERRIDE}" =~ ^[1-9][0-9]*$ ]] || {
         echo "NUM_GPU_BLOCKS_OVERRIDE must be a positive integer when set" >&2
         exit 2
     }
+fi
+if [[ -n "${VLLM_ASCEND_SOURCE_OVERLAY}" && ! -d "${VLLM_ASCEND_SOURCE_OVERLAY}/vllm_ascend" ]]; then
+    echo "VLLM_ASCEND_SOURCE_OVERLAY must contain vllm_ascend: ${VLLM_ASCEND_SOURCE_OVERLAY}" >&2
+    exit 2
 fi
 
 resolve_local_ip() {
@@ -198,6 +218,29 @@ PY
 }
 validate_model_parallelism
 
+if [[ "${ENABLE_C128_PACKED_POOL_ACTIVATION}" == 1 ]]; then
+    [[ "${ENABLE_C128_PACKED_POOL_PLANNER}" == 1 && "${ENABLE_C128_PACKED_VMM_ARENA}" == 1 ]] || {
+        echo "Packed activation requires planner=1 and VMM arena=1" >&2
+        exit 2
+    }
+    [[ "${TP_SIZE}" == 8 \
+        && "${NUM_GPU_BLOCKS_OVERRIDE}" == 4190 \
+        && "${MAX_MODEL_LEN}" == 8201 \
+        && "${MAX_NUM_BATCHED_TOKENS}" == 5120 \
+        && "${MAX_NUM_SEQS}" == 1 ]] || {
+        echo "Packed activation requires TP=8, B=4190, max_model_len=8201, max_num_batched_tokens=5120, max_num_seqs=1" >&2
+        exit 2
+    }
+    [[ "${ENABLE_MTP}" == 0 \
+        && "${ENABLE_MOONCAKE_KV_CONNECTOR}" == 0 \
+        && "${ENABLE_C128_OWNER_SHARD}" == 0 \
+        && "${ENABLE_C128_OWNER_COMPACT_ALLOCATION}" == 0 \
+        && "${ENABLE_DSA_CP_LOCAL_CURRENT_KV}" == 0 ]] || {
+        echo "Packed activation requires MTP, Mooncake, legacy C128 owner paths, and E3 disabled" >&2
+        exit 2
+    }
+fi
+
 # Environment copied from the prefill role in deepseek-pro-kvpool.yaml.
 export MODEL_PATH="${A3_MODEL_PATH}"
 export STARAGENT_DISABLED=true
@@ -249,7 +292,11 @@ export HCCL_BUFFSIZE=1024
 export ASCEND_GLOBAL_LOG_LEVEL=3
 export ASCEND_SLOG_PRINT_TO_STDOUT=0
 export ASCEND_HOST_LOG_FILE_NUM=1000
-export PYTHONPATH="/usr/local/python3.11.15/lib/python3.11/site-packages:${PYTHONPATH:-}"
+if [[ -n "${VLLM_ASCEND_SOURCE_OVERLAY}" ]]; then
+    export PYTHONPATH="${VLLM_ASCEND_SOURCE_OVERLAY}:/usr/local/python3.11.15/lib/python3.11/site-packages:${PYTHONPATH:-}"
+else
+    export PYTHONPATH="/usr/local/python3.11.15/lib/python3.11/site-packages:${PYTHONPATH:-}"
+fi
 export LD_LIBRARY_PATH="/usr/local/lib64:${LD_LIBRARY_PATH:-}"
 export ASCEND_RT_VISIBLE_DEVICES="${VISIBLE_DEVICES}"
 export POD_IP="${LOCAL_IP}"
@@ -274,6 +321,9 @@ ADDITIONAL_CONFIG=$(jq -cn \
     --argjson c128_owner_local_compressor "${ENABLE_C128_OWNER_LOCAL_COMPRESSOR}" \
     --argjson dsa_cp_local_current_kv "${ENABLE_DSA_CP_LOCAL_CURRENT_KV}" \
     --argjson kv_cache_allocation_accounting "${ENABLE_KV_CACHE_ALLOCATION_ACCOUNTING}" \
+    --argjson c128_packed_pool_planner "${ENABLE_C128_PACKED_POOL_PLANNER}" \
+    --argjson c128_packed_pool_activation "${ENABLE_C128_PACKED_POOL_ACTIVATION}" \
+    --argjson c128_packed_vmm_arena "${ENABLE_C128_PACKED_VMM_ARENA}" \
     --argjson dsa_layer_sharding "${ENABLE_DSA_LAYER_SHARDING}" \
     --argjson fused_mc2 "${ENABLE_FUSED_MC2}" \
     '({
@@ -290,6 +340,9 @@ ADDITIONAL_CONFIG=$(jq -cn \
       enable_c128_owner_local_compressor:$c128_owner_local_compressor,
       enable_dsa_cp_local_current_kv:$dsa_cp_local_current_kv,
       enable_kv_cache_allocation_accounting:$kv_cache_allocation_accounting,
+      enable_c128_packed_pool_planner:($c128_packed_pool_planner == 1),
+      enable_c128_packed_pool_activation:($c128_packed_pool_activation == 1),
+      enable_c128_packed_vmm_arena:($c128_packed_vmm_arena == 1),
       enable_fused_mc2:$fused_mc2
     } + if $dsa_layer_sharding == 1 then {layer_sharding:["q_b_proj", "o_proj"]} else {} end)')
 
@@ -391,6 +444,9 @@ VLLM_CMD=(
 if [[ -n "${NUM_GPU_BLOCKS_OVERRIDE}" ]]; then
     VLLM_CMD+=(--num-gpu-blocks-override "${NUM_GPU_BLOCKS_OVERRIDE}")
 fi
+if [[ -n "${MAX_NUM_SEQS}" ]]; then
+    VLLM_CMD+=(--max-num-seqs "${MAX_NUM_SEQS}")
+fi
 if [[ "${ENABLE_MOONCAKE_KV_CONNECTOR}" == 1 ]]; then
     VLLM_CMD+=(--kv-transfer-config "${KV_TRANSFER_CONFIG}")
 fi
@@ -419,13 +475,14 @@ ENV_KEYS=(
 
 print_effective_config() {
     local key
-    printf 'role=%s local_ip=%s prefill_comm_compute_overlap=%s multistream_dsa_preprocess=%s multistream_overlap_shared_expert=%s c128_owner_shard=%s c128_owner_compact_allocation=%s c128_owner_debug=%s c128_owner_selective_stage=%s c128_owner_local_compressor=%s dsa_cp_local_current_kv=%s kv_cache_allocation_accounting=%s dsa_layer_sharding=%s enable_fused_mc2=%s enable_mtp=%s mooncake_kv_connector=%s synthetic_routed_experts=%s torch_profiler=%s\n' \
-        "${ROLE_NAME}" "${LOCAL_IP}" "${ENABLE_PREFILL_COMM_COMPUTE_OVERLAP}" "${ENABLE_MULTISTREAM_DSA_PREPROCESS}" "${ENABLE_MULTISTREAM_OVERLAP_SHARED_EXPERT}" "${ENABLE_C128_OWNER_SHARD}" "${ENABLE_C128_OWNER_COMPACT_ALLOCATION}" "${ENABLE_C128_OWNER_DEBUG}" "${ENABLE_C128_OWNER_SELECTIVE_STAGE}" "${ENABLE_C128_OWNER_LOCAL_COMPRESSOR}" "${ENABLE_DSA_CP_LOCAL_CURRENT_KV}" "${ENABLE_KV_CACHE_ALLOCATION_ACCOUNTING}" "${ENABLE_DSA_LAYER_SHARDING}" "${ENABLE_FUSED_MC2}" "${ENABLE_MTP}" "${ENABLE_MOONCAKE_KV_CONNECTOR}" "${SYNTHETIC_ROUTED_EXPERTS}" "${ENABLE_TORCH_PROFILER}"
+    printf 'role=%s local_ip=%s prefill_comm_compute_overlap=%s multistream_dsa_preprocess=%s multistream_overlap_shared_expert=%s c128_owner_shard=%s c128_owner_compact_allocation=%s c128_owner_debug=%s c128_owner_selective_stage=%s c128_owner_local_compressor=%s dsa_cp_local_current_kv=%s kv_cache_allocation_accounting=%s c128_packed_pool_planner=%s c128_packed_pool_activation=%s c128_packed_vmm_arena=%s dsa_layer_sharding=%s enable_fused_mc2=%s enable_mtp=%s mooncake_kv_connector=%s synthetic_routed_experts=%s torch_profiler=%s\n' \
+        "${ROLE_NAME}" "${LOCAL_IP}" "${ENABLE_PREFILL_COMM_COMPUTE_OVERLAP}" "${ENABLE_MULTISTREAM_DSA_PREPROCESS}" "${ENABLE_MULTISTREAM_OVERLAP_SHARED_EXPERT}" "${ENABLE_C128_OWNER_SHARD}" "${ENABLE_C128_OWNER_COMPACT_ALLOCATION}" "${ENABLE_C128_OWNER_DEBUG}" "${ENABLE_C128_OWNER_SELECTIVE_STAGE}" "${ENABLE_C128_OWNER_LOCAL_COMPRESSOR}" "${ENABLE_DSA_CP_LOCAL_CURRENT_KV}" "${ENABLE_KV_CACHE_ALLOCATION_ACCOUNTING}" "${ENABLE_C128_PACKED_POOL_PLANNER}" "${ENABLE_C128_PACKED_POOL_ACTIVATION}" "${ENABLE_C128_PACKED_VMM_ARENA}" "${ENABLE_DSA_LAYER_SHARDING}" "${ENABLE_FUSED_MC2}" "${ENABLE_MTP}" "${ENABLE_MOONCAKE_KV_CONNECTOR}" "${SYNTHETIC_ROUTED_EXPERTS}" "${ENABLE_TORCH_PROFILER}"
     printf 'dp_size=%s dp_rank=%s tp_size=%s api_port=%s\n' \
         "${DP_SIZE}" "${DP_RANK}" "${TP_SIZE}" "${VLLM_PORT}"
-    printf 'safetensors_load_strategy=%s gpu_memory_utilization=%s max_model_len=%s max_num_batched_tokens=%s num_gpu_blocks_override=%s\n' \
+    printf 'safetensors_load_strategy=%s gpu_memory_utilization=%s max_model_len=%s max_num_batched_tokens=%s max_num_seqs=%s num_gpu_blocks_override=%s source_overlay=%s\n' \
         "${SAFETENSORS_LOAD_STRATEGY}" "${GPU_MEMORY_UTILIZATION}" "${MAX_MODEL_LEN}" \
-        "${MAX_NUM_BATCHED_TOKENS}" "${NUM_GPU_BLOCKS_OVERRIDE:-<unset>}"
+        "${MAX_NUM_BATCHED_TOKENS}" "${MAX_NUM_SEQS:-<unset>}" \
+        "${NUM_GPU_BLOCKS_OVERRIDE:-<unset>}" "${VLLM_ASCEND_SOURCE_OVERLAY:-<unset>}"
     printf '\nEnvironment:\n'
     for key in "${ENV_KEYS[@]}"; do
         printf '%s=%q\n' "${key}" "${!key-}"

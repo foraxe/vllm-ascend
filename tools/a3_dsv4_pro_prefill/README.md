@@ -153,6 +153,57 @@ contains `dsa_layer_sharding=0`, `mooncake_kv_connector=0`, and every recorded
 request has a nonzero TTFT and a first text token. Keep its JSON next to the
 launch log; do not compare it with a synthetic 64-expert row.
 
+## Fixed-profile same-B C128 capacity gate
+
+This default-off experiment keeps the global block-ID capacity at `B=4190`
+while replacing the legacy replicated raw KV allocation with one startup-only
+packed VMM arena. It is intentionally limited to the real Flash TP8/EP8
+`8200/1` profile. Required group quotas are
+`[17,1,65,65,642,165]`; assigned quotas are
+`[17,3235,65,65,642,165]`.
+
+All three packed flags must be enabled together. Keep the legacy owner
+sidecar, E3, MTP, Mooncake, and prefix caching disabled:
+
+```bash
+cd "${A3_ROLE_DIR}"
+RUN_ID=flash_same_b_c128_capacity \
+A3_MODEL_PATH=/mnt/deepseek/models/DeepSeek-V4-Flash-w8a8-mtp \
+TP_SIZE=8 \
+A3_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 \
+NUM_GPU_BLOCKS_OVERRIDE=4190 \
+MAX_MODEL_LEN=8201 \
+MAX_NUM_BATCHED_TOKENS=5120 \
+MAX_NUM_SEQS=1 \
+ENABLE_C128_PACKED_POOL_PLANNER=1 \
+ENABLE_C128_PACKED_POOL_ACTIVATION=1 \
+ENABLE_C128_PACKED_VMM_ARENA=1 \
+ENABLE_C128_OWNER_SHARD=0 \
+ENABLE_C128_OWNER_COMPACT_ALLOCATION=0 \
+ENABLE_DSA_CP_LOCAL_CURRENT_KV=0 \
+ENABLE_DSA_LAYER_SHARDING=0 \
+ENABLE_MOONCAKE_KV_CONNECTOR=0 \
+ENABLE_FUSED_MC2=1 \
+ENABLE_MTP=0 \
+VLLM_ASCEND_SOURCE_OVERLAY=/a3_inference/nyx/dsv4_dsa_cp/runs/204/<run>/overlay \
+bash ./start_single_node.sh
+```
+
+Before launching, replace `<run>` with the immutable target-image source
+bundle for the tested commit and run once with `PRINT_CONFIG_ONLY=1`.
+Capacity is `PASS` only if every rank logs:
+
+```text
+C128_PACKED_ARENA_ACCOUNTING ... total_bytes=4215275520
+```
+
+and the launch contains neither the legacy `_allocate_kv_cache_tensors` path
+nor `_get_c128_owner_stage_cache`. The static expected allocation is
+`4,215,275,520 B/rank` (`3.92578125 GiB/rank`), versus the matched B0 raw
+allocation of `13,546,370,560 B/rank`. This number is not a measured result
+until a real service reaches health and completes the two-chunk `8200/1`
+request.
+
 Run the two existing multistream candidates as separate single-variable A/Bs:
 
 ```bash
