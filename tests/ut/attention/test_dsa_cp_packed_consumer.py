@@ -128,7 +128,10 @@ def test_packed_scatter_consumes_owner_local_slots_without_second_translation() 
     )
 
     torch.testing.assert_close(owner_rows, torch.tensor([1, 2, 4]))
-    torch.testing.assert_close(flat_slots, torch.tensor([[2], [3], [6]]))
+    torch.testing.assert_close(
+        flat_slots,
+        torch.tensor([[2], [3], [6]], dtype=torch.int32),
+    )
     assert expected_rows == 5
 
 
@@ -149,7 +152,10 @@ def test_packed_scatter_masks_sentinel_and_padding_without_device_sync() -> None
     owner_rows, flat_slots, expected_rows = owner_cache.prepare_owned_scatter(slot_mapping, tp_rank=1)
 
     torch.testing.assert_close(owner_rows, torch.tensor([2]))
-    torch.testing.assert_close(flat_slots, torch.tensor([[4]]))
+    torch.testing.assert_close(
+        flat_slots,
+        torch.tensor([[4]], dtype=torch.int32),
+    )
     assert expected_rows == 3
 
 
