@@ -860,7 +860,7 @@ Raw evidence:
   b0_ttft_8k_1out_w1_r5.json
 ```
 
-### G24: corrected local-compressor owner integration — PLANNED
+### G24: corrected local-compressor owner integration — FAIL at padded output copy
 
 Hypothesis: with the six-row local RoPE contract and static result exchange,
 the current owner candidate reaches the real CANN compressor, selected owner
@@ -880,3 +880,107 @@ replicated fallback, and the completion matches B0 `你好`.  A boundary-specifi
 exception is `FAIL`; API readiness without a completed request is
 `BLOCKED`; a changed control is `INVALID`.  No candidate timing follows until
 this correctness gate and persistent-capacity accounting pass.
+
+r41 reached HTTP 200 in 5m04s and accepted the fixed request, but every rank
+failed on the aligned 5,120-token chunk after `c128_compressor_ready` and
+`c128_static_collective_copy_begin`.  The CANN merged-token compressor returns
+six local rows: five mapped C128 data rows followed by the padded batch row
+required by its ABI.  The preallocated TP send view is `[8,5,512]`; copying the
+unsliced `[6,512]` result failed with `aclnnInplaceCopy` error 161002 and CANN
+errno 561000.  No rank entered the static HCCL collective, so HCCL is not
+implicated.
+
+The unaligned 3,080-token fallback independently reached compressor, owner
+scatter, selected materialization, and sparse-attention completion on all 20
+C128 layers and all eight ranks.  The request remains invalid because its
+aligned chunk killed EngineCore.  The client correctly recorded no result
+JSON and reported `stream ended without an SSE event containing a text token`.
+
+Raw evidence:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/20260728_prefill_owner/flash_c128_owner/
+  log_single_node_prefill_flash_tp8_c128_owner_r41_resume_correctness_fmc2.log
+/a3_inference/nyx/dsv4_dsa_cp/runs/204/20260730T032110_c128_r41_2fca35c1/
+/home/admin/logs/vllm/vllm_server.log
+```
+
+### G25: discard CANN output padding before the static TP exchange — PASS
+
+Hypothesis: retaining the six-row RoPE/operator input while slicing the
+compressor output to the five mapped prefix rows fixes r41 without adding a
+post-operator host synchronization.  Commit `f44323d3` adds that static prefix
+slice before the TP send copy and a CPU ABI regression.  It deliberately does
+not inspect the asynchronous output shape.
+
+The installed five-file owner runtime manifest matches the integration branch,
+and the expanded target-image reference suite passes 16 tests.  The r42
+configuration and request are otherwise byte-for-byte the r41 gate.  `PASS`
+requires every rank to complete static copy, HCCL exchange, owner scatter,
+selected materialization, sparse attention, and return B0 completion `你好`.
+Another boundary failure is `FAIL`; no output or TTFT claim follows from an
+incomplete request.
+
+r42 reached HTTP 200 in 5m20s.  Its fixed 8K/one-output request returned the B0
+completion `你好`.  For the aligned 5,120-token chunk, all 20 C128 layers and
+all eight ranks reached local compressor, static copy, static HCCL collective,
+owner scatter, selected-row materialization, and sparse attention: 160
+begin/ready pairs at each stage.  The 3,080-token tail used replicated fallback
+on all 160 layer/rank pairs and correctly emitted no static-copy or
+static-collective markers.  The eight worker logs contain no `ERROR`, `EE`,
+compressor-shape failure, CANN 561xxx failure, or HCCL failure.
+
+The cold debug TTFT was 2.193209s and is diagnostic only.  Debug markers and a
+cold first request make this run ineligible as a performance candidate.
+
+Raw evidence:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/20260728_prefill_owner/flash_c128_owner/
+  log_single_node_prefill_flash_tp8_c128_owner_r42_drop_pad_correctness_fmc2.log
+/a3_inference/nyx/dsv4_dsa_cp/runs/204/20260730T034010_c128_r42_f44323d3/
+  c128_smoke_8k_1out.json
+```
+
+### G26: account actual service-capacity bytes — FAIL
+
+Hypothesis: the compact owner tensor reduces persistent C128 allocation and
+therefore increases the block count at a fixed GPU utilization.  This gate
+counts physical storage, not logical owner-tensor elements.
+
+At the real Flash block count `B=4190`, TP8, 20 C128 layers, and 128-KiB C128
+pages, the baseline raw KV allocation per rank is:
+
+```text
+B * (22 * 131072 + 21 * 16640) = 12.6160 GiB
+```
+
+The candidate retains those baseline allocations and adds:
+
+```text
+20 * ceil(B / 8) * 131072 = 1.2793 GiB  # compact owner tensors
+B * 131072               = 0.5115 GiB  # full shared staging tensor
+```
+
+The result is 14.4068 GiB per rank, a 1.7908-GiB or 14.19% increase.  The
+compact tensor alone holds 524 owner pages instead of 4,190 replicated pages
+and therefore reduces that tensor's logical C128 elements by 87.494%, but it
+does not release the aliased baseline raw storage.  The planner also retains
+the baseline per-block denominator, so neither allocatable blocks nor service
+capacity improve.  G26 is `FAIL`; r42 proves the execution path, not persistent
+capacity reduction.
+
+### G27: reclaim baseline C128 physical storage — PLANNED
+
+Hypothesis: Ascend VMM sparse backing can preserve the existing B-page virtual
+cache ABI while physically backing only the pages owned by the local TP rank.
+The first gate is an isolated same-process reserve/map/access probe on the .204
+image; the second is a shareable-handle IPC map/read/write probe.  `PASS`
+requires correct peer-visible data and physical allocation proportional to
+local owner pages.  Missing APIs, unsupported handle export/import, or a driver
+failure is `BLOCKED` with the exact failing API and status.
+
+If the installed HDK/CANN cannot pass that gate, the fallback design is a
+packed physical owner pool plus explicit logical-block-to-owner-slot
+indirection.  It must remove the baseline C128 backing and the full B-page
+staging allocation before any TTFT benchmark is admissible.
