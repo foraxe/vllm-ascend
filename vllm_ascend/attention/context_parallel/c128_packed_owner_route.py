@@ -256,10 +256,9 @@ def _validate_bucket_accounting(
     bucket_name: object,
     page_size_bytes: int,
     tp_size: int,
-    persistent_segments: tuple[C128PackedSegment, ...],
     scratch_segments: tuple[C128PackedSegment, ...],
 ) -> None:
-    """Bind route segments to the serialized bucket arena bounds."""
+    """Validate every persistent copy and the scratch tail in one bucket."""
     if not isinstance(bucket_name, str) or not bucket_name:
         raise ValueError("packed C128 bucket must be a nonempty string")
     matching_buckets = [
@@ -287,11 +286,107 @@ def _validate_bucket_accounting(
         size=tp_size,
         field=f"bucket[{bucket_name}].total_allocated_bytes_by_rank",
     )
+
+    intervals_by_rank: list[list[tuple[int, int, str]]] = [[] for _ in range(tp_size)]
+    for group in _validated_groups(metadata):
+        group_name = group["name"]
+        for raw_component in _require_sequence(
+            group.get("components"),
+            f"{group_name}.components",
+        ):
+            component = _require_mapping(
+                raw_component,
+                f"{group_name}.components entry",
+            )
+            if component.get("bucket") != bucket_name:
+                continue
+            component_name = component.get("name")
+            if not isinstance(component_name, str) or not component_name:
+                raise ValueError("packed component name must be nonempty")
+            if component.get("page_size_bytes") != page_size_bytes:
+                raise ValueError(f"component {group_name}/{component_name} page size " "does not match its bucket")
+            granularity = _require_int(
+                component.get("allocation_granularity_bytes"),
+                (f"{group_name}/{component_name}." "allocation_granularity_bytes"),
+            )
+            copies = _require_int(
+                component.get("copies"),
+                f"{group_name}/{component_name}.copies",
+            )
+            if granularity <= 0 or copies <= 0:
+                raise ValueError(
+                    f"component {group_name}/{component_name} has invalid " "allocation granularity or copy count"
+                )
+            raw_copies = _require_sequence(
+                component.get("segments"),
+                f"{group_name}/{component_name}.segments",
+            )
+            copy_indices = [
+                _require_int(
+                    _require_mapping(
+                        raw_copy,
+                        "component segment copy",
+                    ).get("copy_index"),
+                    "component segment copy_index",
+                )
+                for raw_copy in raw_copies
+            ]
+            if copy_indices != list(range(copies)):
+                raise ValueError(
+                    f"component {group_name}/{component_name} segment " "copies must be unique, ordered, and dense"
+                )
+            for copy_index, raw_copy in enumerate(raw_copies):
+                copy = _require_mapping(
+                    raw_copy,
+                    "component segment copy",
+                )
+                raw_rank_segments = tuple(
+                    _require_mapping(
+                        entry,
+                        "persistent rank segment",
+                    )
+                    for entry in _require_sequence(
+                        copy.get("ranks"),
+                        "persistent ranks",
+                    )
+                )
+                segments = _indexed_by_rank(
+                    raw_rank_segments,
+                    tp_size=tp_size,
+                    field=(f"{group_name}/{component_name}/copy_{copy_index} " "persistent segments"),
+                )
+                rank_metadata = {
+                    _require_int(
+                        entry.get("rank"),
+                        "persistent rank",
+                    ): entry
+                    for entry in raw_rank_segments
+                }
+                for rank, segment in enumerate(segments):
+                    if rank_metadata[rank].get("sentinel_offset_bytes") != segment.base_bytes:
+                        raise ValueError(f"rank {rank} sentinel offset must equal its " "segment base")
+                    if segment.base_bytes % granularity or segment.allocated_bytes % granularity:
+                        raise ValueError(f"rank {rank} persistent segment is not aligned")
+                    intervals_by_rank[rank].append(
+                        (
+                            segment.base_bytes,
+                            segment.stop_bytes,
+                            (f"{group_name}/{component_name}/" f"copy_{copy_index}"),
+                        )
+                    )
+
     for rank in range(tp_size):
-        persistent_segment = persistent_segments[rank]
+        intervals = sorted(intervals_by_rank[rank])
+        if not intervals:
+            raise ValueError(f"bucket {bucket_name!r} has no rank {rank} persistent " "segments")
+        previous_stop = 0
+        for start, stop, label in intervals:
+            if start < previous_stop:
+                raise ValueError(f"rank {rank} packed persistent segments overlap at " f"{label}")
+            previous_stop = stop
+        if previous_stop != persistent_bytes[rank]:
+            raise ValueError(f"rank {rank} packed persistent extent does not match " "bucket accounting")
         scratch_segment = scratch_segments[rank]
-        if persistent_segment.stop_bytes > persistent_bytes[rank]:
-            raise ValueError(f"rank {rank} C128 component exceeds bucket persistent bytes")
         if (
             scratch_region_bytes[rank] != total_bytes[rank] - persistent_bytes[rank]
             or scratch_segment.base_bytes < persistent_bytes[rank]
@@ -489,18 +584,6 @@ class C128PackedOwnerRoute:
             tp_size=tp_size,
             field=(f"{group_name}/{component_name}/copy_{copy_index} " "persistent segments"),
         )
-        raw_rank_segments = tuple(
-            _require_mapping(entry, "persistent rank segment")
-            for entry in _require_sequence(
-                matching_copies[0].get("ranks"),
-                "persistent ranks",
-            )
-        )
-        for rank, segment in enumerate(persistent_segments):
-            expected_sentinel = segment.base_bytes
-            raw_rank_segment = next(entry for entry in raw_rank_segments if entry.get("rank") == rank)
-            if raw_rank_segment.get("sentinel_offset_bytes") != expected_sentinel:
-                raise ValueError(f"rank {rank} sentinel offset must equal its segment base")
 
         bucket = component.get("bucket")
         matching_scratch = [
@@ -540,7 +623,6 @@ class C128PackedOwnerRoute:
             bucket_name=bucket,
             page_size_bytes=page_size_bytes,
             tp_size=tp_size,
-            persistent_segments=persistent_segments,
             scratch_segments=scratch_segments,
         )
 
@@ -626,6 +708,27 @@ class C128PackedOwnerRoute:
         """Validate concrete segment views before any cache write/read."""
         self.assert_runtime_ready()
         self._validate_tp_rank(tp_rank)
+        persistent_pages = _require_int(
+            persistent_pages,
+            "persistent_pages",
+        )
+        scratch_pages = _require_int(scratch_pages, "scratch_pages")
+        if persistent_pages <= 0 or scratch_pages <= 0:
+            raise ValueError("runtime tensor page counts must be positive")
+        persistent_segment = self.persistent_segments[tp_rank]
+        scratch_segment = self.scratch_segments[tp_rank]
+        if persistent_pages * self.page_size_bytes > persistent_segment.allocated_bytes:
+            raise ValueError(
+                f"persistent tensor exposes {persistent_pages} pages beyond "
+                f"rank {tp_rank} segment capacity "
+                f"{persistent_segment.allocated_bytes // self.page_size_bytes}"
+            )
+        if scratch_pages * self.page_size_bytes > scratch_segment.allocated_bytes:
+            raise ValueError(
+                f"scratch tensor exposes {scratch_pages} pages beyond rank "
+                f"{tp_rank} segment capacity "
+                f"{scratch_segment.allocated_bytes // self.page_size_bytes}"
+            )
         required_persistent = self.required_persistent_pages(tp_rank)
         if persistent_pages < required_persistent:
             raise ValueError(

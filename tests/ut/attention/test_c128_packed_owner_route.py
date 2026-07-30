@@ -230,7 +230,7 @@ def test_copy_index_binds_exact_layer_and_disjoint_segment() -> None:
                 "ranks",
                 _rank_segments(1),
             ),
-            "segment base is not aligned",
+            "segment is not aligned",
         ),
         (
             lambda metadata: metadata["scratch"][0].__setitem__(
@@ -245,6 +245,13 @@ def test_copy_index_binds_exact_layer_and_disjoint_segment() -> None:
                 GRANULARITY_BYTES,
             ),
             "scratch does not match bucket accounting",
+        ),
+        (
+            lambda metadata: metadata["groups"][1]["components"][0]["segments"][1].__setitem__(
+                "ranks",
+                _rank_segments(0),
+            ),
+            "persistent segments overlap",
         ),
     ],
 )
@@ -407,6 +414,11 @@ def test_runtime_tensor_views_must_cover_persistent_and_scratch_segments() -> No
         persistent_pages=2,
         scratch_pages=7,
     )
+    route.validate_runtime_tensor_pages(
+        tp_rank=0,
+        persistent_pages=8,
+        scratch_pages=8,
+    )
     with pytest.raises(ValueError, match="needs 3"):
         route.validate_runtime_tensor_pages(
             tp_rank=0,
@@ -418,6 +430,18 @@ def test_runtime_tensor_views_must_cover_persistent_and_scratch_segments() -> No
             tp_rank=0,
             persistent_pages=3,
             scratch_pages=6,
+        )
+    with pytest.raises(ValueError, match="persistent tensor.*beyond"):
+        route.validate_runtime_tensor_pages(
+            tp_rank=0,
+            persistent_pages=9,
+            scratch_pages=8,
+        )
+    with pytest.raises(ValueError, match="scratch tensor.*beyond"):
+        route.validate_runtime_tensor_pages(
+            tp_rank=0,
+            persistent_pages=8,
+            scratch_pages=9,
         )
 
 
