@@ -15,8 +15,8 @@ OTLP_TRACES_ENDPOINT=${OTLP_TRACES_ENDPOINT:-}
 RUN_ID=${RUN_ID:-$(date +%Y%m%d_%H%M%S)}
 LOG_FILE=${ROLE_DIR}/log_single_node_prefill_${RUN_ID}.log
 PID_FILE=${ROLE_DIR}/.vllm_pids_single_node
-# Pure-prefill DSA-CP optimization gate. This is intentionally independent
-# from layer sharding.
+# Non-CP DSA prefill overlap gate. AscendDSACPImpl does not read this switch
+# in this release; use ENABLE_MULTISTREAM_DSA_PREPROCESS for DSA-CP.
 ENABLE_PREFILL_COMM_COMPUTE_OVERLAP=${ENABLE_PREFILL_COMM_COMPUTE_OVERLAP:-0}
 # DSA-CP reads this switch for its hidden-state all-gather / local-Q overlap.
 # Keep it separate from the non-CP prefill_comm_compute_overlap control.
