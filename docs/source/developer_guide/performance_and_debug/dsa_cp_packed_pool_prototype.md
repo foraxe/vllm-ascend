@@ -77,21 +77,21 @@ admission_blocks = min(ceil(prompt_tokens / block_size), admission_cap)
 partition_blocks = max(peak_live_blocks, admission_blocks)
 ```
 
-For the representative six-group Flash fixture, the exact one-request quotas
-under that pinned scheduler are:
+For the reconciled six-group live Flash layout, the exact declaration order,
+component copies, and one-request quotas under that pinned scheduler are:
 
-| group | scheduler shape | live peak | admission | partition |
-|---|---|---:|---:|---:|
-| C4 MLA | block 128, compression 4 | 17 | 17 | 17 |
-| C128 MLA | block 128, compression 128 | 1 | 1 | 1 |
-| C4 compressor state | block 8, window 8 | 640 | 642 | 642 |
-| C128 compressor state | block 32, window 128 | 160 | 165 | 165 |
-| dense SWA A | block 128, window 4096 | 57 | 65 | 65 |
-| dense SWA B | block 128, window 4096 | 57 | 65 | 65 |
+| group | component copies | scheduler shape | live peak | admission | partition |
+|---|---|---|---:|---:|---:|
+| C4 MLA | 21 narrow + 21 wide replicated | block 128, compression 4 | 17 | 17 | 17 |
+| C128 MLA | 20 wide owner | block 128, compression 128 | 1 | 1 | 1 |
+| dense SWA A | 22 wide replicated | block 128, window 4096 | 57 | 65 | 65 |
+| dense SWA B | 21 wide replicated | block 128, window 4096 | 57 | 65 | 65 |
+| C4 compressor state | 21 narrow + 21 wide replicated | block 8, window 8 | 640 | 642 | 642 |
+| C128 compressor state | 20 wide replicated | block 32, window 128 | 160 | 165 | 165 |
 
 Their partition sum is 955 positive data IDs.  At the measured B0 block count
 `B=4190`, declaration order assigns ranges `[1,18)`, `[18,19)`,
-`[19,661)`, `[661,826)`, `[826,891)`, and `[891,956)`, leaving 3234
+`[19,84)`, `[84,149)`, `[149,791)`, and `[791,956)`, leaving 3234
 unassigned data IDs after the global block-zero sentinel.
 
 This fixed-workload plan does not prove owner-shard capacity saving.  Its C128
@@ -101,7 +101,9 @@ counterfactual round that copy to one 2-MiB VMM segment on every rank.
 Consequently:
 
 ```text
-fixed 955-quota owner bytes == fixed 955-quota aligned-replicated bytes
+fixed 955-quota owner bytes
+  = fixed 955-quota aligned-replicated bytes
+  = 3,166,699,520 bytes/rank
 ```
 
 The large difference between either fixed-quota number and the historical
@@ -124,12 +126,11 @@ equivalence across both prefill chunks; moving only the attention history
 cannot reclaim the original backing.  A later distributed/local compressor
 path additionally needs the prefix-scan or chunk-boundary state handoff gate.
 
-The `window=4096` and two dense-SWA rows in this table remain fixture evidence,
-not a captured live `config.json`/group dump.  Runtime planning reads every
-group's actual block size, compression ratio, window, and layer order from the
-resolved `KVCacheConfig`; it will recompute or fail closed rather than apply
-these fixture constants.  The A3 activation gate must preserve the emitted
-group dump next to the result.
+The fixture reflects the reconciled live group dump and has no MTP group.
+Runtime planning still reads every group's actual block size, compression
+ratio, window, and layer order from the resolved `KVCacheConfig`; it will
+recompute or fail closed rather than apply fixture constants.  The A3
+activation gate must preserve the emitted group dump next to the result.
 
 The planner runs after vLLM clamps all worker configs to the minimum final
 `num_blocks`; it cannot serialize a stale per-rank pre-clamp capacity.  It
@@ -211,37 +212,23 @@ allocation.
 
 ## Same-B owner-placement accounting oracle
 
-The pure CPU gate also constructs a same-`B` owner-versus-replicated oracle
-using the measured page/copy counts:
+The raw B0 allocator has 43 physical tuple tensors per rank: 21 narrow
+16,640-byte pages and 22 wide 131,072-byte pages.  MTP is disabled.  Its exact
+unaligned allocation is:
 
 ```text
 B = 4190 total BlockPool slots
-data slots = 4189
-TP = 8
-wide page = 131072 bytes
-narrow page = 16640 bytes
-wide replicated copies = 2
-C128 owner copies = 20
-narrow replicated copies = 21
-8K selected-page scratch bound = 65 wide pages per rank
-VMM allocation granularity = 2097152 bytes
-```
-
-Its unaligned replicated payload is exactly:
-
-```text
 B * (22 * 131072 + 21 * 16640)
+  = 13,546,370,560 bytes/rank
 ```
 
-The owner candidate keeps the two ordinary wide copies and all narrow copies,
-allocates only each rank's 523 or 524 C128 data pages plus one sentinel page
-for every C128 layer, and adds 65 wide scratch payload pages.  Every component
-copy and the scratch region is rounded independently to 2 MiB.  Thus the
-524- or 525-page occupied C128 segments both allocate 528 pages, while the
-65-page scratch allocates 80 pages.  The test compares exact aligned bytes
-against a same-component, same-`B`, independently aligned replicated
-counterfactual.  It does not count a full `B`-page stage and therefore cannot
-reproduce the G26 false capacity claim.
+The packed plan disaggregates those aliased raw tuples into the six live
+scheduler groups shown above.  Its same-`B` oracle keeps that exact group and
+component inventory, assigns all 3,234 spare data IDs to C128, and changes
+only the 20 C128-wide copies between owner and replicated placement.  It also
+adds the bounded 65-wide-page materialization scratch.  Every component copy
+and scratch region is rounded independently to the measured 2-MiB VMM
+granularity.
 
 This oracle proves that owner placement can save bytes when a C128 logical
 range is large enough to amortize 2-MiB per-copy granularity.  It is not the
@@ -255,9 +242,12 @@ The CPU suite pins one explicit accounting candidate by assigning all 3234
 currently unused fixed-profile IDs to C128:
 
 ```text
-workload quotas = [17, 1, 642, 165, 65, 65]
-same-B accounting quotas = [17, 3235, 642, 165, 65, 65]
+group order = [C4, C128, SWA-A, SWA-B, C4-state, C128-state]
+workload quotas = [17, 1, 65, 65, 642, 165]
+same-B accounting quotas = [17, 3235, 65, 65, 642, 165]
 sum = 4189 data IDs, plus sentinel 0 => B=4190
+same-B owner = 4,215,275,520 bytes/rank
+same-B aligned-replicated = 11,639,193,600 bytes/rank
 ```
 
 For that exact six-group plan, the aligned owner allocation is smaller than
@@ -274,7 +264,7 @@ aggregate `B=4190` ID domain and place the slack in one ordinary replicated
 group:
 
 ```text
-[17, 1, 642, 165, 65, 3299]
+[17, 1, 65, 3299, 642, 165]
 ```
 
 This satisfies `FixedQuotaBlockPool`'s exact `sum(quotas) == B - 1` contract

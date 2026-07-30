@@ -129,26 +129,8 @@ def _flash_groups():
             ),
         ),
         _fake_group(
-            "c4_state",
-            21,
-            lambda _index: _FakeSlidingWindowMLASpec(
-                block_size=8,
-                sliding_window=8,
-                page_size_bytes=wide_page,
-            ),
-        ),
-        _fake_group(
-            "c128_state",
-            20,
-            lambda _index: _FakeSlidingWindowMLASpec(
-                block_size=32,
-                sliding_window=128,
-                page_size_bytes=wide_page,
-            ),
-        ),
-        _fake_group(
             "dense_swa_a",
-            1,
+            22,
             lambda _index: _FakeSlidingWindowMLASpec(
                 block_size=128,
                 sliding_window=4096,
@@ -157,10 +139,28 @@ def _flash_groups():
         ),
         _fake_group(
             "dense_swa_b",
-            1,
+            21,
             lambda _index: _FakeSlidingWindowMLASpec(
                 block_size=128,
                 sliding_window=4096,
+                page_size_bytes=wide_page,
+            ),
+        ),
+        _fake_group(
+            "c4_state",
+            42,
+            lambda index: _FakeSlidingWindowMLASpec(
+                block_size=8,
+                sliding_window=8,
+                page_size_bytes=narrow_page if index < 21 else wide_page,
+            ),
+        ),
+        _fake_group(
+            "c128_state",
+            20,
+            lambda _index: _FakeSlidingWindowMLASpec(
+                block_size=32,
+                sliding_window=128,
                 page_size_bytes=wide_page,
             ),
         ),
@@ -215,7 +215,7 @@ def _patch_packed_spec_types():
 
 def test_fixed_flash_quotas_match_current_manager_chunk_semantics() -> None:
     config = _packed_vllm_config()
-    expected_quotas = [17, 1, 642, 165, 65, 65]
+    expected_quotas = [17, 1, 65, 65, 642, 165]
 
     mla_patch, swa_patch, uniform_patch = _patch_packed_spec_types()
     with mla_patch, swa_patch, uniform_patch:
@@ -242,10 +242,10 @@ def test_fixed_flash_quotas_match_current_manager_chunk_semantics() -> None:
     ] == [
         (17, 17, 17),
         (1, 1, 1),
+        (57, 65, 65),
+        (57, 65, 65),
         (640, 642, 642),
         (160, 165, 165),
-        (57, 65, 65),
-        (57, 65, 65),
     ]
     assert sum(actual_quotas) == 955
 
@@ -324,15 +324,19 @@ def test_packed_planner_serializes_exact_ranges_after_final_block_clamp() -> Non
     ] == [
         (17, 1, 18),
         (1, 18, 19),
-        (642, 19, 661),
-        (165, 661, 826),
-        (65, 826, 891),
-        (65, 891, 956),
+        (65, 19, 84),
+        (65, 84, 149),
+        (642, 149, 791),
+        (165, 791, 956),
     ]
     assert {component["placement"] for component in metadata["groups"][1]["components"]} == {"c128_owner"}
     assert metadata["groups"][0]["components"][0]["layer_names"] == [f"c4.{index}" for index in range(21)]
     assert metadata["groups"][0]["components"][1]["layer_names"] == [f"c4.{index}" for index in range(21, 42)]
     assert metadata["groups"][1]["components"][0]["layer_names"] == [f"c128.{index}" for index in range(20)]
+    assert metadata["groups"][2]["components"][0]["layer_names"] == [f"dense_swa_a.{index}" for index in range(22)]
+    assert metadata["groups"][3]["components"][0]["layer_names"] == [f"dense_swa_b.{index}" for index in range(21)]
+    assert metadata["groups"][4]["components"][0]["layer_names"] == [f"c4_state.{index}" for index in range(21)]
+    assert metadata["groups"][4]["components"][1]["layer_names"] == [f"c4_state.{index}" for index in range(21, 42)]
     for expected_group, serialized_group in zip(
         _flash_groups(),
         metadata["groups"],
@@ -345,7 +349,7 @@ def test_packed_planner_serializes_exact_ranges_after_final_block_clamp() -> Non
     # The full-B raw-tensor tuple paired C128 attention with its compressor
     # state in the legacy allocator. The packed manifest must move that state
     # family too; an attention-only owner sidecar cannot reclaim the tuple.
-    assert metadata["groups"][3]["components"][0]["layer_names"] == [f"c128_state.{index}" for index in range(20)]
+    assert metadata["groups"][5]["components"][0]["layer_names"] == [f"c128_state.{index}" for index in range(20)]
     assert metadata["buckets"]
     assert len(metadata["scratch"]) == 1
     assert metadata["scratch"][0]["max_pages_per_rank"] == 65
@@ -359,7 +363,9 @@ def test_packed_planner_serializes_exact_ranges_after_final_block_clamp() -> Non
     # the same 2-MiB segment whether it is owner-sharded or replicated.
     # Any bytes-vs-B0 delta for this fixed plan is quota-envelope reduction,
     # not owner placement.
-    assert metadata["total_physical_bytes_by_rank"] == (metadata["aligned_quota_replicated_bytes_by_rank"])
+    expected_fixed_bytes = [3_166_699_520] * 8
+    assert metadata["total_physical_bytes_by_rank"] == expected_fixed_bytes
+    assert metadata["aligned_quota_replicated_bytes_by_rank"] == expected_fixed_bytes
     assert json.loads(json.dumps(metadata, sort_keys=True)) == metadata
 
 
@@ -436,7 +442,7 @@ def test_packed_planner_rejects_worker_group_schema_drift() -> None:
     second_groups[-1].layer_names[0] = "different.worker.layer"
     second_groups[-1].kv_cache_spec.kv_cache_specs["different.worker.layer"] = second_groups[
         -1
-    ].kv_cache_spec.kv_cache_specs.pop("dense_swa_b.0")
+    ].kv_cache_spec.kv_cache_specs.pop("c128_state.0")
     second = SimpleNamespace(
         num_blocks=4_190,
         kv_cache_groups=second_groups,

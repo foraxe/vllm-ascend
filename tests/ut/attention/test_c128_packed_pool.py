@@ -350,7 +350,7 @@ def test_aligned_replicated_counterfactual_includes_bucket_alignment_gaps() -> N
 
 def test_six_group_same_b_counterfactual_isolates_owner_saving() -> None:
     """Assign the spare range to C128 so owner placement is the only delta."""
-    workload_quotas = (17, 1, 642, 165, 65, 65)
+    workload_quotas = (17, 1, 65, 65, 642, 165)
     global_block_capacity = 4_190
     spare_blocks = global_block_capacity - 1 - sum(workload_quotas)
     same_b_quotas = (
@@ -358,7 +358,7 @@ def test_six_group_same_b_counterfactual_isolates_owner_saving() -> None:
         workload_quotas[1] + spare_blocks,
         *workload_quotas[2:],
     )
-    assert same_b_quotas == (17, 3_235, 642, 165, 65, 65)
+    assert same_b_quotas == (17, 3_235, 65, 65, 642, 165)
 
     plan = PackedPoolPlan(
         global_block_capacity=global_block_capacity,
@@ -393,10 +393,38 @@ def test_six_group_same_b_counterfactual_isolates_owner_saving() -> None:
                 ),
             ),
             _group(
-                "c4_state",
+                "dense_swa_a",
                 same_b_quotas[2],
                 _component(
-                    "c4_state",
+                    "dense_swa_a",
+                    placement=PackedPlacement.REPLICATED,
+                    copies=22,
+                    allocation_granularity_bytes=VMM_GRANULARITY_BYTES,
+                ),
+            ),
+            _group(
+                "dense_swa_b",
+                same_b_quotas[3],
+                _component(
+                    "dense_swa_b",
+                    placement=PackedPlacement.REPLICATED,
+                    copies=21,
+                    allocation_granularity_bytes=VMM_GRANULARITY_BYTES,
+                ),
+            ),
+            _group(
+                "c4_state",
+                same_b_quotas[4],
+                _component(
+                    "c4_state_narrow",
+                    placement=PackedPlacement.REPLICATED,
+                    copies=21,
+                    bucket="narrow",
+                    page_size_bytes=NARROW_PAGE_BYTES,
+                    allocation_granularity_bytes=VMM_GRANULARITY_BYTES,
+                ),
+                _component(
+                    "c4_state_wide",
                     placement=PackedPlacement.REPLICATED,
                     copies=21,
                     allocation_granularity_bytes=VMM_GRANULARITY_BYTES,
@@ -404,29 +432,11 @@ def test_six_group_same_b_counterfactual_isolates_owner_saving() -> None:
             ),
             _group(
                 "c128_state",
-                same_b_quotas[3],
+                same_b_quotas[5],
                 _component(
                     "c128_state",
                     placement=PackedPlacement.REPLICATED,
                     copies=20,
-                    allocation_granularity_bytes=VMM_GRANULARITY_BYTES,
-                ),
-            ),
-            _group(
-                "dense_swa_a",
-                same_b_quotas[4],
-                _component(
-                    "dense_swa_a",
-                    placement=PackedPlacement.REPLICATED,
-                    allocation_granularity_bytes=VMM_GRANULARITY_BYTES,
-                ),
-            ),
-            _group(
-                "dense_swa_b",
-                same_b_quotas[5],
-                _component(
-                    "dense_swa_b",
-                    placement=PackedPlacement.REPLICATED,
                     allocation_granularity_bytes=VMM_GRANULARITY_BYTES,
                 ),
             ),
@@ -444,6 +454,8 @@ def test_six_group_same_b_counterfactual_isolates_owner_saving() -> None:
     assert plan.used_logical_blocks == global_block_capacity - 1
     owner_bytes = plan.total_physical_bytes_by_rank()
     aligned_replicated_bytes = plan.aligned_quota_replicated_bytes_by_rank()
+    assert owner_bytes == (4_215_275_520,) * 8
+    assert aligned_replicated_bytes == (11_639_193_600,) * 8
     assert all(
         owner < replicated
         for owner, replicated in zip(
