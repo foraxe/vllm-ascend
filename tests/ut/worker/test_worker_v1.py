@@ -44,6 +44,49 @@ class TestNPUWorker(TestBase):
         self.distributed_init_method = "tcp://localhost:12345"
         self.is_driver_worker = False
 
+    def test_shutdown_feature_off_is_inert(self):
+        from vllm_ascend.worker.worker import NPUWorker
+
+        worker = NPUWorker.__new__(NPUWorker)
+        worker.model_runner = MagicMock()
+        worker.model_runner._c128_packed_arena_runtime = None
+
+        worker.shutdown()
+
+        worker.model_runner.shutdown.assert_not_called()
+
+    def test_shutdown_retries_packed_cleanup_once(self):
+        from vllm_ascend.worker.worker import NPUWorker
+
+        worker = NPUWorker.__new__(NPUWorker)
+        worker.model_runner = MagicMock()
+        worker.model_runner._c128_packed_arena_runtime = object()
+        worker.model_runner.shutdown.side_effect = [
+            RuntimeError("transient"),
+            None,
+        ]
+
+        worker.shutdown()
+
+        self.assertEqual(worker.model_runner.shutdown.call_count, 2)
+
+    @patch("vllm_ascend.worker.worker.logger")
+    def test_shutdown_exhaustion_does_not_block_executor_teardown(
+        self,
+        mock_logger,
+    ):
+        from vllm_ascend.worker.worker import NPUWorker
+
+        worker = NPUWorker.__new__(NPUWorker)
+        worker.model_runner = MagicMock()
+        worker.model_runner._c128_packed_arena_runtime = object()
+        worker.model_runner.shutdown.side_effect = RuntimeError("persistent")
+
+        worker.shutdown()
+
+        self.assertEqual(worker.model_runner.shutdown.call_count, 2)
+        mock_logger.error.assert_called_once()
+
     @patch("vllm_ascend.utils.adapt_patch")
     @patch("vllm_ascend.ops")
     @patch("vllm_ascend.worker.worker._register_atb_extensions")

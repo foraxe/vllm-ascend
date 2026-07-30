@@ -2,12 +2,11 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+import numpy as np
 import torch
 from vllm.v1.kv_cache_interface import FullAttentionSpec, KVCacheConfig, KVCacheGroupSpec, KVCacheTensor
 
 from vllm_ascend.worker.model_runner_v1 import NPUModelRunner
-
-import numpy as np
 
 
 class TestNPUModelRunnerKVCache(unittest.TestCase):
@@ -85,6 +84,109 @@ class TestNPUModelRunnerKVCache(unittest.TestCase):
 
         self.assertEqual(k_cache.shape, (2, 16, 8, 64))
         self.assertEqual(v_cache.shape, (2, 16, 8, 64))
+
+
+class TestNPUModelRunnerPackedArenaLifecycle(unittest.TestCase):
+    def _build_runner(self):
+        runner = NPUModelRunner.__new__(NPUModelRunner)
+        runner.enable_c128_packed_vmm_arena = True
+        runner._c128_packed_arena_runtime = None
+        runner._c128_owner_stage_caches = {"stage": object()}
+        runner.device = SimpleNamespace(index=3)
+        return runner
+
+    @patch("vllm_ascend.worker.c128_packed_runtime." "packed_arena_contract_from_metadata")
+    @patch("vllm_ascend.worker.model_runner_v1.get_tp_group")
+    def test_install_validates_provenance_rank_and_device(
+        self,
+        mock_get_tp_group,
+        mock_contract_from_metadata,
+    ):
+        from vllm_ascend.worker.c128_packed_runtime import (
+            PackedArenaRuntime,
+            PackedArenaRuntimeState,
+        )
+
+        runner = self._build_runner()
+        runtime = PackedArenaRuntime.__new__(PackedArenaRuntime)
+        runtime._state = PackedArenaRuntimeState.SEALED
+        runtime.contract = SimpleNamespace(metadata_fingerprint="same")
+        runtime.tp_rank = 3
+        runtime.device_index = 3
+        kv_cache_config = SimpleNamespace(c128_packed_pool_metadata={"schema_version": 1})
+        mock_get_tp_group.return_value.rank_in_group = 3
+        mock_contract_from_metadata.return_value = SimpleNamespace(metadata_fingerprint="same")
+
+        runner._install_c128_packed_arena_runtime(
+            runtime,
+            kv_cache_config,
+        )
+
+        self.assertIs(runner._c128_packed_arena_runtime, runtime)
+
+    @patch("vllm_ascend.worker.c128_packed_runtime." "packed_arena_contract_from_metadata")
+    @patch("vllm_ascend.worker.model_runner_v1.get_tp_group")
+    def test_failed_install_does_not_take_runtime_ownership(
+        self,
+        mock_get_tp_group,
+        mock_contract_from_metadata,
+    ):
+        from vllm_ascend.worker.c128_packed_runtime import (
+            PackedArenaRuntime,
+            PackedArenaRuntimeState,
+        )
+
+        runner = self._build_runner()
+        runtime = PackedArenaRuntime.__new__(PackedArenaRuntime)
+        runtime._state = PackedArenaRuntimeState.SEALED
+        runtime.contract = SimpleNamespace(metadata_fingerprint="same")
+        runtime.tp_rank = 2
+        runtime.device_index = 3
+        kv_cache_config = SimpleNamespace(c128_packed_pool_metadata={"schema_version": 1})
+        mock_get_tp_group.return_value.rank_in_group = 3
+        mock_contract_from_metadata.return_value = SimpleNamespace(metadata_fingerprint="same")
+
+        with self.assertRaisesRegex(ValueError, "TP rank"):
+            runner._install_c128_packed_arena_runtime(
+                runtime,
+                kv_cache_config,
+            )
+
+        self.assertIsNone(runner._c128_packed_arena_runtime)
+
+    @patch("vllm.v1.worker.gpu_model_runner.GPUModelRunner.shutdown")
+    def test_shutdown_drops_model_aliases_before_runtime(
+        self,
+        mock_super_shutdown,
+    ):
+        runner = self._build_runner()
+        events = []
+        runtime = MagicMock()
+        runtime.close.side_effect = lambda: events.append("runtime_close")
+        runner._c128_packed_arena_runtime = runtime
+        mock_super_shutdown.side_effect = lambda: events.append("super_shutdown")
+
+        runner.shutdown()
+
+        self.assertEqual(events, ["super_shutdown", "runtime_close"])
+        self.assertEqual(runner._c128_owner_stage_caches, {})
+        self.assertIsNone(runner._c128_packed_arena_runtime)
+
+    @patch("vllm.v1.worker.gpu_model_runner.GPUModelRunner.shutdown")
+    def test_shutdown_failure_retains_runtime_for_retry(
+        self,
+        mock_super_shutdown,
+    ):
+        runner = self._build_runner()
+        runtime = MagicMock()
+        runtime.close.side_effect = RuntimeError("retry")
+        runner._c128_packed_arena_runtime = runtime
+
+        with self.assertRaisesRegex(RuntimeError, "retry"):
+            runner.shutdown()
+
+        mock_super_shutdown.assert_called_once_with()
+        self.assertIs(runner._c128_packed_arena_runtime, runtime)
 
 
 class TestNPUModelRunnerOutputTokenIds(unittest.TestCase):

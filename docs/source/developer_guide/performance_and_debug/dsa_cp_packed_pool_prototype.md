@@ -1,7 +1,9 @@
 # DSA-CP packed-pool planning prototype
 
-Status: feature-gated planner/config propagation is implemented; scheduler and
-worker consumption remain disabled.
+Status: feature-gated planner/config propagation and a CPU-testable worker
+lifecycle contract are implemented.  Production packed allocation remains
+disabled until the adapter, reshape, block-table, and C128 materialization
+seams land together.
 
 ## Hypothesis and gate
 
@@ -261,9 +263,13 @@ and 8K/one-output TTFT comparisons run.
 ## Packed physical-arena lease slice
 
 `vllm_ascend/attention/context_parallel/c128_packed_arena.py` implements the
-CPU-testable lifetime boundary for seam 4 without connecting it to the worker.
-It has no torch import and no concrete ACL adapter.  Production modules do not
-import it, so feature-off bootstrap and hot paths are unchanged.
+CPU-testable lifetime boundary for seam 4.  It has no torch import and no
+concrete ACL adapter.  The worker-side
+`vllm_ascend/worker/c128_packed_runtime.py` reconstructs and independently
+checks the serialized plan, exposes exact rank/bucket allocation accounting,
+and owns the lease across all registered derived views.  The model runner
+imports that module only inside the enabled branch, so feature-off bootstrap
+and hot paths are unchanged.
 
 For one TP rank, the lease:
 
@@ -421,49 +427,81 @@ boundary. The real fault-injection step remains mock-proven only and must use
 a dedicated idle process before worker integration. This success-path result
 does not prove model cache equivalence, capacity, or TTFT.
 
-### Line-anchored integration design
+### Worker/model-runner lifecycle seam
 
-The anchors below are for integration base
-`7355d108f96bda578440a196bf7136140e010427`; re-resolve the symbols after a
-rebase.
+The anchors below are for integration base `84f3da22`; re-resolve the symbols
+after a rebase.
 
-1. Feature gate and lifetime owner:
-   `vllm_ascend/worker/model_runner_v1.py:271-300` reads the current C128
-   `additional_config` flags and initializes owner-stage state.  A later
-   integration adds a default-false `enable_c128_packed_vmm_arena` there and a
-   nullable `_c128_packed_arena_lease`.  Import the arena module only inside
-   the enabled branch.  The runner or worker must expose an explicit shutdown
-   hook that drops every derived KV view and calls `lease.close()` before
-   device reset; do not put ACL calls in `__del__`.
-2. Allocation switch:
-   `model_runner_v1.py:3515-3537` owns KV-cache initialization, and
-   `model_runner_v1.py:3575-3588` currently allocates then reshapes raw
-   tensors.  The enabled branch must construct the serialized
-   `PackedPoolPlan`, create the rank-local lease, and hand root bucket tensors
-   to the reshape adapter.  Commit the lease to the runner only after all
-   bucket bindings succeed.  Feature-off must continue directly into the
-   existing calls.
-3. Raw allocation replacement:
-   `model_runner_v1.py:3695-3720` is the exact allocation entry, while
-   `model_runner_v1.py:3748-3768` creates the current compressed/C128 raw
-   tensor.  The enabled branch replaces only plan-owned components with
-   byte/shape views over the lease bucket tensor.  It must not allocate a
-   second `torch.zeros` backing for those components.  The existing path
-   remains untouched when disabled.
-4. Shape ABI:
-   `model_runner_v1.py:3926-3975` derives `num_blocks` from raw-tensor bytes and
-   assumes one contiguous component.  A packed integration must instead use
-   the plan's segment base/size for each component copy, then call the existing
-   layout adapter on that segment.  It must not infer a bucket-wide block count
-   from the root arena tensor.
-5. C128 execution scratch:
-   `model_runner_v1.py:3882-3895` allocates a full `num_blocks` stage cache, and
-   `model_runner_v1.py:3995-4002` installs it in `C128OwnerShardCache`.
-   Replace this only after the lease's bounded scratch view is shaped for the
-   attention backend.  `c128_owner_cache.py:257-284` and
-   `c128_owner_cache.py:421-455` still use the legacy zero-based owner-local
-   formula; scheduler/block-table integration must pass plan-aware owner slots
-   before packed persistent storage can be enabled.
+1. Feature gate and fail-closed initialization:
+   `vllm_ascend/worker/model_runner_v1.py:271-285` reads the default-false
+   `enable_c128_packed_vmm_arena` JSON boolean and initializes one nullable
+   runtime owner.  `model_runner_v1.py:3529-3563` imports the runtime module
+   only when enabled.  It validates worker-delivered metadata, rejects the
+   current `planner_only=true`/`downstream_runtime_abi_ready=false` schema, and
+   also refuses to fall through to legacy raw allocation if metadata is
+   prematurely marked ready.  Feature-off continues directly into the
+   existing deep-copy/allocation path.
+2. Transactional open and explicit shutdown:
+   `PackedArenaRuntime.open_from_metadata` is the adapter seam.  Given a
+   concrete backend, tensor factory, arena fence, and worker quiescence
+   callback, it rebuilds the plan and opens `PackedArenaLease`.  A future
+   reshape integration must install each bucket through
+   `PackedArenaRuntime.install_tensor_views`.  The runtime owns the lease pin;
+   the installer receives the root only inside its callback and returns a
+   retry-idempotent releaser that reports success only after dropping every
+   derived alias.  There is no public consumer-owned unpin operation.  Only
+   after every component-copy and scratch key in the plan-derived view
+   manifest is installed may the caller call `seal_views()` and publish the
+   complete runtime through
+   `model_runner_v1.py:_install_c128_packed_arena_runtime`; publishing a bare
+   lease before view installation is forbidden.  Installation validates the
+   runtime type, `SEALED` state, exact serialized-metadata fingerprint, TP
+   rank, and device.
+   The caller retains ownership after any failed installation.  If a view
+   installer raises after seeing the root tensor, the runtime retains a
+   permanent blocker and refuses to unmap; the process must be torn down unless
+   the installer proved failure atomic before exposing the root.
+   `worker.py:shutdown` calls inherited model-runner cleanup first, so device
+   work is synchronized and ordinary KV/attention aliases are cleared.  It
+   retries packed cleanup once, then returns so executor-level distributed
+   teardown is not skipped.  `PackedArenaRuntime.close` prevents new borrows,
+   quiesces queued work, runs registered view releasers in reverse order,
+   releases each runtime-owned pin only after its releaser succeeds, and only
+   then closes the lease.  A failed stage retains the lease, pin, and remaining
+   callbacks for explicit retry; there is no driver cleanup in `__del__`.
+3. Serialized ABI and allocation evidence:
+   `c128_packed_runtime.packed_arena_contract_from_metadata` accepts only
+   schema version 1 and the fixed Flash TP8, 8200-token/one-output profile.  It
+   reconstructs groups/components/scratch, recomputes every range, segment,
+   bucket, and per-rank total, and rejects any mismatch before touching the
+   backend.  `PackedArenaRankAccounting.as_metadata()` exposes exact
+   persistent, scratch-region, and total allocated bytes per bucket and rank.
+4. Raw allocation replacement remains blocked:
+   `model_runner_v1.py:3774` is the raw allocation entry.  A coherent enabled
+   branch must replace only plan-owned components with byte/shape views over
+   lease buckets and must register a releaser for every view installed in
+   model-runner state.  It must not allocate a second `torch.zeros` backing.
+5. Shape ABI remains blocked:
+   `model_runner_v1.py:4005` derives `num_blocks` from raw-tensor bytes and
+   assumes one contiguous component.  Packed reshape must instead use each
+   component copy's validated segment base and size; a bucket-wide tensor is
+   not one cache component.
+6. C128 scratch/materialization remains blocked:
+   `model_runner_v1.py:3961` still allocates a full `num_blocks` stage cache.
+   The lease's bounded scratch can replace it only after C128 materialization
+   consumes group-range-aware owner slots.  The current owner cache still uses
+   the legacy zero-based formula, so activating packed persistent storage now
+   would address the wrong page.
+7. Global owner-cache aliases remain blocked:
+   `c128_owner_cache.py:_OWNER_CACHES_BY_DATA_PTR` strongly retains registered
+   owner-cache objects and has no unregister path.  Before packed C128 tensors
+   can be installed, shutdown must remove the corresponding registry entries
+   after quiescence and before the last tracked borrow closes.  Ordinary
+   `kv_caches.clear()` is not sufficient.
+
+This seam deliberately stops short of adapter, allocator, reshape, block-table,
+and attention changes.  Its CPU gate proves metadata integrity and lifetime
+order; it does not claim that packed KV tensors are runnable.
 
 The next `.204` experiment is an allocator/lifetime gate, not an end-to-end
 TTFT claim:

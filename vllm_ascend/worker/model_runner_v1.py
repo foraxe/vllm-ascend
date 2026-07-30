@@ -269,6 +269,20 @@ class NPUModelRunner(GPUModelRunner):
             hf_config is not None and hasattr(hf_config, "compress_ratios")
         )
         additional_config = vllm_config.additional_config or {}
+        packed_vmm_enabled = additional_config.get(
+            "enable_c128_packed_vmm_arena",
+            False,
+        )
+        if not isinstance(packed_vmm_enabled, bool):
+            raise ValueError(
+                "enable_c128_packed_vmm_arena must be a JSON boolean, "
+                f"got {packed_vmm_enabled!r}"
+            )
+        self.enable_c128_packed_vmm_arena = packed_vmm_enabled
+        # The lifecycle object, not a raw tensor, owns the VMM lease.  No
+        # production adapter installs it yet; the enabled initialization path
+        # below therefore fails closed before legacy cache allocation.
+        self._c128_packed_arena_runtime: Any | None = None
         # This first production gate is intentionally narrow: it changes only
         # C128 placement in eager, single-engine DSA-CP prefill.  C4 has an
         # indexer cache and external KV connectors need a different ownership
@@ -3519,6 +3533,32 @@ class NPUModelRunner(GPUModelRunner):
             kv_cache_config: Configuration for the KV cache, including the KV
             cache size of each layer
         """
+        if self.enable_c128_packed_vmm_arena:
+            # Validate the worker-delivered metadata before rejecting the
+            # incomplete runtime.  The current planner emits planner_only=true
+            # and downstream_runtime_abi_ready=false, so it fails here without
+            # touching torch allocation, CANN, or a cache tensor.
+            from vllm_ascend.worker.c128_packed_runtime import (
+                C128_PACKED_POOL_METADATA_KEY,
+                packed_arena_contract_from_metadata,
+            )
+
+            metadata = getattr(
+                kv_cache_config,
+                C128_PACKED_POOL_METADATA_KEY,
+                None,
+            )
+            if metadata is None:
+                raise ValueError(
+                    f"{C128_PACKED_POOL_METADATA_KEY} is required when "
+                    "enable_c128_packed_vmm_arena=true"
+                )
+            packed_arena_contract_from_metadata(metadata)
+            raise RuntimeError(
+                "packed C128 VMM metadata is runtime-ready, but the concrete "
+                "ACL/tensor adapter, packed reshape, block-table translation, "
+                "and C128 materialization seams are not installed"
+            )
         kv_cache_config = deepcopy(kv_cache_config)
         self.kv_cache_config = kv_cache_config
         self._mamba_bufs = None
@@ -3550,6 +3590,91 @@ class NPUModelRunner(GPUModelRunner):
 
         if self.model_config.enable_return_routed_experts:
             self.init_routed_experts_capturer()
+
+    def _install_c128_packed_arena_runtime(
+        self,
+        runtime: Any,
+        kv_cache_config: KVCacheConfig,
+    ) -> None:
+        """Publish a fully constructed runtime after transactional view setup.
+
+        Ownership transfers only after every validation succeeds.  On any
+        exception, the caller still owns and must close the runtime.
+        """
+        if not self.enable_c128_packed_vmm_arena:
+            raise RuntimeError("packed C128 VMM arena is disabled")
+        if self._c128_packed_arena_runtime is not None:
+            raise RuntimeError("packed C128 VMM arena is already open")
+        from vllm_ascend.worker.c128_packed_runtime import (
+            C128_PACKED_POOL_METADATA_KEY,
+            PackedArenaRuntime,
+            PackedArenaRuntimeState,
+            packed_arena_contract_from_metadata,
+        )
+
+        if not isinstance(runtime, PackedArenaRuntime):
+            raise TypeError(
+                "packed C128 VMM runtime must be a PackedArenaRuntime"
+            )
+        if runtime.state is not PackedArenaRuntimeState.SEALED:
+            raise RuntimeError(
+                "only a sealed packed C128 VMM runtime can be installed"
+            )
+        metadata = getattr(
+            kv_cache_config,
+            C128_PACKED_POOL_METADATA_KEY,
+            None,
+        )
+        if metadata is None:
+            raise ValueError(
+                f"{C128_PACKED_POOL_METADATA_KEY} is required before runtime "
+                "installation"
+            )
+        expected_contract = packed_arena_contract_from_metadata(metadata)
+        if (
+            runtime.contract.metadata_fingerprint
+            != expected_contract.metadata_fingerprint
+        ):
+            raise ValueError(
+                "packed C128 VMM runtime metadata does not match the worker "
+                "KV cache config"
+            )
+        expected_tp_rank = get_tp_group().rank_in_group
+        if runtime.tp_rank != expected_tp_rank:
+            raise ValueError(
+                f"packed C128 VMM runtime TP rank {runtime.tp_rank} does not "
+                f"match worker TP rank {expected_tp_rank}"
+            )
+        device_index = self.device.index
+        if device_index is None or runtime.device_index != device_index:
+            raise ValueError(
+                f"packed C128 VMM runtime device {runtime.device_index} does "
+                f"not match worker device {device_index}"
+            )
+        self._c128_packed_arena_runtime = runtime
+
+    def _close_c128_packed_arena_runtime(self) -> None:
+        """Close a quiesced runtime after every model-runner alias is gone."""
+        runtime = self._c128_packed_arena_runtime
+        if runtime is None:
+            return
+        runtime.close()
+        self._c128_packed_arena_runtime = None
+
+    def shutdown(self) -> None:
+        """Drop model-runner cache aliases before closing a packed lease."""
+        runtime = self._c128_packed_arena_runtime
+        if runtime is None:
+            super().shutdown()
+            return
+
+        # GPUModelRunner.shutdown synchronizes the device and clears kv_caches,
+        # cross-layer caches, static attention contexts, and attention groups.
+        # The stage dictionary is Ascend-owned and must be cleared explicitly
+        # before the registered packed-view releasers and lease teardown.
+        super().shutdown()
+        self._c128_owner_stage_caches.clear()
+        self._close_c128_packed_arena_runtime()
 
     def _bind_routed_experts_capturer(self, capturer) -> None:
         # Upstream binds via ``module.router.set_capture_fn(...)`` on
