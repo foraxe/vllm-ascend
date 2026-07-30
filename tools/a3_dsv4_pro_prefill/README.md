@@ -12,6 +12,9 @@ synthetic 8K/one-output prefill and TTFT A/Bs:
 - `bench_prefill_only.py`: non-streaming prompt-throughput client.
 - `bench_ttft_stream.py`: streaming TTFT client that measures first
   nonempty text delta.
+- `vmm_sparse_owner_probe.cpp` and `run_vmm_sparse_owner_probe.py`: standalone
+  two-rank CANN VMM sparse-owner allocation/alias gate. See
+  `VMM_SPARSE_OWNER_PROBE.md`.
 
 The detailed topology, deployment, validity boundaries, results, and DSA-CP
 task map are in
