@@ -808,3 +808,75 @@ Raw evidence:
 /a3_inference/nyx/dsv4_dsa_cp/20260728_prefill_owner/flash_c128_owner/
   log_single_node_prefill_flash_tp8_b0_r39_bootstrap_fmc2.log
 ```
+
+### G23: resumed `.204` feature-off bootstrap gate — PASS
+
+Hypothesis: the r38/r39 post-load bootstrap stall was transient pod runtime
+state rather than a deterministic Flash launcher or C128-owner failure.  A
+clean `.204` pod with no vLLM/NPU processes should reproduce the real-Flash B0
+API-ready state without changing the model, serving topology, or request.
+
+Pinned configuration:
+
+- image:
+  `hcr.meta-wulan01.hw-wulan.local/antsys/vllm:release_0.20.2_0601_202607271124_aarch64`;
+- source: `2fca35c1`, with the installed `c128_owner_cache.py` and `dsa_cp.py`
+  hashes matching the branch;
+- model: `/mnt/deepseek/models/DeepSeek-V4-Flash-w8a8-mtp`;
+- TP8/EP8 on devices `0,1,2,3,4,5,6,7`;
+- FusedMC2 on, Mooncake/MTP/layer-sharding/prefill-overlap/C128-owner/local
+  compressor/selective stage off;
+- unchanged 1M capacity controls and `prefetch` safetensor loading.
+
+The first metric is bootstrap readiness, not TTFT.  `PASS` requires
+`GET /health` to return HTTP 200 and the effective configuration in the launch
+log to match the pinned values.  After that, one fixed 8,192-word/one-output
+request must return a nonempty first text token.  The run is `FAIL` if the
+process exits with an attributable error, `BLOCKED` if it repeats the
+post-load/no-listener state without an attributable feature error, and
+`INVALID` if any pinned control differs.  Do not start the C128-owner candidate
+until this gate passes.
+
+r40 passed.  All 70 shards loaded in 2m27s and the API reached HTTP 200 about
+5m17s after launch.  The fixed 8K/one-output correctness request returned
+`你好`.  After one warmup, five measured requests produced 596.680 ms median
+client TTFT, 600.762 ms p90, and the same completion in every sample.  The
+same-session 8% target is therefore 548.945 ms.  The B0 process group was
+terminated after capture; port 7100 closed and all eight NPUs reported no
+workload.
+
+This narrows the historical conclusion: r38/r39 remain invalid, but they do
+not prove the `.204` pod or image is intrinsically unable to bootstrap.  The
+three `rope_parameters` warnings also appear in this successful run and are
+not a failure signature.
+
+Raw evidence:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/20260728_prefill_owner/flash_c128_owner/
+  log_single_node_prefill_flash_tp8_b0_r40_resume_fmc2.log
+/a3_inference/nyx/dsv4_dsa_cp/runs/204/20260730T031115_b0_2fca35c1/
+  b0_smoke_8k_1out.json
+  b0_ttft_8k_1out_w1_r5.json
+```
+
+### G24: corrected local-compressor owner integration — PLANNED
+
+Hypothesis: with the six-row local RoPE contract and static result exchange,
+the current owner candidate reaches the real CANN compressor, selected owner
+materialization, sparse attention, and a nonempty output for the fixed request.
+
+This is an integration/correctness gate, not a performance A/B.  Relative to
+r40 it enables owner shard, compact allocation, CP-local compressor, selected
+stage, and diagnostic markers together so every boundary can be localized.
+FusedMC2 remains on; Mooncake, MTP, layer sharding, prefill overlap, profiling,
+and synthetic weights remain off.  The model, TP8/EP8 topology, allocator
+capacity, safetensor strategy, and 8K/one-output request remain unchanged.
+
+Before launch, the current target-image reference suite must pass 15 tests and
+the static TP8 HCCL result exchange must pass.  The model gate is `PASS` only
+if all expected owner markers complete, the 3,080-token tail takes the
+replicated fallback, and the completion matches B0 `你好`.  A boundary-specific
+exception is `FAIL`; API readiness without a completed request is
+`BLOCKED`; a changed control is `INVALID`.  No candidate timing follows until
+this correctness gate and persistent-capacity accounting pass.
