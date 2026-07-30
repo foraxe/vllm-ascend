@@ -70,6 +70,33 @@ def parse_rank_json(stdout: str) -> dict[str, object] | None:
     return None
 
 
+def classify_rank_results(
+    ranks: list[dict[str, object] | None], returncodes: list[int | None]
+) -> str:
+    statuses = [rank.get("status") if rank else None for rank in ranks]
+    if statuses == ["PASS", "PASS"] and returncodes == [0, 0]:
+        exact_counts = all(
+            rank
+            and rank.get("logical_pages") == 4
+            and rank.get("owned_physical_allocations") == 2
+            and rank.get("imported_aliases") == 2
+            and rank.get("local_mismatches") == 0
+            and rank.get("peer_read_mismatches") == 0
+            and rank.get("remote_write_mismatches") == 0
+            and rank.get("imports_released_barrier") is True
+            for rank in ranks
+        )
+        return "PASS" if exact_counts else "FAIL_ACCOUNTING"
+    if (
+        statuses == ["BLOCKED_CAPABILITY", "BLOCKED_CAPABILITY"]
+        and returncodes == [3, 3]
+    ):
+        return "BLOCKED_CAPABILITY"
+    if any(status and status.startswith("BLOCKED") for status in statuses):
+        return "FAIL_INCOHERENT_CAPABILITY"
+    return "FAIL"
+
+
 def main() -> int:
     args = parse_args()
     binary = args.binary.resolve()
@@ -155,24 +182,7 @@ def main() -> int:
     report["elapsed_seconds"] = time.time() - started_at
 
     if report["status"] != "FAIL_TIMEOUT":
-        statuses = [rank.get("status") if rank else None for rank in ranks]
-        if statuses == ["PASS", "PASS"] and report["returncodes"] == [0, 0]:
-            exact_counts = all(
-                rank
-                and rank.get("logical_pages") == 4
-                and rank.get("owned_physical_allocations") == 2
-                and rank.get("imported_aliases") == 2
-                and rank.get("local_mismatches") == 0
-                and rank.get("peer_read_mismatches") == 0
-                and rank.get("remote_write_mismatches") == 0
-                and rank.get("imports_released_barrier") is True
-                for rank in ranks
-            )
-            report["status"] = "PASS" if exact_counts else "FAIL_ACCOUNTING"
-        elif any(status and status.startswith("BLOCKED") for status in statuses):
-            report["status"] = "BLOCKED_CAPABILITY"
-        else:
-            report["status"] = "FAIL"
+        report["status"] = classify_rank_results(ranks, report["returncodes"])
 
     args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
     print(json.dumps(report, indent=2, sort_keys=True))

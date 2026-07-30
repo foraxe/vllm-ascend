@@ -452,13 +452,17 @@ ResultCode run_probe(ProbeState* state, const char* socket_path,
   int32_t can_access = 0;
   error = aclrtDeviceCanAccessPeer(&can_access, state->own_device,
                                    state->peer_device);
-  if (error == kCapabilityUnsupported || can_access == 0) {
-    std::fprintf(stderr, "BLOCKED peer capability aclError=%d can_access=%d\n",
-                 error, can_access);
+  if (error == kCapabilityUnsupported) {
+    std::fprintf(stderr, "BLOCKED peer-query unsupported aclError=%d\n",
+                 error);
     return ResultCode::kBlockedCapability;
   }
   if (!check_acl(error, "aclrtDeviceCanAccessPeer")) {
     return ResultCode::kFailApi;
+  }
+  if (can_access == 0) {
+    std::fprintf(stderr, "BLOCKED peer-query can_access=0\n");
+    return ResultCode::kBlockedCapability;
   }
   error = aclrtDeviceEnablePeerAccess(state->peer_device, 0);
   if (error == kCapabilityUnsupported) {

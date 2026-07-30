@@ -17,18 +17,19 @@ peer reads, remote writes observed through the owner's local mapping, and
 ordered teardown. Imported mappings are released and acknowledged before an
 owner frees its physical handles.
 
-Build and run on an idle A3 pod with CANN 9:
+Build and run inside an idle A3 pod with CANN 9. These are in-pod commands;
+`rtk` is a local Codex shell wrapper and is not installed in the pod:
 
 ```bash
 ASCEND_ROOT=/usr/local/Ascend/cann-9.0.0/aarch64-linux
 
-rtk g++ -std=c++17 -O2 -Wall -Wextra \
+g++ -std=c++17 -O2 -Wall -Wextra \
   tools/a3_dsv4_pro_prefill/vmm_sparse_owner_probe.cpp \
   -I"${ASCEND_ROOT}/include" -L"${ASCEND_ROOT}/lib64" \
   -Wl,-rpath,"${ASCEND_ROOT}/lib64" -lascendcl \
   -o /tmp/vmm_sparse_owner_probe
 
-rtk timeout 70s python3 \
+timeout 70s python3 \
   tools/a3_dsv4_pro_prefill/run_vmm_sparse_owner_probe.py \
   --binary /tmp/vmm_sparse_owner_probe \
   --devices 0,1 --timeout 60 --per-rank-budget-mib 64 \
@@ -38,7 +39,9 @@ rtk timeout 70s python3 \
 `PASS` requires both ranks to report exactly two physical owner allocations,
 two imported aliases, zero mismatches in all three data checks, a successful
 import-release barrier, and exit code zero. `207000` on a peer/V2 capability
-API is `BLOCKED_CAPABILITY`. Any payload mismatch, unexpected API failure,
+API is `BLOCKED_CAPABILITY` only when both ranks report that result and exit
+with the capability code. A one-rank capability result is
+`FAIL_INCOHERENT_CAPABILITY`. Any payload mismatch, unexpected API failure,
 timeout, or incomplete cleanup is not a pass.
 
 This proves that one physical backing page can remain on its canonical owner
