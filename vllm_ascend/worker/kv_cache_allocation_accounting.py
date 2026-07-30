@@ -15,7 +15,7 @@
 # This file is a part of the vllm-ascend project.
 #
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -59,10 +59,10 @@ class KVCacheAllocationSummary:
 def _iter_tensors(value: Any) -> Iterable[torch.Tensor]:
     if isinstance(value, torch.Tensor):
         yield value
-    elif isinstance(value, dict):
+    elif isinstance(value, Mapping):
         for child in value.values():
             yield from _iter_tensors(child)
-    elif isinstance(value, (list, tuple)):
+    elif isinstance(value, Iterable) and not isinstance(value, (str, bytes)):
         for child in value:
             yield from _iter_tensors(child)
 

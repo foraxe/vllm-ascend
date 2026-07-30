@@ -72,6 +72,41 @@ def test_cross_category_alias_is_counted_once_in_specific_category() -> None:
     assert summary.cross_category_aliases == 1
 
 
+def test_counts_reused_stage_from_dict_values() -> None:
+    shared_stage = torch.empty(96, dtype=torch.uint8)
+    stage_views = {
+        "primary": shared_stage[8:64],
+        "reused": shared_stage.view(12, 8),
+    }
+
+    summary = summarize_kv_cache_allocations(
+        baseline_raw=[],
+        compact_owner=[],
+        c128_stages=stage_views.values(),
+    )
+
+    assert summary.c128_stage_bytes == 96
+    assert summary.total_unique_bytes == 96
+    assert summary.unique_storages == 1
+    assert summary.duplicate_references == 1
+
+
+def test_counts_reused_stage_from_generator() -> None:
+    shared_stage = torch.empty(80, dtype=torch.uint8)
+    stage_generator = (view for view in (shared_stage[:24], shared_stage[24:]))
+
+    summary = summarize_kv_cache_allocations(
+        baseline_raw=[],
+        compact_owner=[],
+        c128_stages=stage_generator,
+    )
+
+    assert summary.c128_stage_bytes == 80
+    assert summary.total_unique_bytes == 80
+    assert summary.unique_storages == 1
+    assert summary.duplicate_references == 1
+
+
 def test_empty_categories_and_log_line_are_stable() -> None:
     summary = summarize_kv_cache_allocations(
         baseline_raw=[],
