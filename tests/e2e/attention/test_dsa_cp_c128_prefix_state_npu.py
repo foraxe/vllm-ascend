@@ -30,15 +30,6 @@ from typing import Any
 import pytest
 import torch
 
-torch_npu = pytest.importorskip("torch_npu")
-
-from vllm_ascend.attention.context_parallel.c128_owner_cache import (  # noqa: E402
-    C128LocalCompressorPlan,
-    slice_c128_local_compressor_output,
-    slice_c128_local_compressor_rope,
-)
-from vllm_ascend.utils import enable_custom_op  # noqa: E402
-
 _SEED = 20260730
 _TP_SIZE = 8
 _COMPRESS_RATIO = 128
@@ -85,6 +76,7 @@ def _metric(actual: torch.Tensor, expected: torch.Tensor) -> dict[str, Any]:
     expected_float = expected.float().cpu()
     absolute = (actual_float - expected_float).abs()
     relative = absolute / expected_float.abs().clamp_min(1e-6)
+    has_elements = absolute.numel() > 0
     tolerance = _OUTPUT_ATOL + _OUTPUT_RTOL * expected_float.abs()
     if absolute.ndim > 1:
         failing_rows = (
@@ -106,8 +98,8 @@ def _metric(actual: torch.Tensor, expected: torch.Tensor) -> dict[str, Any]:
         row_max_abs = []
     return {
         "shape": list(actual.shape),
-        "max_abs": float(absolute.max().item()) if absolute.numel() else 0.0,
-        "max_rel": float(relative.max().item()) if relative.numel() else 0.0,
+        "max_abs": float(absolute.max().item()) if has_elements else 0.0,
+        "max_rel": float(relative.max().item()) if has_elements else 0.0,
         "actual_sha256": hashlib.sha256(
             actual_float.contiguous().numpy().tobytes()
         ).hexdigest(),
@@ -120,6 +112,22 @@ def _metric(actual: torch.Tensor, expected: torch.Tensor) -> dict[str, Any]:
         "failing_rows_at_output_tolerance": failing_rows,
         "row_max_abs": row_max_abs,
     }
+
+
+def test_empty_metric_is_well_defined() -> None:
+    """A continuation with no completed C128 rows has a valid empty metric."""
+    empty = torch.empty((0, _COMPRESSED_SIZE), dtype=torch.bfloat16)
+
+    metric = _metric(empty, empty.clone())
+
+    assert metric["shape"] == [0, _COMPRESSED_SIZE]
+    assert metric["max_abs"] == 0.0
+    assert metric["max_rel"] == 0.0
+    assert metric["actual_nonfinite"] == 0
+    assert metric["expected_nonfinite"] == 0
+    assert metric["failing_rows_at_output_tolerance"] == []
+    assert metric["row_max_abs"] == []
+    assert metric["equal_hash"]
 
 
 def _logical_state_slice(
@@ -183,6 +191,14 @@ def _run_compressor(
 
 def test_c128_local_prefix_preserves_tail_and_continuation_state() -> None:
     """All eight local prefix histories must match the global state history."""
+    torch_npu = pytest.importorskip("torch_npu")
+    from vllm_ascend.attention.context_parallel.c128_owner_cache import (
+        C128LocalCompressorPlan,
+        slice_c128_local_compressor_output,
+        slice_c128_local_compressor_rope,
+    )
+    from vllm_ascend.utils import enable_custom_op
+
     torch_npu.npu.set_device(0)
     assert enable_custom_op(), "vLLM Ascend custom operators are unavailable"
     device = torch.device("npu:0")
