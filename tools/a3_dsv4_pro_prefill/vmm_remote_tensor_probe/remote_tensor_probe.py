@@ -412,7 +412,11 @@ def _recv(connection: Any, stage: str, timeout_seconds: float) -> dict[str, Any]
         raise error_type(f"{message['role']} {message['error']}\n{message['traceback']}")
     if message.get("stage") != stage:
         raise RuntimeError(f"expected stage {stage!r}, received {message!r}")
-    print(json.dumps(message, sort_keys=True), flush=True)
+    printable = {
+        key: f"<{len(value)} bytes>" if isinstance(value, bytes) else value
+        for key, value in message.items()
+    }
+    print(json.dumps(printable, sort_keys=True), flush=True)
     return message
 
 
