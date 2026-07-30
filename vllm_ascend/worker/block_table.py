@@ -130,6 +130,11 @@ class BlockTable:
         block_ids: np.ndarray,
         row_idx: int,
     ) -> None:
+        self.validate_prepared_row(
+            block_ids,
+            row_idx,
+            append=True,
+        )
         num_blocks = len(block_ids)
         if num_blocks == 0:
             return
@@ -138,10 +143,41 @@ class BlockTable:
         self.block_table.np[row_idx, start : start + num_blocks] = block_ids
         self.num_blocks_per_row[row_idx] += num_blocks
 
+    def add_prepared_row(
+        self,
+        block_ids: np.ndarray,
+        row_idx: int,
+    ) -> None:
+        self.validate_prepared_row(
+            block_ids,
+            row_idx,
+            append=False,
+        )
+        self.num_blocks_per_row[row_idx] = 0
+        self.append_prepared_row(block_ids, row_idx)
+
+    def validate_prepared_row(
+        self,
+        block_ids: np.ndarray,
+        row_idx: int,
+        *,
+        append: bool,
+    ) -> None:
+        """Validate a prepared write without mutating the destination row."""
+        if not 0 <= row_idx < self.max_num_reqs:
+            raise IndexError(f"row_idx {row_idx} is outside [0, {self.max_num_reqs})")
+        start = int(self.num_blocks_per_row[row_idx]) if append else 0
+        final_num_blocks = start + len(block_ids)
+        logical_capacity = self.block_table.np.shape[1]
+        if final_num_blocks > logical_capacity:
+            operation = "append" if append else "add"
+            raise ValueError(
+                f"{operation} requires {final_num_blocks} logical blocks " f"but row capacity is {logical_capacity}"
+            )
+
     def add_row(self, block_ids: list[int], row_idx: int) -> None:
         prepared = self.prepare_block_ids(block_ids)
-        self.num_blocks_per_row[row_idx] = 0
-        self.append_prepared_row(prepared, row_idx)
+        self.add_prepared_row(prepared, row_idx)
 
     def clear_row(self, row_idx: int) -> None:
         num_blocks = self.num_blocks_per_row[row_idx]
@@ -428,7 +464,11 @@ class MultiGroupBlockTable:
             ]
 
     def append_row(self, block_ids: tuple[list[int], ...], row_idx: int) -> None:
-        prepared_rows = self._prepare_rows(block_ids)
+        prepared_rows = self._prepare_rows(
+            block_ids,
+            row_idx,
+            append=True,
+        )
         for block_table, prepared in zip(
             self.block_tables,
             prepared_rows,
@@ -436,29 +476,45 @@ class MultiGroupBlockTable:
             block_table.append_prepared_row(prepared, row_idx)
 
     def add_row(self, block_ids: tuple[list[int], ...], row_idx: int) -> None:
-        prepared_rows = self._prepare_rows(block_ids)
+        prepared_rows = self._prepare_rows(
+            block_ids,
+            row_idx,
+            append=False,
+        )
         for block_table, prepared in zip(
             self.block_tables,
             prepared_rows,
         ):
-            block_table.num_blocks_per_row[row_idx] = 0
-            block_table.append_prepared_row(prepared, row_idx)
+            block_table.add_prepared_row(prepared, row_idx)
 
     def _prepare_rows(
         self,
         block_ids: tuple[list[int], ...],
+        row_idx: int,
+        *,
+        append: bool,
     ) -> list[np.ndarray]:
         if len(block_ids) != len(self.block_tables):
             raise ValueError(
                 f"block_ids group count ({len(block_ids)}) must match " f"block table count ({len(self.block_tables)})"
             )
-        return [
+        prepared_rows = [
             block_table.prepare_block_ids(group_block_ids)
             for block_table, group_block_ids in zip(
                 self.block_tables,
                 block_ids,
             )
         ]
+        for block_table, prepared in zip(
+            self.block_tables,
+            prepared_rows,
+        ):
+            block_table.validate_prepared_row(
+                prepared,
+                row_idx,
+                append=append,
+            )
+        return prepared_rows
 
     def clear_row(self, row_idx: int) -> None:
         for block_table in self.block_tables:

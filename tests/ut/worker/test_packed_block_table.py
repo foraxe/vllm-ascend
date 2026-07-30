@@ -466,6 +466,125 @@ def test_multigroup_validation_is_atomic_across_groups() -> None:
         assert block_table.num_blocks_per_row[0] == expected_count
 
 
+def _snapshot_row(
+    table: MultiGroupBlockTable,
+    row_idx: int,
+) -> tuple[list[np.ndarray], list[int]]:
+    return (
+        [block_table.block_table.np[row_idx].copy() for block_table in table.block_tables],
+        [int(block_table.num_blocks_per_row[row_idx]) for block_table in table.block_tables],
+    )
+
+
+def _assert_row_unchanged(
+    table: MultiGroupBlockTable,
+    row_idx: int,
+    expected_rows: list[np.ndarray],
+    expected_counts: list[int],
+) -> None:
+    for block_table, expected_row, expected_count in zip(
+        table.block_tables,
+        expected_rows,
+        expected_counts,
+    ):
+        np.testing.assert_array_equal(
+            block_table.block_table.np[row_idx],
+            expected_row,
+        )
+        assert block_table.num_blocks_per_row[row_idx] == expected_count
+
+
+def _capacity_test_table(
+    *,
+    kernel_sizes: list[list[int]] | None = None,
+) -> MultiGroupBlockTable:
+    return MultiGroupBlockTable(
+        max_num_reqs=2,
+        max_model_len=1024,
+        max_num_batched_tokens=64,
+        pin_memory=False,
+        device=torch.device("cpu"),
+        block_sizes=[128, 128],
+        max_num_blocks=[2, 1],
+        kernel_sizes=kernel_sizes or [[128], [128]],
+    )
+
+
+def test_multigroup_append_preflights_late_group_capacity() -> None:
+    table = _capacity_test_table()
+    table.add_row(([7], [8]), row_idx=0)
+    before_rows, before_counts = _snapshot_row(table, row_idx=0)
+
+    with pytest.raises(
+        ValueError,
+        match="append requires 2 logical blocks but row capacity is 1",
+    ):
+        table.append_row(([9], [10]), row_idx=0)
+
+    _assert_row_unchanged(
+        table,
+        row_idx=0,
+        expected_rows=before_rows,
+        expected_counts=before_counts,
+    )
+
+
+def test_multigroup_add_preflights_late_group_capacity() -> None:
+    table = _capacity_test_table()
+    table.add_row(([7], [8]), row_idx=0)
+    before_rows, before_counts = _snapshot_row(table, row_idx=0)
+
+    with pytest.raises(
+        ValueError,
+        match="add requires 2 logical blocks but row capacity is 1",
+    ):
+        table.add_row(([9, 10], [11, 12]), row_idx=0)
+
+    _assert_row_unchanged(
+        table,
+        row_idx=0,
+        expected_rows=before_rows,
+        expected_counts=before_counts,
+    )
+
+
+def test_multigroup_preflight_counts_hybrid_expansion() -> None:
+    table = _capacity_test_table(kernel_sizes=[[128], [64]])
+    table.add_row(([7], [1]), row_idx=0)
+    before_rows, before_counts = _snapshot_row(table, row_idx=0)
+
+    with pytest.raises(
+        ValueError,
+        match="add requires 4 logical blocks but row capacity is 2",
+    ):
+        table.add_row(([9, 10], [2, 3]), row_idx=0)
+
+    _assert_row_unchanged(
+        table,
+        row_idx=0,
+        expected_rows=before_rows,
+        expected_counts=before_counts,
+    )
+
+
+def test_multigroup_preflights_destination_row_index() -> None:
+    table = _capacity_test_table()
+    before_rows, before_counts = _snapshot_row(table, row_idx=0)
+
+    with pytest.raises(
+        IndexError,
+        match=r"row_idx 2 is outside \[0, 2\)",
+    ):
+        table.add_row(([7], [8]), row_idx=2)
+
+    _assert_row_unchanged(
+        table,
+        row_idx=0,
+        expected_rows=before_rows,
+        expected_counts=before_counts,
+    )
+
+
 def test_multigroup_rejects_block_id_group_count_mismatch() -> None:
     table = MultiGroupBlockTable(
         max_num_reqs=2,
