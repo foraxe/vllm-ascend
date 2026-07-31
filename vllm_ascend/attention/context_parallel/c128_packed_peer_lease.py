@@ -1065,6 +1065,50 @@ def _validate_stage_exchange(
     return tuple(reports)
 
 
+def coordinate_packed_vmm_peer_readiness(
+    *,
+    control: PeerControlGroup,
+    error: BaseException | None,
+) -> tuple[PeerStartupStageResult, ...]:
+    """Reject asymmetric local startup before peer-handle collectives.
+
+    Every TP rank calls this after opening its local arena and constructing
+    the rank-local peer adapters.  The monitored barrier prevents a missing
+    participant from leaving healthy ranks at the first peer-handle exchange;
+    the structured report then makes a local failure globally visible.
+    """
+    stage = "local_runtime_ready"
+    rank = control.rank
+    world_size = control.world_size
+    local = PeerStartupStageResult(
+        stage=stage,
+        rank=rank,
+        ok=error is None,
+        error_type="" if error is None else type(error).__name__,
+        error_message="" if error is None else str(error),
+    )
+    try:
+        control.barrier(stage=stage)
+        gathered = control.all_gather_object(local)
+        reports = _validate_stage_exchange(
+            gathered,
+            stage=stage,
+            world_size=world_size,
+        )
+    except BaseException as control_error:
+        raise _PackedVmmPeerControlError(
+            stage=stage,
+            cause=control_error,
+        ) from control_error
+    failures = tuple(report for report in reports if not report.ok)
+    if failures:
+        raise PackedVmmPeerStartupError(
+            stage=stage,
+            failures=failures,
+        )
+    return reports
+
+
 def _arena_metadata_fingerprint(
     *,
     owner_arena: PackedArenaLease,

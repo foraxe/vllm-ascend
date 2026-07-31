@@ -8,11 +8,14 @@ from __future__ import annotations
 from collections.abc import Callable
 from copy import deepcopy
 from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from vllm_ascend.attention.context_parallel.c128_packed_arena import (
     CANN_VMM_GRANULARITY_BYTES,
+    PackedArenaLease,
+    PackedArenaOpenError,
 )
 from vllm_ascend.attention.context_parallel.c128_packed_pool import (
     PackedPlacement,
@@ -31,6 +34,7 @@ from vllm_ascend.worker.c128_packed_runtime import (
     PackedArenaRuntime,
     PackedArenaRuntimeCleanupError,
     PackedArenaRuntimeClosedError,
+    PackedArenaRuntimeOpenError,
     PackedArenaRuntimeState,
     maybe_open_packed_arena_runtime,
     packed_arena_contract_from_metadata,
@@ -601,6 +605,43 @@ def test_planner_only_metadata_can_be_inspected_without_activation() -> None:
 
     assert contract.plan.used_logical_blocks == 12
     assert contract.accounting_for_rank(0).total_allocated_bytes > 0
+
+
+def test_partial_arena_open_is_wrapped_in_retryable_runtime_owner() -> None:
+    contract = packed_arena_contract_from_metadata(_metadata())
+    partial_lease = MagicMock()
+    partial_lease.plan = contract.plan
+    partial_lease.tp_rank = 3
+    partial_lease.device_index = 3
+    open_error = PackedArenaOpenError(
+        cause=RuntimeError("injected arena open failure"),
+        cleanup_error=MagicMock(),
+        lease=partial_lease,
+    )
+
+    with (
+        patch.object(
+            PackedArenaLease,
+            "open",
+            side_effect=open_error,
+        ),
+        pytest.raises(PackedArenaRuntimeOpenError) as error_info,
+    ):
+        PackedArenaRuntime.open_from_contract(
+            contract=contract,
+            tp_rank=3,
+            device_index=3,
+            backend=MagicMock(),
+            tensor_factory=MagicMock(),
+            arena_fence=lambda: None,
+            quiesce=lambda: None,
+        )
+
+    runtime = error_info.value.runtime
+    assert runtime.state is PackedArenaRuntimeState.CLEANUP_FAILED
+    runtime.close()
+    partial_lease.close.assert_called_once_with()
+    assert runtime.state is PackedArenaRuntimeState.CLOSED
 
 
 def test_serialized_plan_round_trip_and_exact_rank_accounting() -> None:

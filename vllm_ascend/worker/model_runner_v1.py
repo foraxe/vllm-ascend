@@ -3801,12 +3801,61 @@ class NPUModelRunner(GPUModelRunner):
 
         if self.enable_c128_packed_vmm_arena:
             assert packed_startup_contract is not None
-            runtime = self._open_c128_packed_arena_runtime(
-                kv_cache_config,
-                contract=packed_startup_contract,
-            )
+            control = self._create_c128_packed_peer_control()
+            runtime = None
+            peer_backend = None
+            peer_tensor_factory = None
+            local_startup_error = None
             try:
-                self._open_c128_packed_peer_lease(runtime)
+                runtime = self._open_c128_packed_arena_runtime(
+                    kv_cache_config,
+                    contract=packed_startup_contract,
+                )
+                (
+                    peer_backend,
+                    peer_tensor_factory,
+                ) = self._prepare_c128_packed_peer_adapters()
+            except BaseException as startup_error:
+                from vllm_ascend.worker.c128_packed_runtime import (
+                    PackedArenaRuntimeOpenError,
+                )
+
+                local_startup_error = startup_error
+                if isinstance(
+                    startup_error,
+                    PackedArenaRuntimeOpenError,
+                ):
+                    runtime = startup_error.runtime
+            try:
+                self._coordinate_c128_packed_local_readiness(
+                    control,
+                    local_startup_error,
+                )
+            except BaseException as readiness_error:
+                if runtime is not None:
+                    try:
+                        runtime.close()
+                    except BaseException as cleanup_error:
+                        self._c128_packed_arena_runtime = runtime
+                        raise cleanup_error from readiness_error
+                raise
+            if (
+                local_startup_error is not None
+                or runtime is None
+                or peer_backend is None
+                or peer_tensor_factory is None
+            ):
+                raise RuntimeError(
+                    "packed C128 startup readiness accepted an incomplete "
+                    "local runtime"
+                ) from local_startup_error
+            try:
+                self._open_c128_packed_peer_lease(
+                    runtime,
+                    control=control,
+                    backend=peer_backend,
+                    tensor_factory=peer_tensor_factory,
+                )
                 kv_caches = self._initialize_kv_cache_from_c128_packed_arena(
                     runtime,
                     kv_cache_config,
@@ -3957,29 +4006,65 @@ class NPUModelRunner(GPUModelRunner):
             quiesce=synchronize_npu,
         )
 
-    def _open_c128_packed_peer_lease(self, runtime: Any) -> Any:
-        """Import the fixed wide bucket once on the existing TP CPU group."""
+    def _create_c128_packed_peer_control(self) -> Any:
+        """Create the TP-Gloo lifecycle control before local VMM opens."""
+        from vllm_ascend.attention.context_parallel.c128_packed_peer_lease import (
+            TorchDistributedCpuControlGroup,
+        )
+
+        return TorchDistributedCpuControlGroup(
+            group=get_tp_group().cpu_group,
+            timeout_seconds=30.0,
+        )
+
+    def _prepare_c128_packed_peer_adapters(self) -> tuple[Any, Any]:
+        """Construct rank-local peer adapters before readiness is committed."""
         from vllm_ascend.attention.context_parallel.c128_packed_peer_lease import (
             AscendAclPackedPeerBackend,
-            PackedVmmPeerLease,
-            TorchDistributedCpuControlGroup,
         )
         from vllm_ascend.attention.context_parallel.c128_packed_torch_npu import (
             TorchNpuPackedArenaTensorFactory,
         )
 
-        tp_group = get_tp_group()
-        control = TorchDistributedCpuControlGroup(
-            group=tp_group.cpu_group,
-            timeout_seconds=30.0,
+        return (
+            AscendAclPackedPeerBackend(),
+            TorchNpuPackedArenaTensorFactory(),
+        )
+
+    def _coordinate_c128_packed_local_readiness(
+        self,
+        control: Any,
+        error: BaseException | None,
+    ) -> Any:
+        """Make local arena/adapter failures visible before peer startup."""
+        from vllm_ascend.attention.context_parallel.c128_packed_peer_lease import (
+            coordinate_packed_vmm_peer_readiness,
+        )
+
+        return coordinate_packed_vmm_peer_readiness(
+            control=control,
+            error=error,
+        )
+
+    def _open_c128_packed_peer_lease(
+        self,
+        runtime: Any,
+        *,
+        control: Any,
+        backend: Any,
+        tensor_factory: Any,
+    ) -> Any:
+        """Import the fixed wide bucket after unanimous local readiness."""
+        from vllm_ascend.attention.context_parallel.c128_packed_peer_lease import (
+            PackedVmmPeerLease,
         )
 
         def open_peer(owner_arena: Any) -> Any:
             return PackedVmmPeerLease.open(
                 owner_arena=owner_arena,
                 shared_buckets=("page_131072",),
-                backend=AscendAclPackedPeerBackend(),
-                tensor_factory=TorchNpuPackedArenaTensorFactory(),
+                backend=backend,
+                tensor_factory=tensor_factory,
                 control=control,
                 fence=torch.npu.synchronize,
                 metadata_fingerprint=(

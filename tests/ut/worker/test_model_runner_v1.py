@@ -359,6 +359,13 @@ class TestNPUModelRunnerPackedArenaLifecycle(unittest.TestCase):
         runner.may_reinitialize_input_batch = MagicMock()
         runner._allocate_kv_cache_tensors = MagicMock()
         runner._get_c128_owner_stage_cache = MagicMock()
+        runner._create_c128_packed_peer_control = MagicMock(
+            return_value=object(),
+        )
+        runner._prepare_c128_packed_peer_adapters = MagicMock(
+            return_value=(object(), object()),
+        )
+        runner._coordinate_c128_packed_local_readiness = MagicMock()
         runner._open_c128_packed_peer_lease = MagicMock()
 
     def _strict_startup_contract_and_metadata(self):
@@ -528,11 +535,164 @@ class TestNPUModelRunnerPackedArenaLifecycle(unittest.TestCase):
             packed_config,
             bind_to_model=True,
         )
-        runner._open_c128_packed_peer_lease.assert_called_once_with(runtime)
+        runner._open_c128_packed_peer_lease.assert_called_once_with(
+            runtime,
+            control=(runner._create_c128_packed_peer_control.return_value),
+            backend=(
+                runner._prepare_c128_packed_peer_adapters.return_value[0]
+            ),
+            tensor_factory=(
+                runner._prepare_c128_packed_peer_adapters.return_value[1]
+            ),
+        )
+        runner._coordinate_c128_packed_local_readiness.assert_called_once_with(
+            runner._create_c128_packed_peer_control.return_value,
+            None,
+        )
         runner.initialize_kv_cache_tensors.assert_not_called()
         runner._allocate_kv_cache_tensors.assert_not_called()
         runner._get_c128_owner_stage_cache.assert_not_called()
         runner.may_reinitialize_input_batch.assert_not_called()
+
+    def test_remote_local_readiness_failure_closes_runtime_before_peer_open(
+        self,
+    ):
+        from vllm_ascend.attention.context_parallel.c128_packed_peer_lease import (
+            PackedVmmPeerStartupError,
+            PeerStartupStageResult,
+        )
+
+        class TwoRankControl:
+            rank = 0
+            world_size = 2
+
+            def __init__(self):
+                self.trace = []
+
+            def barrier(self, *, stage):
+                self.trace.append(("barrier", stage))
+
+            def all_gather_object(self, value):
+                self.trace.append(("gather", value.stage))
+                return (
+                    value,
+                    PeerStartupStageResult(
+                        stage=value.stage,
+                        rank=1,
+                        ok=False,
+                        error_type="RuntimeError",
+                        error_message="rank1 arena open failed",
+                    ),
+                )
+
+        runner = self._build_runner()
+        self._configure_initialize_path(runner)
+        control = TwoRankControl()
+        runtime = MagicMock()
+        runner._validate_c128_packed_startup_metadata = MagicMock(
+            return_value=object(),
+        )
+        runner._create_c128_packed_peer_control.return_value = control
+        runner._open_c128_packed_arena_runtime = MagicMock(
+            return_value=runtime,
+        )
+        runner._initialize_kv_cache_from_c128_packed_arena = MagicMock()
+        runner._coordinate_c128_packed_local_readiness = (
+            NPUModelRunner._coordinate_c128_packed_local_readiness.__get__(
+                runner,
+                NPUModelRunner,
+            )
+        )
+        kv_cache_config = SimpleNamespace()
+
+        with self.assertRaisesRegex(
+            PackedVmmPeerStartupError,
+            "rank1 arena open failed",
+        ):
+            runner.initialize_kv_cache(kv_cache_config)
+
+        self.assertEqual(
+            control.trace,
+            [
+                ("barrier", "local_runtime_ready"),
+                ("gather", "local_runtime_ready"),
+            ],
+        )
+        runtime.close.assert_called_once_with()
+        runner._open_c128_packed_peer_lease.assert_not_called()
+        runner._initialize_kv_cache_from_c128_packed_arena.assert_not_called()
+
+    def test_partial_local_open_cleanup_failure_is_retained(
+        self,
+    ):
+        from vllm_ascend.attention.context_parallel.c128_packed_arena import (
+            PackedArenaOpenError,
+        )
+        from vllm_ascend.attention.context_parallel.c128_packed_peer_lease import (
+            PeerStartupStageResult,
+        )
+        from vllm_ascend.worker.c128_packed_runtime import (
+            PackedArenaRuntimeOpenError,
+        )
+
+        class TwoRankControl:
+            rank = 0
+            world_size = 2
+
+            def barrier(self, *, stage):
+                return None
+
+            def all_gather_object(self, value):
+                return (
+                    value,
+                    PeerStartupStageResult(
+                        stage=value.stage,
+                        rank=1,
+                        ok=True,
+                    ),
+                )
+
+        runner = self._build_runner()
+        self._configure_initialize_path(runner)
+        runtime = MagicMock()
+        runtime.close.side_effect = RuntimeError(
+            "partial cleanup still failed",
+        )
+        partial_error = PackedArenaRuntimeOpenError(
+            cause=PackedArenaOpenError(
+                cause=RuntimeError("arena open failed"),
+                cleanup_error=MagicMock(),
+                lease=MagicMock(),
+            ),
+            runtime=runtime,
+        )
+        runner._validate_c128_packed_startup_metadata = MagicMock(
+            return_value=object(),
+        )
+        runner._create_c128_packed_peer_control.return_value = (
+            TwoRankControl()
+        )
+        runner._open_c128_packed_arena_runtime = MagicMock(
+            side_effect=partial_error,
+        )
+        runner._initialize_kv_cache_from_c128_packed_arena = MagicMock()
+        runner._coordinate_c128_packed_local_readiness = (
+            NPUModelRunner._coordinate_c128_packed_local_readiness.__get__(
+                runner,
+                NPUModelRunner,
+            )
+        )
+
+        with self.assertRaisesRegex(
+            RuntimeError,
+            "partial cleanup still failed",
+        ):
+            runner.initialize_kv_cache(SimpleNamespace())
+
+        self.assertIs(runner._c128_packed_arena_runtime, runtime)
+        runtime.close.assert_called_once_with()
+        runner._prepare_c128_packed_peer_adapters.assert_not_called()
+        runner._open_c128_packed_peer_lease.assert_not_called()
 
     @patch("vllm_ascend.attention.context_parallel." "c128_packed_acl_backend.AscendAclPackedArenaBackend")
     def test_feature_off_preserves_legacy_initialization(
@@ -551,6 +711,7 @@ class TestNPUModelRunnerPackedArenaLifecycle(unittest.TestCase):
             runner.initialize_kv_cache(kv_cache_config)
 
         mock_backend_type.assert_not_called()
+        runner._create_c128_packed_peer_control.assert_not_called()
         runner._open_c128_packed_peer_lease.assert_not_called()
         runner.may_reinitialize_input_batch.assert_called_once()
         runner.initialize_kv_cache_tensors.assert_called_once()

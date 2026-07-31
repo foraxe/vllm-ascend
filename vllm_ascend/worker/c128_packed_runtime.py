@@ -26,6 +26,7 @@ from vllm_ascend.attention.context_parallel.c128_packed_arena import (
     CANN_VMM_GRANULARITY_BYTES,
     PackedArenaBackend,
     PackedArenaLease,
+    PackedArenaOpenError,
     PackedArenaTensorFactory,
 )
 from vllm_ascend.attention.context_parallel.c128_packed_pool import (
@@ -104,6 +105,23 @@ class PackedArenaRuntimeCleanupError(RuntimeError):
         self.operation = operation
         self.cause = cause
         super().__init__(f"packed-arena runtime {operation} failed: {cause}")
+
+
+class PackedArenaRuntimeOpenError(RuntimeError):
+    """Local arena open failed with a retryable partial runtime owner."""
+
+    def __init__(
+        self,
+        *,
+        cause: PackedArenaOpenError,
+        runtime: PackedArenaRuntime,
+    ) -> None:
+        self.cause = cause
+        self.runtime = runtime
+        super().__init__(
+            "packed-arena runtime open failed with incomplete rollback: "
+            f"{cause}"
+        )
 
 
 @dataclass(frozen=True)
@@ -940,14 +958,27 @@ class PackedArenaRuntime:
         quiesce: Callable[[], None],
     ) -> PackedArenaRuntime:
         """Open a lease from an already validated immutable contract."""
-        lease = PackedArenaLease.open(
-            plan=contract.plan,
-            tp_rank=tp_rank,
-            device_index=device_index,
-            backend=backend,
-            tensor_factory=tensor_factory,
-            fence=arena_fence,
-        )
+        try:
+            lease = PackedArenaLease.open(
+                plan=contract.plan,
+                tp_rank=tp_rank,
+                device_index=device_index,
+                backend=backend,
+                tensor_factory=tensor_factory,
+                fence=arena_fence,
+            )
+        except PackedArenaOpenError as error:
+            runtime = cls(
+                contract=contract,
+                lease=error.lease,
+                tp_rank=tp_rank,
+                quiesce=quiesce,
+            )
+            runtime._state = PackedArenaRuntimeState.CLEANUP_FAILED
+            raise PackedArenaRuntimeOpenError(
+                cause=error,
+                runtime=runtime,
+            ) from error
         return cls(
             contract=contract,
             lease=lease,
