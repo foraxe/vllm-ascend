@@ -905,7 +905,7 @@ class TestNPUModelRunnerPackedAllocatorReshape(unittest.TestCase):
         replicated_spec = MLAAttentionSpec(
             block_size=4,
             num_kv_heads=1,
-            head_size=self.PAGE_BYTES,
+            head_size=self.PAGE_BYTES // 4,
             dtype=torch.uint8,
             compress_ratio=4,
             model_version="deepseek_v4",
@@ -913,11 +913,13 @@ class TestNPUModelRunnerPackedAllocatorReshape(unittest.TestCase):
         owner_spec = MLAAttentionSpec(
             block_size=128,
             num_kv_heads=1,
-            head_size=self.PAGE_BYTES,
+            head_size=self.PAGE_BYTES // 128,
             dtype=torch.uint8,
             compress_ratio=128,
             model_version="deepseek_v4",
         )
+        self.assertEqual(replicated_spec.page_size_bytes, self.PAGE_BYTES)
+        self.assertEqual(owner_spec.page_size_bytes, self.PAGE_BYTES)
         kv_cache_config.num_blocks = 9
         kv_cache_config.kv_cache_groups[0].kv_cache_spec = replicated_spec
         kv_cache_config.kv_cache_groups[1].kv_cache_spec = owner_spec
@@ -928,9 +930,9 @@ class TestNPUModelRunnerPackedAllocatorReshape(unittest.TestCase):
         runner.attn_backend = SimpleNamespace(
             get_kv_cache_shape=lambda num_blocks, block_size, num_kv_heads, head_size: (
                 num_blocks,
-                1,
+                block_size,
                 num_kv_heads,
-                self.PAGE_BYTES,
+                head_size,
             )
         )
         runner._kv_cache_spec_attn_group_iterator = lambda: [
