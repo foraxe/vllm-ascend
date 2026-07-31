@@ -865,6 +865,10 @@ class C128PeerMaterializer:
             -1,
             *self.scratch.shape[2:],
         )
+        selected_rows = selected_rows.view(
+            overlay.entry_count,
+            *flat_scratch.shape[1:],
+        )
         flat_scratch.index_copy_(
             0,
             overlay.flat_scratch_slots,
@@ -951,6 +955,10 @@ class C128PeerMaterializer:
             -1,
             *self.scratch.shape[2:],
         )
+        selected_rows = selected_rows.view(
+            overlay.entry_count,
+            *flat_scratch.shape[1:],
+        )
         flat_scratch.index_copy_(0, overlay.flat_scratch_slots, selected_rows)
 
     def materialize(
@@ -1029,16 +1037,21 @@ class C128PeerMaterializer:
                 selected_pages,
             )
 
-        certified_rows = current_rows[:overlay.expected_source_rows]
+        certified_rows = current_rows[: overlay.expected_source_rows]
         if overlay.entry_count:
             selected_rows = certified_rows.index_select(
                 0,
                 overlay.source_rows,
             )
-            self.scratch.view(
+            flat_scratch = self.scratch.view(
                 -1,
                 *self.scratch.shape[2:],
-            ).index_copy_(
+            )
+            selected_rows = selected_rows.view(
+                overlay.entry_count,
+                *flat_scratch.shape[1:],
+            )
+            flat_scratch.index_copy_(
                 0,
                 overlay.flat_scratch_slots,
                 selected_rows,

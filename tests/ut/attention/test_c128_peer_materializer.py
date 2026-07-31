@@ -580,9 +580,12 @@ def test_5120_plus_3080_prevalidated_rows_match_replicated_continuation_oracle(
         scratch_segments=(C128PackedSegment(0, 2 * page_size_bytes, page_size_bytes),),
         max_scratch_pages=1,
     )
-    peer_page = torch.zeros(2, 128, 1)
+    # Production C128 caches retain a singleton KV-head dimension while the
+    # compressor emits flattened rows.  Keep that exact rank mismatch in the
+    # continuation oracle so the hot overlay must reinterpret, not broadcast.
+    peer_page = torch.zeros(2, 128, 1, 1)
     roots = C128PeerTensorRoots((peer_page,))
-    scratch = torch.full((1, 128, 1), -1.0)
+    scratch = torch.full((1, 128, 1, 1), -1.0)
     materializer = C128PeerMaterializer(
         route=route,
         destination_rank=0,
@@ -595,7 +598,7 @@ def test_5120_plus_3080_prevalidated_rows_match_replicated_continuation_oracle(
         plan,
         device=scratch.device,
     )
-    replicated = torch.zeros(1, 128, 1)
+    replicated = torch.zeros(1, 128, 1, 1)
 
     prefix_mapping = tuple((18, row) for row in range(prefix_rows))
     prefix_values = torch.arange(
@@ -615,6 +618,7 @@ def test_5120_plus_3080_prevalidated_rows_match_replicated_continuation_oracle(
         prefix_overlay,
         torch.tensor(prefix_mapping, dtype=torch.int32),
     )
+
     def _forbidden(*args: object, **kwargs: object) -> None:
         raise AssertionError("hot materialization used a control-plane API")
 
@@ -634,7 +638,11 @@ def test_5120_plus_3080_prevalidated_rows_match_replicated_continuation_oracle(
             # The final row is the compressor ABI pad and must not be consumed.
             current_rows=prefix_values,
         )
-    replicated[0, :prefix_rows] = prefix_values[:prefix_rows]
+    replicated[0, :prefix_rows] = prefix_values[:prefix_rows].view(
+        prefix_rows,
+        1,
+        1,
+    )
     torch.testing.assert_close(scratch, replicated)
 
     # Owner persistence becomes the next historical peer snapshot.
@@ -674,7 +682,11 @@ def test_5120_plus_3080_prevalidated_rows_match_replicated_continuation_oracle(
             # Again, expose N+1 rows and consume only the certified N rows.
             current_rows=tail_values,
         )
-    replicated[0, prefix_rows:total_rows] = tail_values[:tail_rows]
+    replicated[0, prefix_rows:total_rows] = tail_values[:tail_rows].view(
+        tail_rows,
+        1,
+        1,
+    )
     torch.testing.assert_close(scratch, replicated)
 
 
