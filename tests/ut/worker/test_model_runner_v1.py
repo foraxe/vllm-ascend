@@ -357,16 +357,16 @@ class TestNPUModelRunnerPackedArenaLifecycle(unittest.TestCase):
         )
         wide = SimpleNamespace(
             bucket="page_131072",
-            persistent_allocated_bytes=3_896_508_416,
+            persistent_allocated_bytes=3_716_153_344,
             scratch_region_bytes=10_485_760,
-            total_allocated_bytes=3_906_994_176,
+            total_allocated_bytes=3_726_639_104,
         )
         contract = SimpleNamespace(
             plan=plan,
             expected_views=expected_views,
             rank_accounting=tuple(
                 SimpleNamespace(
-                    total_allocated_bytes=4_215_275_520,
+                    total_allocated_bytes=4_034_920_448,
                     buckets=(narrow, wide),
                 )
                 for _ in range(8)
@@ -826,7 +826,7 @@ class TestNPUModelRunnerPackedAllocatorReshape(unittest.TestCase):
         replicated_spec = MLAAttentionSpec(
             block_size=4,
             num_kv_heads=1,
-            head_size=self.PAGE_BYTES // 4,
+            head_size=self.PAGE_BYTES,
             dtype=torch.uint8,
             compress_ratio=4,
             model_version="deepseek_v4",
@@ -834,7 +834,7 @@ class TestNPUModelRunnerPackedAllocatorReshape(unittest.TestCase):
         owner_spec = MLAAttentionSpec(
             block_size=128,
             num_kv_heads=1,
-            head_size=self.PAGE_BYTES // 128,
+            head_size=self.PAGE_BYTES,
             dtype=torch.uint8,
             compress_ratio=128,
             model_version="deepseek_v4",

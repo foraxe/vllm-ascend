@@ -1373,37 +1373,37 @@ are:
 
 ```text
 C4 MLA, C128 MLA, SWA-A, SWA-B, C4 state, C128 state
-[17,     1,        65,    65,    642,      165]
+[17,     1,        42,    42,    642,      165]
 ```
 
 The real component matrix has 167 views: C4 has 21 narrow plus 21 wide
 copies; C128 has 20 owner-wide copies; SWA-A/SWA-B have 22/21 wide copies;
 C4 state has 21 narrow plus 21 wide copies; and C128 state has 20 wide
-copies.  The required-only 955-ID plan therefore occupies exactly
-`3,166,699,520` bytes/rank (`2.94921875 GiB`) including 65-page scratch, not
-the earlier undercounted `2,472,542,208` bytes.  Its large difference from
+copies.  The required-only 909-ID plan therefore occupies exactly
+`2,986,344,448` bytes/rank (`2.78125 GiB`) including 65-page scratch.  Its
+large difference from
 B0's `13,546,370,560` bytes/rank is still primarily workload-envelope
-specialization because only 955 of 4,189 data IDs are assigned.
+specialization because only 909 of 4,189 data IDs are assigned.
 
 It is not an owner-sharding saving.  The C128 group has one global data page;
 each of its 20 owner segments and each hypothetical replicated segment rounds
 to the same 2 MiB.  Owner placement therefore saves zero aligned bytes/rank
 for the required-only profile.
 
-The first same-aggregate-ID owner experiment instead assigns all 3,234 slack
+The first same-aggregate-ID owner experiment instead assigns all 3,280 slack
 IDs to C128 by semantic group name:
 
 ```text
-assigned quotas = [17, 3235, 65, 65, 642, 165]
+assigned quotas = [17, 3281, 42, 42, 642, 165]
 sum(data quotas) = 4189
 block 0 remains sentinel
 ```
 
-Its exact owner arena including scratch is `4,215,275,520` bytes/rank
-(`3.92578125 GiB`).  The identical-layout aligned replicated counterfactual
-is `11,639,193,600` bytes/rank, so `7,423,918,080` bytes/rank
-(`6.9140625 GiB`) are attributable to owner placement.  Relative to B0 the
-total candidate reduction is `9,331,095,040` bytes/rank, or `68.8826206%`.
+Its exact owner arena including scratch is `4,034,920,448` bytes/rank
+(`3.7578125 GiB`).  The identical-layout aligned replicated counterfactual
+is `11,584,667,648` bytes/rank, so `7,549,747,200` bytes/rank
+(`7.03125 GiB`) are attributable to owner placement.  Relative to B0 the
+total candidate reduction is `9,511,450,112` bytes/rank, or `70.2140110%`.
 These are static exact-plan values, not measured runtime savings.
 
 This preserves the aggregate `B=4190` ID domain and the fixed one-request
@@ -1464,19 +1464,22 @@ Raw evidence:
   20260730_g37_packed_runner_unit_64553b0f/
 ```
 
-### G38: real Flash packed fixture/accounting — PASS static, runtime pending
+### G38: Flash packed fixture/accounting — superseded by live schema
 
 Commit `9af9a983` reconciles the fake six-group fixture with the live
 DSV4-Flash cache schema.  It removes the false MTP component, uses the real
-group order `[C4, C128, SWA-A, SWA-B, C4-state, C128-state]`, pins required
-quotas `[17,1,65,65,642,165]`, and accounts for all 167 component views.
-The same-`B` owner oracle assigns `[17,3235,65,65,642,165]`.
+group order `[C4, C128, SWA-A, SWA-B, C4-state, C128-state]`, and accounts
+for all 167 component views.  Its fake SWA specs used
+`sliding_window=4096`, so the resulting `[17,1,65,65,642,165]` quota vector
+was not the fixed-profile runtime schema.  G40/G41 later captured the real
+`sliding_window=128` vector `[17,1,42,42,642,165]` and supersede G38's byte
+values.
 
 The planner implementation itself was already schema-driven; the defect was
 limited to fake tests and documentation, and production stayed fail-closed.
-The corrected target-image packed-pool and planner suite passed `39/39`,
-including feature-off identity and the exact required-only and same-`B`
-physical-byte assertions.
+The target-image packed-pool and planner suite passed `39/39`, but this is
+retained only as evidence of the static oracle before the live-schema
+correction.
 
 Raw evidence:
 
@@ -1521,10 +1524,10 @@ fixed quota/planner/runtime/continuation/model-runner: 79 passed
 ```
 
 No model process was launched, and the NPUs remained idle.  Therefore G39
-proves target-image activation composition only.  The
-`4,215,275,520 B/rank` value remains a static exact manifest until a real
-service logs it on all ranks, proves the legacy allocations absent, reaches
-health, and completes the `8200/1` two-chunk request.
+proves target-image activation composition only.  Its original byte
+assertion was superseded by the G40/G41 live-schema correction and must be
+rerun with the corrected `4,034,920,448 B/rank` manifest before activation
+proceeds.
 
 Raw evidence:
 
@@ -1533,4 +1536,101 @@ Raw evidence:
   20260730_g39_same_b_target_1002e175/
     target_pytest_r4.log
     target_pytest_r6.log
+```
+
+### G40/G41: live Flash schema capture — FAIL_STATIC_MANIFEST / PASS diagnostic
+
+The first real-weight activation on `.204` stayed fail-closed before opening
+VMM:
+
+```text
+ValueError: packed activation dense_swa_a requires 65 workload blocks, got 42
+```
+
+The fake fixture had used `sliding_window=4096`; the real Flash configuration
+uses `sliding_window=128`.  A full-vector diagnostic dummy run then captured
+the authoritative required quota vector:
+
+```text
+expected = [17, 1, 65, 65, 642, 165]
+actual   = [17, 1, 42, 42, 642, 165]
+```
+
+No VMM arena opened in either diagnostic.  The corrected same-B assignment is
+`[17,3281,42,42,642,165]`, with ranges
+`[1,18), [18,3299), [3299,3341), [3341,3383), [3383,4025),
+[4025,4190)`.
+
+### G42/G43: real TP8 packed replacement — PASS capacity and request
+
+A fresh pod on `.32` used image
+`release_0.20.2_0601_202607271124_aarch64`, model
+`/a3_inference/models/DeepSeek-V4-Flash-w8a8-mtp`, TP8, `B=4190`,
+`max_model_len=8201`, two-chunk prefill (`5120 + 3080`), FusedMC2 on, and
+MTP/Mooncake/legacy owner/E3 off.  The corrected target-image suite passed:
+
+```text
+104 passed
+```
+
+All eight real workers reached health and emitted the same replacement
+accounting:
+
+```text
+persistent_bytes=4024434688
+scratch_region_bytes=10485760
+total_bytes=4034920448
+persistent_views=167
+scratch_views=1
+legacy_raw_roots=0
+full_b_stage_pages=0
+```
+
+This is the first live proof that the fixed-profile packed path replaces the
+legacy raw cache allocation.  It saves `9,511,450,112 B/rank` relative to B0,
+or `70.214010977%`.  `npu-smi` reported about `46,010-46,012 MiB` per packed
+worker versus `55,084 MiB` for the matched B0 worker; the roughly `9,073 MiB`
+observed delta agrees with the `9,070.83 MiB` allocator prediction.
+
+An exact `8200`-prompt-token, one-output-token request returned HTTP 200,
+nonempty text, and left health at 200.  The first cold request took 22.95 s;
+steady-state timing is reported separately below.
+
+### G43/G44: matched TTFT — FAIL
+
+The only causal difference was the three packed
+planner/activation/VMM flags.  Both services used the same model, TP8,
+FusedMC2, B4190, max lengths, chunking, overlay, greedy one-token output, one
+warmup, and ten measured exact `8200/1` requests:
+
+```text
+                     median TTFT    p90 TTFT
+packed G43             0.802207 s    0.808386 s
+B0 G44                 0.595767 s    0.601567 s
+regression               34.65%        34.38%
+limit                     5.00%         5.00%
+```
+
+Capacity therefore passes, but the current materialization path fails the
+TTFT gate.  One-token text equality was `5/10` between packed and B0.
+A same-B0 repeat was itself nondeterministic on `1/10` prompts, so text alone
+is not a sufficient numerical oracle; the packed mismatch remains unresolved
+and requires a multi-token or logits/cache equivalence gate before correctness
+can be claimed.
+
+Raw evidence:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/runs/032/
+  20260731_g42_same_b_schema_corrected/
+    target_pytest_r10_schema_corrected_full.log
+    capacity_gate_g43.json
+    accounting_markers_g43.txt
+    correctness_8200_1_g43.json
+    packed_ttft_8200_1_g43.json
+    b0_ttft_8200_1_g44.json
+    matched_capacity_ttft_g43_vs_g44.json
+    output_equivalence_g43_g44.json
+    b0_output_repeatability_g44.json
+    npu_smi_g44_b0_healthy.txt
 ```

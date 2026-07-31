@@ -159,8 +159,8 @@ This default-off experiment keeps the global block-ID capacity at `B=4190`
 while replacing the legacy replicated raw KV allocation with one startup-only
 packed VMM arena. It is intentionally limited to the real Flash TP8/EP8
 `8200/1` profile. Required group quotas are
-`[17,1,65,65,642,165]`; assigned quotas are
-`[17,3235,65,65,642,165]`.
+`[17,1,42,42,642,165]`; assigned quotas are
+`[17,3281,42,42,642,165]`.
 
 All three packed flags must be enabled together. Keep the legacy owner
 sidecar, E3, MTP, Mooncake, and prefix caching disabled:
@@ -194,15 +194,28 @@ bundle for the tested commit and run once with `PRINT_CONFIG_ONLY=1`.
 Capacity is `PASS` only if every rank logs:
 
 ```text
-C128_PACKED_ARENA_ACCOUNTING ... total_bytes=4215275520
+C128_PACKED_ARENA_ACCOUNTING ... total_bytes=4034920448 ...
+  persistent_views=167 scratch_views=1 legacy_raw_roots=0
+  full_b_stage_pages=0
 ```
 
 and the launch contains neither the legacy `_allocate_kv_cache_tensors` path
 nor `_get_c128_owner_stage_cache`. The static expected allocation is
-`4,215,275,520 B/rank` (`3.92578125 GiB/rank`), versus the matched B0 raw
+`4,034,920,448 B/rank` (`3.7578125 GiB/rank`), versus the matched B0 raw
 allocation of `13,546,370,560 B/rank`. This number is not a measured result
 until a real service reaches health and completes the two-chunk `8200/1`
 request.
+
+The `.32` G43 run passed this capacity gate on all eight ranks and completed
+an exact `8200/1` request.  It measured `4,034,920,448 B/rank`, saving
+`9,511,450,112 B/rank` (`70.214010977%`) versus B0.  Its matched ten-sample
+TTFT gate failed: median/p90 regressed by `34.65%/34.38%`.  Reproduction and
+raw results are under:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/runs/032/
+  20260731_g42_same_b_schema_corrected/
+```
 
 Run the two existing multistream candidates as separate single-variable A/Bs:
 

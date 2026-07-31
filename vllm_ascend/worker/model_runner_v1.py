@@ -4316,14 +4316,21 @@ class NPUModelRunner(GPUModelRunner):
                 kv_cache_config,
             )
             accounting = runtime.accounting
-            logger.info(
+            # This is a capacity/replacement gate, not routine telemetry.
+            # Worker INFO records may be dropped by the multiprocessing
+            # logger before API startup, so keep the one-shot startup proof at
+            # WARNING level for durable target-image evidence.
+            logger.warning(
                 "C128_PACKED_ARENA_ACCOUNTING rank=%d "
                 "persistent_bytes=%d scratch_region_bytes=%d "
-                "total_bytes=%d",
+                "total_bytes=%d persistent_views=%d scratch_views=%d "
+                "legacy_raw_roots=0 full_b_stage_pages=0",
                 accounting.tp_rank,
                 accounting.persistent_allocated_bytes,
                 accounting.scratch_region_bytes,
                 accounting.total_allocated_bytes,
+                len(raw_tensors),
+                len(scratch_tensors),
             )
             return kv_caches
         except BaseException as construction_error:

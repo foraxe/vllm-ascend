@@ -133,7 +133,7 @@ def _flash_groups():
             22,
             lambda _index: _FakeSlidingWindowMLASpec(
                 block_size=128,
-                sliding_window=4096,
+                sliding_window=128,
                 page_size_bytes=wide_page,
             ),
         ),
@@ -142,7 +142,7 @@ def _flash_groups():
             21,
             lambda _index: _FakeSlidingWindowMLASpec(
                 block_size=128,
-                sliding_window=4096,
+                sliding_window=128,
                 page_size_bytes=wide_page,
             ),
         ),
@@ -231,7 +231,7 @@ def _patch_packed_spec_types():
 
 def test_fixed_flash_quotas_match_current_manager_chunk_semantics() -> None:
     config = _packed_vllm_config()
-    expected_quotas = [17, 1, 65, 65, 642, 165]
+    expected_quotas = [17, 1, 42, 42, 642, 165]
 
     mla_patch, swa_patch, uniform_patch = _patch_packed_spec_types()
     with mla_patch, swa_patch, uniform_patch:
@@ -258,12 +258,12 @@ def test_fixed_flash_quotas_match_current_manager_chunk_semantics() -> None:
     ] == [
         (17, 17, 17),
         (1, 1, 1),
-        (57, 65, 65),
-        (57, 65, 65),
+        (40, 42, 42),
+        (40, 42, 42),
         (640, 642, 642),
         (160, 165, 165),
     ]
-    assert sum(actual_quotas) == 955
+    assert sum(actual_quotas) == 909
 
 
 def test_packed_planner_feature_off_returns_exact_original_objects() -> None:
@@ -332,8 +332,8 @@ def test_packed_planner_serializes_exact_ranges_after_final_block_clamp() -> Non
         patch_kv_cache_utils.FIXED_GROUP_BLOCK_QUOTAS_ATTR,
     )
     assert metadata["global_block_capacity"] == 4_190
-    assert metadata["used_logical_blocks"] == 955
-    assert metadata["unused_logical_blocks"] == 3_234
+    assert metadata["used_logical_blocks"] == 909
+    assert metadata["unused_logical_blocks"] == 3_280
     assert [
         (
             group["logical_blocks"],
@@ -344,10 +344,10 @@ def test_packed_planner_serializes_exact_ranges_after_final_block_clamp() -> Non
     ] == [
         (17, 1, 18),
         (1, 18, 19),
-        (65, 19, 84),
-        (65, 84, 149),
-        (642, 149, 791),
-        (165, 791, 956),
+        (42, 19, 61),
+        (42, 61, 103),
+        (642, 103, 745),
+        (165, 745, 910),
     ]
     assert {component["placement"] for component in metadata["groups"][1]["components"]} == {"c128_owner"}
     assert metadata["groups"][0]["components"][0]["layer_names"] == [f"c4.{index}" for index in range(21)]
@@ -383,7 +383,7 @@ def test_packed_planner_serializes_exact_ranges_after_final_block_clamp() -> Non
     # the same 2-MiB segment whether it is owner-sharded or replicated.
     # Any bytes-vs-B0 delta for this fixed plan is quota-envelope reduction,
     # not owner placement.
-    expected_fixed_bytes = [3_166_699_520] * 8
+    expected_fixed_bytes = [2_986_344_448] * 8
     assert metadata["total_physical_bytes_by_rank"] == expected_fixed_bytes
     assert metadata["aligned_quota_replicated_bytes_by_rank"] == expected_fixed_bytes
     assert json.loads(json.dumps(metadata, sort_keys=True)) == metadata
@@ -430,8 +430,8 @@ def test_packed_activation_publishes_same_b_quota_transaction() -> None:
         == metadata
     )
     assert config.additional_config[patch_kv_cache_utils.C128_PACKED_POOL_METADATA_KEY] is metadata
-    required_quotas = [17, 1, 65, 65, 642, 165]
-    assigned_quotas = [17, 3_235, 65, 65, 642, 165]
+    required_quotas = [17, 1, 42, 42, 642, 165]
+    assigned_quotas = [17, 3_281, 42, 42, 642, 165]
     assert metadata["schema_version"] == 1
     assert metadata["planner_only"] is False
     assert metadata["downstream_runtime_abi_ready"] is True
@@ -459,9 +459,9 @@ def test_packed_activation_publishes_same_b_quota_transaction() -> None:
         for group in metadata["groups"]
     ] == [
         (1, 18),
-        (18, 3_253),
-        (3_253, 3_318),
-        (3_318, 3_383),
+        (18, 3_299),
+        (3_299, 3_341),
+        (3_341, 3_383),
         (3_383, 4_025),
         (4_025, 4_190),
     ]
@@ -469,7 +469,7 @@ def test_packed_activation_publishes_same_b_quota_transaction() -> None:
     assert metadata["unused_logical_blocks"] == 0
     assert sum(component["copies"] for group in metadata["groups"] for component in group["components"]) == 167
     assert len(metadata["scratch"]) == 1
-    assert metadata["total_physical_bytes_by_rank"] == [4_215_275_520] * 8
+    assert metadata["total_physical_bytes_by_rank"] == [4_034_920_448] * 8
     assert metadata["scheduler_group_identities"] == [
         {
             "group_index": group_index,

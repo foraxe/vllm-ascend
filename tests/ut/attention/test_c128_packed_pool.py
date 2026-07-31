@@ -350,7 +350,7 @@ def test_aligned_replicated_counterfactual_includes_bucket_alignment_gaps() -> N
 
 def test_six_group_same_b_counterfactual_isolates_owner_saving() -> None:
     """Assign the spare range to C128 so owner placement is the only delta."""
-    workload_quotas = (17, 1, 65, 65, 642, 165)
+    workload_quotas = (17, 1, 42, 42, 642, 165)
     global_block_capacity = 4_190
     spare_blocks = global_block_capacity - 1 - sum(workload_quotas)
     same_b_quotas = (
@@ -358,7 +358,7 @@ def test_six_group_same_b_counterfactual_isolates_owner_saving() -> None:
         workload_quotas[1] + spare_blocks,
         *workload_quotas[2:],
     )
-    assert same_b_quotas == (17, 3_235, 65, 65, 642, 165)
+    assert same_b_quotas == (17, 3_281, 42, 42, 642, 165)
 
     plan = PackedPoolPlan(
         global_block_capacity=global_block_capacity,
@@ -454,8 +454,8 @@ def test_six_group_same_b_counterfactual_isolates_owner_saving() -> None:
     assert plan.used_logical_blocks == global_block_capacity - 1
     owner_bytes = plan.total_physical_bytes_by_rank()
     aligned_replicated_bytes = plan.aligned_quota_replicated_bytes_by_rank()
-    assert owner_bytes == (4_215_275_520,) * 8
-    assert aligned_replicated_bytes == (11_639_193_600,) * 8
+    assert owner_bytes == (4_034_920_448,) * 8
+    assert aligned_replicated_bytes == (11_584_667_648,) * 8
     assert all(
         owner < replicated
         for owner, replicated in zip(

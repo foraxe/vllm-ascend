@@ -113,9 +113,9 @@ def _production_startup_contract():
     )
     wide = SimpleNamespace(
         bucket="page_131072",
-        persistent_allocated_bytes=3_896_508_416,
+        persistent_allocated_bytes=3_716_153_344,
         scratch_region_bytes=10_485_760,
-        total_allocated_bytes=3_906_994_176,
+        total_allocated_bytes=3_726_639_104,
     )
     rank_accounting = tuple(
         SimpleNamespace(
@@ -176,7 +176,7 @@ def test_production_startup_contract_pins_manifest_and_bytes() -> None:
 
     assert validate_c128_packed_startup_contract(contract, metadata) is contract
     assert len(contract.expected_views) == 168
-    assert all(accounting.total_allocated_bytes == 4_215_275_520 for accounting in contract.rank_accounting)
+    assert all(accounting.total_allocated_bytes == 4_034_920_448 for accounting in contract.rank_accounting)
 
 
 @pytest.mark.parametrize(
@@ -185,14 +185,14 @@ def test_production_startup_contract_pins_manifest_and_bytes() -> None:
         (
             lambda _contract, metadata: metadata.__setitem__(
                 "required_group_block_quotas",
-                [17, 2, 65, 65, 642, 165],
+                [17, 2, 42, 42, 642, 165],
             ),
             "required_group_block_quotas",
         ),
         (
             lambda _contract, metadata: metadata.__setitem__(
                 "assigned_group_block_quotas",
-                [17, 3_234, 65, 65, 642, 166],
+                [17, 3_280, 42, 42, 642, 166],
             ),
             "assigned_group_block_quotas",
         ),

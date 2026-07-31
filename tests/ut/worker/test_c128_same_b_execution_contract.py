@@ -39,7 +39,7 @@ _GROUP_IDENTITIES = (
     "c128_state",
 )
 _GROUP_NAMES = tuple(f"group_{index}" for index in range(len(_GROUP_IDENTITIES)))
-_SAME_B_QUOTAS = (17, 3_235, 65, 65, 642, 165)
+_SAME_B_QUOTAS = (17, 3_281, 42, 42, 642, 165)
 _GLOBAL_BLOCK_CAPACITY = 4_190
 
 
@@ -250,9 +250,9 @@ def test_six_group_worker_tables_keep_only_c128_attention_global() -> None:
 
     expected_execution_rows = (
         [0, 1, 17],
-        [0, 18, 3_252],
-        [0, 1, 65],
-        [0, 1, 65],
+        [0, 18, 3_298],
+        [0, 1, 42],
+        [0, 1, 42],
         [0, 1, 642],
         [0, 1, 165],
     )
@@ -278,7 +278,7 @@ def test_six_group_worker_tables_keep_only_c128_attention_global() -> None:
     )
     assert tuple(address.global_block_id for address in owner_addresses) == (
         18,
-        3_252,
+        3_298,
     )
     assert all(address.owner_rank == address.global_block_id % plan.tp_size for address in owner_addresses)
 

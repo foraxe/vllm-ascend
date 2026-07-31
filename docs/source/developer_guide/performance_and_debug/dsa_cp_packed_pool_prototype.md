@@ -1,14 +1,12 @@
 # DSA-CP packed-pool planning prototype
 
-Status: the feature-gated planner/config propagation, concrete ACL arena
-adapter, worker lifecycle, global-ID block-table/owner-route contract,
-synthetic allocator/reshape transaction, and packed DSA materialization seam
-are implemented.  Production packed allocation remains disabled:
-the planner still emits `planner_only=true` and
-`downstream_runtime_abi_ready=false`, and the normal model-runner startup
-rejects the feature before opening CANN VMM.  This milestone proves component
-composition and cleanup, not allocator replacement, KV-capacity saving, cache
-equivalence, or TTFT.
+Status: the planner-only mode remains default-off, while the separately gated
+fixed Flash TP8 `8200/1` activation now runs the concrete ACL arena and packed
+DSA materialization path.  A real `.32` service installed all 167 persistent
+views plus scratch, bypassed legacy raw roots and full-B staging, and measured
+`4,034,920,448 B/rank`, a `70.214010977%` reduction from B0.  The structural
+capacity gate passes.  The matched TTFT gate fails with a `34.65%` median
+regression, and numerical equivalence remains unresolved.
 
 ## Hypothesis and gate
 
@@ -238,21 +236,21 @@ needs a new same-service-capacity plan with a C128 quota above one VMM granule
 per owner, or a scheduler/allocator design that retains the shared `B=4190`
 service envelope while routing C128 physical pages to owners.
 
-The CPU suite pins one explicit accounting candidate by assigning all 3234
+The CPU suite pins one explicit accounting candidate by assigning all 3280
 currently unused fixed-profile IDs to C128:
 
 ```text
 group order = [C4, C128, SWA-A, SWA-B, C4-state, C128-state]
-workload quotas = [17, 1, 65, 65, 642, 165]
-same-B accounting quotas = [17, 3235, 65, 65, 642, 165]
+workload quotas = [17, 1, 42, 42, 642, 165]
+same-B accounting quotas = [17, 3281, 42, 42, 642, 165]
 sum = 4189 data IDs, plus sentinel 0 => B=4190
-same-B owner = 4,215,275,520 bytes/rank
-same-B aligned-replicated = 11,639,193,600 bytes/rank
+same-B owner = 4,034,920,448 bytes/rank
+same-B aligned-replicated = 11,584,667,648 bytes/rank
 ```
 
 For that exact six-group plan, the aligned owner allocation is smaller than
 the aligned replicated counterfactual on every rank.  This isolates a real
-C128 placement delta without comparing against a 955-ID envelope.  It is
+C128 placement delta without comparing against a 909-ID envelope.  It is
 still accounting-only: locking all spare shared-pool capacity to C128 changes
 the general multi-request borrowing semantics, so it may be used for the
 pinned one-request profile only after the scheduler and state-continuation
@@ -264,7 +262,7 @@ aggregate `B=4190` ID domain and place the slack in one ordinary replicated
 group:
 
 ```text
-[17, 1, 65, 3299, 642, 165]
+[17, 1, 42, 3322, 642, 165]
 ```
 
 This satisfies `FixedQuotaBlockPool`'s exact `sum(quotas) == B - 1` contract
@@ -539,14 +537,15 @@ The current mechanism integration has these exact boundaries:
    global table plus the immutable owner route and returns a zero-based
    scratch-local table.
 
-These mechanisms do not make packed KV tensors production-runnable.  The
-remaining blocker is the complete live replacement transaction: normal
-startup must capture the real shared-backing families, move every consumer,
-including C128 compressor state, open/install the arena instead of the legacy
-raw allocation, and prove continuation and cache equivalence.
+The fixed-profile live replacement transaction is now runnable: normal
+startup captures every shared-backing family, moves C128 compressor state,
+and installs the packed arena instead of the legacy raw allocation.  It is not
+a general allocator and is not production-ready.  The remaining gates are a
+strong numerical/cache equivalence oracle, removal or overlap of the
+materialization overhead, TTFT below the 5% regression limit, multi-token
+decode, and dynamic-profile allocation.
 
-The next A3 experiment is an allocator/lifetime gate, not an end-to-end TTFT
-claim:
+The completed A3 allocator/lifetime gate used:
 
 ```text
 baseline: feature off, existing torch allocations
@@ -559,3 +558,8 @@ FAIL: wrong bytes/offset/value, alias after close, or teardown-order violation
 BLOCKED: live shared-view manifest or compressor-continuation proof unavailable
 kill: first incorrect address/value or any 60-second lifecycle-stage timeout
 ```
+
+Its exact evidence is
+`/a3_inference/nyx/dsv4_dsa_cp/runs/032/20260731_g42_same_b_schema_corrected/`.
+The next experiment must isolate the `~0.206 s` median packed overhead and add
+a stronger cache/logit equivalence gate before changing the allocator design.
