@@ -118,6 +118,68 @@ class TestNPUModelRunnerKVCache(unittest.TestCase):
         self.assertEqual(k_cache.shape, (2, 16, 8, 64))
         self.assertEqual(v_cache.shape, (2, 16, 8, 64))
 
+    def test_reshape_compressed_cache_counts_typed_alias_bytes(self):
+        runner = self._build_runner()
+        runner.use_compress = True
+        num_blocks = 4
+        kv_cache_spec = MLAAttentionSpec(
+            block_size=128,
+            num_kv_heads=1,
+            head_size=8,
+            dtype=torch.bfloat16,
+            compress_ratio=128,
+            model_version="deepseek_v4",
+        )
+        kv_cache_config = KVCacheConfig(
+            num_blocks=num_blocks,
+            kv_cache_tensors=[
+                KVCacheTensor(
+                    size=kv_cache_spec.page_size_bytes * num_blocks,
+                    shared_by=["compressed_attn"],
+                )
+            ],
+            kv_cache_groups=[
+                KVCacheGroupSpec(
+                    layer_names=["compressed_attn"],
+                    kv_cache_spec=kv_cache_spec,
+                )
+            ],
+        )
+        runner.attn_backend = SimpleNamespace(
+            get_kv_cache_shape=(
+                lambda blocks, block_size, num_heads, head_size: (
+                    blocks,
+                    block_size,
+                    num_heads,
+                    head_size,
+                )
+            )
+        )
+        runner._kv_cache_spec_attn_group_iterator = lambda: [
+            SimpleNamespace(
+                kv_cache_spec=kv_cache_spec,
+                backend=runner.attn_backend,
+                layer_names=["compressed_attn"],
+            )
+        ]
+        typed_alias = torch.zeros(
+            kv_cache_spec.page_size_bytes
+            * num_blocks
+            // torch.empty((), dtype=torch.bfloat16).element_size(),
+            dtype=torch.bfloat16,
+        )
+
+        (cache,) = runner._reshape_kv_cache_tensors(
+            kv_cache_config,
+            {"compressed_attn": typed_alias},
+        )["compressed_attn"]
+
+        self.assertEqual(cache.shape[0], num_blocks)
+        self.assertEqual(
+            cache.numel() * cache.element_size(),
+            kv_cache_spec.page_size_bytes * num_blocks,
+        )
+
 
 class TestNPUModelRunnerPackedArenaLifecycle(unittest.TestCase):
     def _build_runner(self):

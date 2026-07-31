@@ -5330,7 +5330,12 @@ class NPUModelRunner(GPUModelRunner):
                             layer_kv_cache_spec,
                         )
                     )
-                    sum_page_size_bytes = kv_tensor.numel()
+                    # Packed aliases may already be reinterpreted to the cache
+                    # dtype. ``numel`` is therefore not a byte count unless
+                    # the backing happens to remain uint8.
+                    sum_page_size_bytes = (
+                        kv_tensor.numel() * kv_tensor.element_size()
+                    )
                     num_blocks = sum_page_size_bytes // current_kv_cache_spec.page_size_bytes
                     if packed_num_blocks is not None:
                         assert num_blocks == packed_num_blocks, (
