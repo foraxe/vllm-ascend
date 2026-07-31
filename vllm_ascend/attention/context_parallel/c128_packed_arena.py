@@ -140,6 +140,42 @@ class PackedArenaClosedError(RuntimeError):
     """Raised when a closed or partially cleaned lease is dereferenced."""
 
 
+class PackedArenaBusyError(RuntimeError):
+    """Raised when peer exports still pin an owner arena open."""
+
+
+@dataclass(frozen=True)
+class PackedArenaExportAllocation:
+    """One mapped owner bucket exposed only through an active export pin."""
+
+    bucket: str
+    size_bytes: int
+    physical_handle: object
+
+
+class PackedArenaExportPin:
+    """Explicit pin preventing owner cleanup while peers hold imports."""
+
+    def __init__(self, lease: PackedArenaLease) -> None:
+        self._lease: PackedArenaLease | None = lease
+
+    @property
+    def released(self) -> bool:
+        return self._lease is None
+
+    def allocations(self) -> tuple[PackedArenaExportAllocation, ...]:
+        if self._lease is None:
+            raise PackedArenaClosedError("packed-arena export pin is released")
+        return self._lease._export_allocations()
+
+    def release(self) -> None:
+        if self._lease is None:
+            return
+        lease = self._lease
+        lease._release_export_pin()
+        self._lease = None
+
+
 @dataclass(frozen=True)
 class PackedArenaCleanupFailure:
     operation: str
@@ -280,6 +316,7 @@ class PackedArenaLease:
         self._state = PackedArenaState.OPEN
         self._bindings_closed = False
         self._fenced = False
+        self._export_pin_count = 0
 
     @classmethod
     def open(
@@ -338,6 +375,32 @@ class PackedArenaLease:
     def _require_open(self) -> None:
         if self._state is not PackedArenaState.OPEN:
             raise PackedArenaClosedError(f"packed-arena lease is {self._state.value}")
+
+    def acquire_export_pin(self) -> PackedArenaExportPin:
+        """Keep owner physical memory alive for a coordinated peer lease."""
+        self._require_open()
+        self._export_pin_count += 1
+        return PackedArenaExportPin(self)
+
+    def _release_export_pin(self) -> None:
+        if self._export_pin_count <= 0:
+            raise RuntimeError("packed-arena export pin accounting underflow")
+        self._export_pin_count -= 1
+
+    def _export_allocations(self) -> tuple[PackedArenaExportAllocation, ...]:
+        self._require_open()
+        result: list[PackedArenaExportAllocation] = []
+        for bucket, allocation in self._allocations.items():
+            if not allocation.mapped or allocation.physical_handle is None:
+                raise RuntimeError(f"packed-arena bucket {bucket} is not exportable")
+            result.append(
+                PackedArenaExportAllocation(
+                    bucket=bucket,
+                    size_bytes=allocation.descriptor.size_bytes,
+                    physical_handle=allocation.physical_handle,
+                )
+            )
+        return tuple(result)
 
     def _open_bucket(self, accounting: BucketPhysicalBytes) -> None:
         size_bytes = accounting.total_allocated_bytes_by_rank[self.tp_rank]
@@ -472,6 +535,8 @@ class PackedArenaLease:
         """
         if self._state is PackedArenaState.CLOSED:
             return
+        if self._export_pin_count:
+            raise PackedArenaBusyError("cannot close packed arena while peer export pins are active")
         self._state = PackedArenaState.CLOSING
 
         failures: list[PackedArenaCleanupFailure] = []
