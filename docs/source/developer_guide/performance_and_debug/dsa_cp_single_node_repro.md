@@ -54,35 +54,34 @@ Create an otherwise idle 16-NPU gate pod with the same image family, then
 verify the resulting Pod before copying probes or starting a service:
 
 ```bash
-rtk proxy env KUBECONFIG=/Users/nyx/.kube/wulan-htest4.yaml \
+KUBECONFIG=/Users/nyx/.kube/wulan-htest4.yaml \
   /Users/nyx/bin/itask -n cloudide create \
   --name nyx-dsv4-dsa-struct-YYYYMMDD \
   --user hx02481871 --type a3 --16card \
   --image hcr.meta-wulan01.hw-wulan.local/antsys/vllm:release_0.20.2_0601_202607271124_aarch64 \
   --skip-sync --no-model-download 'sleep infinity'
 
-rtk proxy env KUBECONFIG=/Users/nyx/.kube/wulan-htest4.yaml \
-  kubectl --context=a3 -n cloudide get pod <created-pod> -o wide
+kubectl --kubeconfig /Users/nyx/.kube/wulan-htest4.yaml \
+  --context a3 -n cloudide get pod <created-pod> -o wide
 ```
 
 ## Deploy the launcher and the test-only compatibility fix
 
 From the repository root, set the current pod name once and copy the launcher,
-both benchmark clients, and the test-only compatibility fix. The `rtk`
-prefix is required in this environment.
+both benchmark clients, and the test-only compatibility fix.
 
 ```bash
 DSA_POD=ide-run-task-nyx-vllm-a3-20260727-16npu-vllm-dsa-cp-hx0248w2rk7
-rtk proxy env KUBECONFIG=/Users/nyx/.kube/wulan-htest4.yaml kubectl --context=a3 -n cloudide cp \
+kubectl --kubeconfig /Users/nyx/.kube/wulan-htest4.yaml --context a3 -n cloudide cp \
   tools/a3_dsv4_pro_prefill/start_single_node.sh \
   "${DSA_POD}:/a3_inference/itask/workdir/shared/zhaomingchu/aiworker/codex/pro-debug/P0/start_single_node.sh"
-rtk proxy env KUBECONFIG=/Users/nyx/.kube/wulan-htest4.yaml kubectl --context=a3 -n cloudide cp \
+kubectl --kubeconfig /Users/nyx/.kube/wulan-htest4.yaml --context a3 -n cloudide cp \
   tools/a3_dsv4_pro_prefill/bench_prefill_only.py \
   "${DSA_POD}:/a3_inference/itask/workdir/shared/zhaomingchu/aiworker/codex/pro-debug/P0/bench_prefill_only.py"
-rtk proxy env KUBECONFIG=/Users/nyx/.kube/wulan-htest4.yaml kubectl --context=a3 -n cloudide cp \
+kubectl --kubeconfig /Users/nyx/.kube/wulan-htest4.yaml --context a3 -n cloudide cp \
   tools/a3_dsv4_pro_prefill/bench_ttft_stream.py \
   "${DSA_POD}:/a3_inference/itask/workdir/shared/zhaomingchu/aiworker/codex/pro-debug/P0/bench_ttft_stream.py"
-rtk proxy env KUBECONFIG=/Users/nyx/.kube/wulan-htest4.yaml kubectl --context=a3 -n cloudide cp \
+kubectl --kubeconfig /Users/nyx/.kube/wulan-htest4.yaml --context a3 -n cloudide cp \
   vllm-ascend/vllm_ascend/attention/context_parallel/dsa_cp.py \
   "${DSA_POD}:/usr/local/python3.11.15/lib/python3.11/site-packages/vllm_ascend/attention/context_parallel/dsa_cp.py"
 ```
@@ -99,7 +98,7 @@ Mooncake producer configuration, top-k=6, and the request shape. It is valid
 only for path performance and regression checks.
 
 ```bash
-rtk proxy env KUBECONFIG=/Users/nyx/.kube/wulan-htest4.yaml kubectl --context=a3 -n cloudide exec "${DSA_POD}" -- sh -c '
+kubectl --kubeconfig /Users/nyx/.kube/wulan-htest4.yaml --context a3 -n cloudide exec "${DSA_POD}" -- sh -c '
   cd /a3_inference/itask/workdir/shared/zhaomingchu/aiworker/codex/pro-debug/P0 &&
   chmod +x start_single_node.sh &&
   RUN_ID=synthetic64_overlap0 \
@@ -115,7 +114,7 @@ Wait for `health_http=200` before submitting work. Dummy initialization uses
 all worker CPUs and can take several minutes.
 
 ```bash
-rtk proxy env KUBECONFIG=/Users/nyx/.kube/wulan-htest4.yaml kubectl --context=a3 -n cloudide exec "${DSA_POD}" -- sh -c \
+kubectl --kubeconfig /Users/nyx/.kube/wulan-htest4.yaml --context a3 -n cloudide exec "${DSA_POD}" -- sh -c \
   'curl -sS -o /dev/null -w "health_http=%{http_code}\\n" http://127.0.0.1:7100/health'
 ```
 

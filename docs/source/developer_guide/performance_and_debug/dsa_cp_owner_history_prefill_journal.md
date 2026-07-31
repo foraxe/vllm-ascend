@@ -1801,7 +1801,7 @@ Raw evidence:
     target/
 ```
 
-### G48: production peer-read replacement — active
+### G48: production peer-read replacement — PASS target suite
 
 Hypothesis: replacing the packed C128 request-time HCCL staging path with
 startup V2 peer aliases plus certified `index_select`/`index_copy_`
@@ -1841,3 +1841,159 @@ Pass gates, in order:
 Kill criteria: any physical-capacity regression, request-time lifecycle or
 payload communication, cache/logit mismatch, unbounded scratch growth, or
 unsafe exporter-before-importer teardown stops performance measurement.
+
+The production wiring passed the target-image suite after four fixture and
+accounting corrections:
+
+```text
+146 passed
+```
+
+The suite pins startup readiness/rollback, runtime-owned peer teardown, exact
+typed-alias byte accounting, the 167 persistent views plus one scratch view,
+packed global block-table routing, and the collective-free materializer. The
+valid target is the image-installed package plus the narrow source overlay;
+putting the complete repository package ahead of the image package is an
+`INVALID_ENVIRONMENT` because its vLLM API is newer than the image's vLLM.
+
+Commits:
+
+```text
+86112053 feat(dsa-cp): wire packed peer materialization
+e77b1840 fix(dsa-cp): make packed runtime own peer teardown
+c57ccf55 fix(dsa-cp): count typed packed alias bytes
+99971d73 fix(dsa-cp): coordinate packed peer startup readiness
+```
+
+Raw evidence:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/runs/032/
+  20260731_g48_peer_production_integration/
+    target_pytest_r6_readiness.log
+    target_pytest_r6_readiness.exit_code
+```
+
+### G49: TP8 peer replacement capacity and correctness — PASS
+
+The first real request reached every packed-capacity gate but failed in the
+current-row overlay:
+
+```text
+aclnnInplaceIndexCopy error 161002
+self=[8320,1,512]
+source=[24,512]
+```
+
+This was a tensor-rank contract error, not a peer-map or capacity failure.
+The compressor returns flat rows while the production scratch retains the
+cache singleton dimensions. Commit `9552a778` reshapes each source row as a
+view of the scratch row shape before `index_copy_`; it adds no allocation,
+synchronization, or communication. The `5120 + 3080` continuation oracle now
+uses the same production singleton dimensions.
+
+The corrected target suite passed `146/146`. All eight workers then reached
+health and emitted:
+
+```text
+C128_PACKED_ARENA_ACCOUNTING
+  persistent_bytes=4024434688
+  scratch_region_bytes=10485760
+  total_bytes=4034920448
+  persistent_views=167
+  scratch_views=1
+  legacy_raw_roots=0
+  full_b_stage_pages=0
+
+C128_PACKED_PEER_ACCOUNTING
+  remote_aliases=7
+  remote_va_bytes=26086473728
+  remote_physical_bytes=0
+  startup_tensor_borrows=7
+  request_tensor_calls=0
+  request_import_calls=0
+  request_map_calls=0
+  request_control_collective_calls=0
+  request_fence_calls=0
+```
+
+The exact two-chunk `8200/1` request returned HTTP 200 and `你好`. The
+candidate therefore preserves the fixed-profile packed allocation:
+
+```text
+B0 bytes/rank          = 13,546,370,560
+candidate bytes/rank   =  4,034,920,448
+saved bytes/rank       =  9,511,450,112
+reduction              = 70.214010977%
+```
+
+The lifecycle counters are emitted at startup. Source and unit gates prove
+that the request helper contains no payload collective, import, map, control
+collective, fence, D2H value read, or NPU synchronization; a post-request
+immutable counter snapshot is still desirable hardening and is not claimed
+by this run.
+
+Raw evidence:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/runs/032/
+  20260731_g49_peer_capacity_startup/
+    accounting_peer_markers.txt
+    correctness_8200_1_peer_g49.console.log
+    server_failure_tail.log
+    target_pytest_r7_shape_fix.log
+    correctness_8200_1_peer_g49r2.json
+```
+
+### G50: matched packed peer-read TTFT — PASS
+
+Before timing, commit `27e0eb3e` demoted two per-layer/per-rank owner-path
+messages from INFO to DEBUG. They produced hundreds of synchronous log writes
+per request and were measurement instrumentation, not model work. The
+candidate log slice contains zero such INFO messages.
+
+Candidate and B0 used the same image, source target, real model, TP8/EP8,
+FusedMC2, `B=4190`, `max_model_len=8201`, `max_num_batched_tokens=5120`,
+`max_num_seqs=1`, one warmup, and ten measured exact `8200/1` requests. The
+only causal variable was the three packed planner/activation/VMM flags:
+
+```text
+                     median TTFT    p90 TTFT
+packed peer-read       0.507013 s    0.515328 s
+B0 replicated          0.592062 s    0.602214 s
+delta                    -14.36%       -14.43%
+regression limit          +5.00%        +5.00%
+```
+
+The capacity and TTFT gates both pass. One-token completions are not fully
+deterministic on either candidate or B0 (`你好`, `Hello`, and `I` all
+occurred), so these client samples do not replace a future logits/cache
+equivalence gate. The isolated correctness request returned `你好`, matching
+the prior exact B0 result.
+
+Two attempted G50 target-suite reruns are classified
+`INVALID_ENVIRONMENT`: they placed a full repository package or a copied
+package without the image `_build_info` ahead of the installed target
+package. They do not invalidate the G49 `146 passed` suite; the G50-only
+change also passed `compileall`, `git diff --check`, and the real TP8 request
+and timing runs.
+
+The B0 service was stopped after evidence capture, and NPUs 0-7 were verified
+process-free.
+
+Raw evidence:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/runs/032/
+  20260731_g50_peer_matched_ttft/
+    accounting_peer_markers_candidate.txt
+    correctness_8200_1_candidate.json
+    candidate_ttft_8200_1.json
+    b0_ttft_8200_1.json
+    matched_ttft_candidate_vs_b0.json
+    candidate_server_slice.log
+    candidate_unwanted_info_lines.txt
+    npu_smi_b0_healthy.txt
+    target_pytest_r1_log_silence.log
+    target_pytest_r2_overlay.log
+```

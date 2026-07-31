@@ -84,11 +84,11 @@ REMOTE_SOURCE=/tmp/vmm_remote_tensor_probe
 ARTIFACT_DIR=/a3_inference/nyx/dsv4_dsa_cp/runs/204/<run-id>
 PROBE_GIT_SHA="$(git rev-parse HEAD)"
 
-rtk proxy env KUBECONFIG="${KUBECONFIG}" kubectl --context a3 -n default \
+kubectl --kubeconfig "${KUBECONFIG}" --context a3 -n default \
   cp tools/a3_dsv4_pro_prefill/vmm_remote_tensor_probe \
   "${POD}:${REMOTE_SOURCE}"
 
-rtk proxy env KUBECONFIG="${KUBECONFIG}" kubectl --context a3 -n default \
+kubectl --kubeconfig "${KUBECONFIG}" --context a3 -n default \
   exec "${POD}" -- bash -lc \
   "PROBE_GIT_SHA=${PROBE_GIT_SHA} \
    bash ${REMOTE_SOURCE}/run_probe.sh ${ARTIFACT_DIR}"

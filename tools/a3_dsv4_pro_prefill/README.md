@@ -81,13 +81,13 @@ some environments instead use `/a3_inference/shared/.../P0`.
 DSA_POD=<pod-name>
 A3_ROLE_DIR=/a3_inference/itask/workdir/shared/zhaomingchu/aiworker/codex/pro-debug/P0
 
-rtk proxy env KUBECONFIG=/Users/nyx/.kube/wulan-htest4.yaml kubectl --context=a3 -n cloudide cp \
+kubectl --kubeconfig /Users/nyx/.kube/wulan-htest4.yaml --context a3 -n cloudide cp \
   tools/a3_dsv4_pro_prefill/start_single_node.sh "${DSA_POD}:${A3_ROLE_DIR}/start_single_node.sh"
-rtk proxy env KUBECONFIG=/Users/nyx/.kube/wulan-htest4.yaml kubectl --context=a3 -n cloudide cp \
+kubectl --kubeconfig /Users/nyx/.kube/wulan-htest4.yaml --context a3 -n cloudide cp \
   tools/a3_dsv4_pro_prefill/bench_prefill_only.py "${DSA_POD}:${A3_ROLE_DIR}/bench_prefill_only.py"
-rtk proxy env KUBECONFIG=/Users/nyx/.kube/wulan-htest4.yaml kubectl --context=a3 -n cloudide cp \
+kubectl --kubeconfig /Users/nyx/.kube/wulan-htest4.yaml --context a3 -n cloudide cp \
   tools/a3_dsv4_pro_prefill/bench_ttft_stream.py "${DSA_POD}:${A3_ROLE_DIR}/bench_ttft_stream.py"
-rtk proxy env KUBECONFIG=/Users/nyx/.kube/wulan-htest4.yaml kubectl --context=a3 -n cloudide cp \
+kubectl --kubeconfig /Users/nyx/.kube/wulan-htest4.yaml --context a3 -n cloudide cp \
   vllm_ascend/attention/context_parallel/dsa_cp.py \
   "${DSA_POD}:/usr/local/python3.11.15/lib/python3.11/site-packages/vllm_ascend/attention/context_parallel/dsa_cp.py"
 ```

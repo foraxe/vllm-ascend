@@ -17,8 +17,7 @@ peer reads, remote writes observed through the owner's local mapping, and
 ordered teardown. Imported mappings are released and acknowledged before an
 owner frees its physical handles.
 
-Build and run inside an idle A3 pod with CANN 9. These are in-pod commands;
-`rtk` is a local Codex shell wrapper and is not installed in the pod:
+Build and run inside an idle A3 pod with CANN 9. These are in-pod commands:
 
 ```bash
 ASCEND_ROOT=/usr/local/Ascend/cann-9.0.0/aarch64-linux
