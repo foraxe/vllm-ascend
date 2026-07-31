@@ -135,3 +135,85 @@ Two preceding attempts are retained because they test the harness itself:
   despite `result.json` being `PASS`. It is not the canonical reproduction.
   Commit `11b27551` replaced pipeline status extraction and the canonical run
   confirms wrapper exit code `0`.
+
+## G46 production-size wide-bucket gate on `.32`
+
+Hypothesis: one exact `1777 * 2 MiB = 3,726,639,104` byte
+(`3.470703125 GiB`) physical allocation on NPU0 can be V2-exported,
+PID-authorized, imported and mapped on NPU1, then bound as non-owning BF16
+Torch-NPU storage. Ordinary kernels must read and update bounded canaries at
+the first, middle and last offsets without a collective or a physical HBM
+allocation on the importer.
+
+The production mode binds a logical BF16 tensor over the complete mapping but
+does not construct a full-size source, clone, fill, or CPU reference. It
+touches only three 256-element (512-byte) views:
+
+```text
+requested bytes:  3,726,639,104
+mapped pages:      1,777 x 2 MiB
+canary offsets:    0
+                   1,863,319,552
+                   3,726,638,592
+distinct bytes per validation/write pass: 1,536
+```
+
+Baseline: the existing 4,096-element remote-tensor gate must pass first on the
+same pod. Production `PASS` requires:
+
+- exact requested and mapped byte count;
+- one exporter-side `aclrtMallocPhysical` and no importer-side physical
+  allocation, proven by process-local bridge call counters;
+- importer HBM free-byte delta recorded across import/map/bind as an advisory
+  allocator metric;
+- exact BF16 canary values before and after importer `add_(3)`;
+- exporter sees the three remote updates;
+- importer unmaps before exporter frees; both child exit codes are zero;
+- wrapper exit code zero and NPU0/1 process-free before and after.
+
+Any completed value or size mismatch is `FAIL`. An API, allocation, kernel,
+bootstrap, or timeout failure is `BLOCKED`. Use 120 seconds per coordination
+stage and a 300-second outer timeout; terminate then kill importer before
+exporter on timeout.
+
+Run the small regression first, then the production gate:
+
+```bash
+POD=dsv4-dsa-prefill-032-nyx
+KUBECONFIG=/Users/nyx/.kube/wulan-htest4.yaml
+REMOTE_SOURCE=/tmp/g46_vmm_full_wide_bucket
+ARTIFACT_ROOT=/a3_inference/nyx/dsv4_dsa_cp/runs/032/20260731_g46_vmm_full_wide_bucket
+
+kubectl --kubeconfig "${KUBECONFIG}" --context a3 -n default cp \
+  tools/a3_dsv4_pro_prefill/vmm_remote_tensor_probe \
+  "${POD}:${REMOTE_SOURCE}"
+
+kubectl --kubeconfig "${KUBECONFIG}" --context a3 -n default exec "${POD}" \
+  -- bash -c \
+  "bash ${REMOTE_SOURCE}/run_probe.sh ${ARTIFACT_ROOT}/small_regression"
+
+kubectl --kubeconfig "${KUBECONFIG}" --context a3 -n default exec "${POD}" \
+  -- bash -c \
+  "STAGE_TIMEOUT_SECONDS=120 TOTAL_TIMEOUT_SECONDS=300 \
+   bash ${REMOTE_SOURCE}/run_probe.sh ${ARTIFACT_ROOT}/production \
+     --dtype bfloat16 --mapped-bytes 3726639104 \
+     --canary-elements 256"
+```
+
+G46 passed on 2026-07-31 in `dsv4-dsa-prefill-032-nyx` with CANN/HDK
+`25.5.1`. The durable evidence root is:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/runs/032/20260731_g46_vmm_full_wide_bucket/
+```
+
+Both `small_regression/result.json` and `production/result.json` report
+`PASS`, wrapper exit code zero, child exit codes zero, and no terminated or
+killed process. Production recorded the exact requested, mapped, and
+exporter HBM delta as `3,726,639,104` bytes. Its bridge counters were
+`physical_allocation_calls=1, import_calls=0` on the exporter and
+`physical_allocation_calls=0, import_calls=1` on the importer. The three
+BF16 canaries at byte offsets `0`, `1,863,319,552`, and `3,726,638,592`
+matched before the importer update and after `add_(3)` on both processes.
+The advisory importer free-HBM delta was `-110,592` bytes. All eight logical
+NPUs were process-free before and after the runs.

@@ -25,6 +25,8 @@ struct VmmRegion {
 };
 
 thread_local std::string last_error;
+thread_local uint64_t physical_allocation_call_count = 0;
+thread_local uint64_t import_call_count = 0;
 
 int Fail(const char* api, aclError status) {
   std::ostringstream message;
@@ -139,6 +141,29 @@ int dsa_vmm_enable_peer(int32_t device_id, int32_t peer_device_id,
                                : Fail("aclrtDeviceEnablePeerAccess", status);
 }
 
+int dsa_vmm_hbm_mem_info(int32_t device_id, size_t* free_bytes,
+                         size_t* total_bytes) {
+  if (free_bytes == nullptr || total_bytes == nullptr) {
+    return FailMessage("dsa_vmm_hbm_mem_info: output is null");
+  }
+  if (SetDevice(device_id) != 0) {
+    return -1;
+  }
+  const aclError status =
+      aclrtGetMemInfo(ACL_HBM_MEM, free_bytes, total_bytes);
+  return status == ACL_SUCCESS ? 0 : Fail("aclrtGetMemInfo", status);
+}
+
+int dsa_vmm_get_call_counts(uint64_t* physical_allocation_calls,
+                            uint64_t* import_calls) {
+  if (physical_allocation_calls == nullptr || import_calls == nullptr) {
+    return FailMessage("dsa_vmm_get_call_counts: output is null");
+  }
+  *physical_allocation_calls = physical_allocation_call_count;
+  *import_calls = import_call_count;
+  return 0;
+}
+
 int dsa_vmm_create_local(int32_t device_id, size_t requested_size,
                          void** opaque_region) {
   if (opaque_region == nullptr || requested_size == 0) {
@@ -173,6 +198,7 @@ int dsa_vmm_create_local(int32_t device_id, size_t requested_size,
     return Fail("aclrtReserveMemAddress", status);
   }
 
+  ++physical_allocation_call_count;
   status = aclrtMallocPhysical(&region->physical_handle, region->mapped_size,
                                &properties, 0);
   if (status != ACL_SUCCESS) {
@@ -250,6 +276,7 @@ int dsa_vmm_import_v2(int32_t device_id, const void* shareable_handle,
 
   aclrtMemFabricHandle handle_copy = {};
   std::memcpy(&handle_copy, shareable_handle, sizeof(handle_copy));
+  ++import_call_count;
   aclError status = aclrtMemImportFromShareableHandleV2(
       &handle_copy, ACL_MEM_SHARE_HANDLE_TYPE_DEFAULT, 0,
       &region->physical_handle);

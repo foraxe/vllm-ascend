@@ -20,6 +20,7 @@ from typing import Any
 HANDLE_TYPE = "ACL_MEM_SHARE_HANDLE_TYPE_DEFAULT"
 INITIAL_OFFSET = 11.0
 WRITE_VALUE = 37.0
+CANARY_ADD_VALUE = 3.0
 
 
 class ProbeFailure(RuntimeError):
@@ -48,6 +49,17 @@ class Bridge:
             ctypes.POINTER(ctypes.c_int32),
         ]
         lib.dsa_vmm_enable_peer.restype = ctypes.c_int
+        lib.dsa_vmm_hbm_mem_info.argtypes = [
+            ctypes.c_int32,
+            ctypes.POINTER(ctypes.c_size_t),
+            ctypes.POINTER(ctypes.c_size_t),
+        ]
+        lib.dsa_vmm_hbm_mem_info.restype = ctypes.c_int
+        lib.dsa_vmm_get_call_counts.argtypes = [
+            ctypes.POINTER(ctypes.c_uint64),
+            ctypes.POINTER(ctypes.c_uint64),
+        ]
+        lib.dsa_vmm_get_call_counts.restype = ctypes.c_int
         lib.dsa_vmm_create_local.argtypes = [
             ctypes.c_int32,
             ctypes.c_size_t,
@@ -103,6 +115,29 @@ class Bridge:
         can_access = ctypes.c_int32()
         self._check(self.library.dsa_vmm_enable_peer(device_id, peer_device_id, ctypes.byref(can_access)))
         return int(can_access.value)
+
+    def hbm_mem_info(self, device_id: int) -> tuple[int, int]:
+        free_bytes = ctypes.c_size_t()
+        total_bytes = ctypes.c_size_t()
+        self._check(
+            self.library.dsa_vmm_hbm_mem_info(
+                device_id,
+                ctypes.byref(free_bytes),
+                ctypes.byref(total_bytes),
+            )
+        )
+        return int(free_bytes.value), int(total_bytes.value)
+
+    def call_counts(self) -> tuple[int, int]:
+        physical_allocation_calls = ctypes.c_uint64()
+        import_calls = ctypes.c_uint64()
+        self._check(
+            self.library.dsa_vmm_get_call_counts(
+                ctypes.byref(physical_allocation_calls),
+                ctypes.byref(import_calls),
+            )
+        )
+        return int(physical_allocation_calls.value), int(import_calls.value)
 
     def create_local(self, device_id: int, requested_size: int) -> ctypes.c_void_p:
         region = ctypes.c_void_p()
@@ -164,6 +199,108 @@ def _expected_values(torch: Any, elements: int, dtype_name: str, *, device: str 
     return values.to(dtype) + INITIAL_OFFSET
 
 
+def _canary_values(
+    torch: Any,
+    elements: int,
+    dtype_name: str,
+    canary_index: int,
+    *,
+    device: str | None = None,
+) -> Any:
+    dtype = _torch_dtype(torch, dtype_name)
+    values = torch.arange(elements, dtype=torch.int32, device=device) % 127
+    # Keep every value below 256 so integer patterns and the +3 update are
+    # exactly representable in BF16.
+    return values.to(dtype) + INITIAL_OFFSET + canary_index * 32
+
+
+def _canary_byte_offsets(
+    requested_bytes: int,
+    canary_elements: int,
+    dtype_name: str,
+) -> list[int]:
+    element_size = _element_size(dtype_name)
+    canary_bytes = canary_elements * element_size
+    if requested_bytes % element_size:
+        raise ValueError("mapped bytes must be divisible by the dtype size")
+    if canary_elements <= 0 or requested_bytes < canary_bytes * 3:
+        raise ValueError("mapping must hold three non-overlapping canaries")
+    middle = (requested_bytes // 2 // element_size) * element_size
+    last = requested_bytes - canary_bytes
+    offsets = [0, middle, last]
+    if len(set(offsets)) != 3 or middle + canary_bytes > requested_bytes:
+        raise ValueError("invalid first/middle/last canary layout")
+    return offsets
+
+
+def _bounded_canary_views(
+    tensor: Any,
+    byte_offsets: list[int],
+    canary_elements: int,
+    dtype_name: str,
+) -> list[Any]:
+    element_size = _element_size(dtype_name)
+    return [tensor.narrow(0, byte_offset // element_size, canary_elements) for byte_offset in byte_offsets]
+
+
+def _initialize_canaries(
+    torch: Any,
+    views: list[Any],
+    canary_elements: int,
+    dtype_name: str,
+    device_id: int,
+) -> None:
+    sources = []
+    for canary_index, view in enumerate(views):
+        source = _canary_values(
+            torch,
+            canary_elements,
+            dtype_name,
+            canary_index,
+            device=f"npu:{device_id}",
+        )
+        view.copy_(source)
+        sources.append(source)
+    torch.npu.synchronize()
+
+
+def _validate_canaries(
+    torch: Any,
+    views: list[Any],
+    canary_elements: int,
+    dtype_name: str,
+    *,
+    expected_add: float,
+    phase: str,
+) -> list[dict[str, float | int]]:
+    observed = [view.clone() for view in views]
+    torch.npu.synchronize()
+    results: list[dict[str, float | int]] = []
+    for canary_index, value in enumerate(observed):
+        value_cpu = value.cpu()
+        expected = (
+            _canary_values(
+                torch,
+                canary_elements,
+                dtype_name,
+                canary_index,
+            )
+            + expected_add
+        )
+        if not torch.equal(value_cpu, expected):
+            mismatch = int((value_cpu != expected).sum().item())
+            raise ProbeFailure(f"{phase} canary={canary_index} mismatch_count={mismatch}")
+        results.append(
+            {
+                "index": canary_index,
+                "checksum": float(value_cpu.float().sum().item()),
+                "first": float(value_cpu[0].item()),
+                "last": float(value_cpu[-1].item()),
+            }
+        )
+    return results
+
+
 def _construct_tensor(
     pointer: int,
     mapped_size: int,
@@ -222,6 +359,8 @@ def _importer(
     elements: int,
     dtype_name: str,
     row_width: int,
+    mapped_bytes: int,
+    canary_elements: int,
     set_access: bool,
 ) -> None:
     bridge: Bridge | None = None
@@ -229,17 +368,21 @@ def _importer(
     storage = None
     tensor = None
     torch = None
+    canary_views = None
     try:
         torch, torch_version, torch_npu_version = _initialize_npu(device_id)
         bridge = Bridge(library_path)
         can_access = bridge.enable_peer(device_id, peer_device_id)
         bare_tgid = bridge.get_bare_tgid(device_id)
+        free_before_import, total_hbm = bridge.hbm_mem_info(device_id)
         connection.send(
             {
                 "stage": "importer_ready",
                 "pid": os.getpid(),
                 "bare_tgid": bare_tgid,
                 "can_access_peer": can_access,
+                "hbm_free_before_import": free_before_import,
+                "hbm_total": total_hbm,
                 "torch_version": torch_version,
                 "torch_npu_version": torch_npu_version,
             }
@@ -253,64 +396,127 @@ def _importer(
             bridge.set_local_access(region)
         pointer = bridge.pointer(region)
         mapped_size = bridge.size(region)
+        if mapped_bytes and mapped_size != mapped_bytes:
+            raise ProbeFailure(f"mapped size mismatch: expected={mapped_bytes} " f"observed={mapped_size}")
+        bound_elements = mapped_size // _element_size(dtype_name) if mapped_bytes else elements
         storage, tensor = _construct_tensor(
             pointer,
             mapped_size,
             device_id,
-            elements,
+            bound_elements,
             dtype_name,
         )
-
-        observed = tensor.clone()
-        torch.npu.synchronize()
-        observed_cpu = observed.cpu()
-        expected = _expected_values(torch, elements, dtype_name)
-        if not torch.equal(observed_cpu, expected):
-            mismatch = int((observed_cpu != expected).sum().item())
-            raise ProbeFailure(f"remote clone mismatch_count={mismatch}")
-
-        selected_row_indices: list[int] = []
-        selected_row_checksum: float | None = None
-        if row_width:
-            if row_width <= 0 or elements % row_width:
-                raise ValueError("row_width must divide elements")
-            row_count = elements // row_width
-            selected_row_indices = sorted({0, row_count // 2, row_count - 1})
-            selected_index = torch.tensor(
-                selected_row_indices,
-                dtype=torch.int64,
-                device=f"npu:{device_id}",
+        free_after_map, _ = bridge.hbm_mem_info(device_id)
+        physical_allocation_calls, import_calls = bridge.call_counts()
+        if physical_allocation_calls != 0 or import_calls != 1:
+            raise ProbeFailure(
+                "unexpected importer VMM call counts: "
+                f"physical_allocation_calls={physical_allocation_calls} "
+                f"import_calls={import_calls}"
             )
-            selected_rows = tensor.view(row_count, row_width).index_select(
-                0,
-                selected_index,
+
+        if mapped_bytes:
+            importer_map_hbm_delta = free_before_import - free_after_map
+            canary_byte_offsets = _canary_byte_offsets(
+                mapped_bytes,
+                canary_elements,
+                dtype_name,
             )
+            canary_views = _bounded_canary_views(
+                tensor,
+                canary_byte_offsets,
+                canary_elements,
+                dtype_name,
+            )
+            canary_reads = _validate_canaries(
+                torch,
+                canary_views,
+                canary_elements,
+                dtype_name,
+                expected_add=0.0,
+                phase="importer-read",
+            )
+            for view in canary_views:
+                view.add_(CANARY_ADD_VALUE)
             torch.npu.synchronize()
-            selected_rows_cpu = selected_rows.cpu()
-            expected_selected = expected.view(row_count, row_width)[selected_row_indices]
-            if not torch.equal(selected_rows_cpu, expected_selected):
-                mismatch = int((selected_rows_cpu != expected_selected).sum().item())
-                raise ProbeFailure(f"remote selected-row mismatch_count={mismatch}")
-            selected_row_checksum = float(selected_rows_cpu.float().sum().item())
-
-        tensor.fill_(WRITE_VALUE)
-        torch.npu.synchronize()
-        importer_after_write = tensor.clone()
-        torch.npu.synchronize()
-        importer_after_write_cpu = importer_after_write.cpu()
-        if not torch.equal(
-            importer_after_write_cpu,
-            torch.full(
-                (elements,),
-                WRITE_VALUE,
-                dtype=_torch_dtype(torch, dtype_name),
-            ),
-        ):
-            raise ProbeFailure("importer fill_ self-read mismatch")
-
-        connection.send(
-            {
+            canary_writes = _validate_canaries(
+                torch,
+                canary_views,
+                canary_elements,
+                dtype_name,
+                expected_add=CANARY_ADD_VALUE,
+                phase="importer-write",
+            )
+            message = {
                 "stage": "importer_kernel_done",
+                "mode": "sparse_canary",
+                "pointer": pointer,
+                "mapped_size": mapped_size,
+                "bound_elements": bound_elements,
+                "canary_byte_offsets": canary_byte_offsets,
+                "canary_elements": canary_elements,
+                "canary_touched_bytes": (len(canary_byte_offsets) * canary_elements * _element_size(dtype_name)),
+                "canary_reads": canary_reads,
+                "canary_writes": canary_writes,
+                "write_add": CANARY_ADD_VALUE,
+                "set_access": set_access,
+                "hbm_free_before_import": free_before_import,
+                "hbm_free_after_map": free_after_map,
+                "hbm_free_delta_after_map": importer_map_hbm_delta,
+                "physical_allocation_calls": physical_allocation_calls,
+                "import_calls": import_calls,
+            }
+        else:
+            observed = tensor.clone()
+            torch.npu.synchronize()
+            observed_cpu = observed.cpu()
+            expected = _expected_values(torch, elements, dtype_name)
+            if not torch.equal(observed_cpu, expected):
+                mismatch = int((observed_cpu != expected).sum().item())
+                raise ProbeFailure(f"remote clone mismatch_count={mismatch}")
+
+            selected_row_indices: list[int] = []
+            selected_row_checksum: float | None = None
+            if row_width:
+                if row_width <= 0 or elements % row_width:
+                    raise ValueError("row_width must divide elements")
+                row_count = elements // row_width
+                selected_row_indices = sorted({0, row_count // 2, row_count - 1})
+                selected_index = torch.tensor(
+                    selected_row_indices,
+                    dtype=torch.int64,
+                    device=f"npu:{device_id}",
+                )
+                selected_rows = tensor.view(row_count, row_width).index_select(
+                    0,
+                    selected_index,
+                )
+                torch.npu.synchronize()
+                selected_rows_cpu = selected_rows.cpu()
+                expected_selected = expected.view(row_count, row_width)[selected_row_indices]
+                if not torch.equal(selected_rows_cpu, expected_selected):
+                    mismatch = int((selected_rows_cpu != expected_selected).sum().item())
+                    raise ProbeFailure(f"remote selected-row mismatch_count={mismatch}")
+                selected_row_checksum = float(selected_rows_cpu.float().sum().item())
+
+            tensor.fill_(WRITE_VALUE)
+            torch.npu.synchronize()
+            importer_after_write = tensor.clone()
+            torch.npu.synchronize()
+            importer_after_write_cpu = importer_after_write.cpu()
+            if not torch.equal(
+                importer_after_write_cpu,
+                torch.full(
+                    (elements,),
+                    WRITE_VALUE,
+                    dtype=_torch_dtype(torch, dtype_name),
+                ),
+            ):
+                raise ProbeFailure("importer fill_ self-read mismatch")
+
+            message = {
+                "stage": "importer_kernel_done",
+                "mode": "full_tensor",
                 "pointer": pointer,
                 "mapped_size": mapped_size,
                 "read_checksum": float(observed_cpu.sum().item()),
@@ -321,13 +527,15 @@ def _importer(
                 "write_value": WRITE_VALUE,
                 "set_access": set_access,
             }
-        )
+
+        connection.send(message)
 
         command = connection.recv()
         if command.get("op") != "cleanup":
             raise RuntimeError(f"unexpected importer command: {command!r}")
         tensor = None
         storage = None
+        canary_views = None
         observed = None
         observed_cpu = None
         selected_index = None
@@ -340,11 +548,18 @@ def _importer(
         torch.npu.synchronize()
         bridge.destroy(region)
         region = None
-        connection.send({"stage": "importer_unmapped"})
+        free_after_unmap, _ = bridge.hbm_mem_info(device_id)
+        connection.send(
+            {
+                "stage": "importer_unmapped",
+                "hbm_free_after_unmap": free_after_unmap,
+            }
+        )
     except BaseException as error:
         _send_error(connection, "importer", error)
     finally:
         tensor = None
+        canary_views = None
         del storage
         gc.collect()
         if bridge is not None and region is not None:
@@ -364,6 +579,8 @@ def _exporter(
     peer_device_id: int,
     elements: int,
     dtype_name: str,
+    mapped_bytes: int,
+    canary_elements: int,
     set_access: bool,
 ) -> None:
     bridge: Bridge | None = None
@@ -371,15 +588,19 @@ def _exporter(
     storage = None
     tensor = None
     torch = None
+    canary_views = None
     try:
         torch, torch_version, torch_npu_version = _initialize_npu(device_id)
         bridge = Bridge(library_path)
         can_access = bridge.enable_peer(device_id, peer_device_id)
+        free_before_allocate, total_hbm = bridge.hbm_mem_info(device_id)
         connection.send(
             {
                 "stage": "exporter_ready",
                 "pid": os.getpid(),
                 "can_access_peer": can_access,
+                "hbm_free_before_allocate": free_before_allocate,
+                "hbm_total": total_hbm,
                 "torch_version": torch_version,
                 "torch_npu_version": torch_npu_version,
             }
@@ -388,7 +609,7 @@ def _exporter(
         command = connection.recv()
         if command.get("op") != "create":
             raise RuntimeError(f"unexpected exporter command: {command!r}")
-        requested_size = elements * _element_size(dtype_name)
+        requested_size = mapped_bytes or elements * _element_size(dtype_name)
         region = bridge.create_local(device_id, requested_size)
         if set_access:
             bridge.set_local_access(region)
@@ -396,31 +617,90 @@ def _exporter(
         bridge.authorize_v2(shareable_handle, command["importer_bare_tgid"])
         pointer = bridge.pointer(region)
         mapped_size = bridge.size(region)
+        if mapped_bytes and mapped_size != mapped_bytes:
+            raise ProbeFailure(f"mapped size mismatch: expected={mapped_bytes} " f"observed={mapped_size}")
+        bound_elements = mapped_size // _element_size(dtype_name) if mapped_bytes else elements
         storage, tensor = _construct_tensor(
             pointer,
             mapped_size,
             device_id,
-            elements,
+            bound_elements,
             dtype_name,
         )
+        free_after_allocate, _ = bridge.hbm_mem_info(device_id)
+        physical_allocation_calls, import_calls = bridge.call_counts()
+        if physical_allocation_calls != 1 or import_calls != 0:
+            raise ProbeFailure(
+                "unexpected exporter VMM call counts: "
+                f"physical_allocation_calls={physical_allocation_calls} "
+                f"import_calls={import_calls}"
+            )
 
-        source = _expected_values(
-            torch,
-            elements,
-            dtype_name,
-            device=f"npu:{device_id}",
-        )
-        tensor.copy_(source)
-        torch.npu.synchronize()
-        initialized = tensor.clone()
-        torch.npu.synchronize()
-        initialized_cpu = initialized.cpu()
-        expected = _expected_values(torch, elements, dtype_name)
-        if not torch.equal(initialized_cpu, expected):
-            raise ProbeFailure("exporter copy_ initialization mismatch")
-        connection.send(
-            {
+        if mapped_bytes:
+            canary_byte_offsets = _canary_byte_offsets(
+                mapped_bytes,
+                canary_elements,
+                dtype_name,
+            )
+            canary_views = _bounded_canary_views(
+                tensor,
+                canary_byte_offsets,
+                canary_elements,
+                dtype_name,
+            )
+            _initialize_canaries(
+                torch,
+                canary_views,
+                canary_elements,
+                dtype_name,
+                device_id,
+            )
+            initialized_canaries = _validate_canaries(
+                torch,
+                canary_views,
+                canary_elements,
+                dtype_name,
+                expected_add=0.0,
+                phase="exporter-initialize",
+            )
+            message = {
                 "stage": "export_ready",
+                "mode": "sparse_canary",
+                "handle": shareable_handle,
+                "handle_size": len(shareable_handle),
+                "handle_type": HANDLE_TYPE,
+                "pointer": pointer,
+                "mapped_size": mapped_size,
+                "requested_size": requested_size,
+                "bound_elements": bound_elements,
+                "canary_byte_offsets": canary_byte_offsets,
+                "canary_elements": canary_elements,
+                "canary_touched_bytes": (len(canary_byte_offsets) * canary_elements * _element_size(dtype_name)),
+                "initialized_canaries": initialized_canaries,
+                "hbm_free_before_allocate": free_before_allocate,
+                "hbm_free_after_allocate": free_after_allocate,
+                "hbm_physical_delta": (free_before_allocate - free_after_allocate),
+                "physical_allocation_calls": physical_allocation_calls,
+                "import_calls": import_calls,
+            }
+        else:
+            source = _expected_values(
+                torch,
+                elements,
+                dtype_name,
+                device=f"npu:{device_id}",
+            )
+            tensor.copy_(source)
+            torch.npu.synchronize()
+            initialized = tensor.clone()
+            torch.npu.synchronize()
+            initialized_cpu = initialized.cpu()
+            expected = _expected_values(torch, elements, dtype_name)
+            if not torch.equal(initialized_cpu, expected):
+                raise ProbeFailure("exporter copy_ initialization mismatch")
+            message = {
+                "stage": "export_ready",
+                "mode": "full_tensor",
                 "handle": shareable_handle,
                 "handle_size": len(shareable_handle),
                 "handle_type": HANDLE_TYPE,
@@ -429,36 +709,53 @@ def _exporter(
                 "requested_size": requested_size,
                 "initial_checksum": float(initialized_cpu.sum().item()),
             }
-        )
+        connection.send(message)
 
         command = connection.recv()
         if command.get("op") != "validate":
             raise RuntimeError(f"unexpected exporter command: {command!r}")
-        after_remote_write = tensor.clone()
-        torch.npu.synchronize()
-        after_remote_write_cpu = after_remote_write.cpu()
-        expected_after_write = torch.full(
-            (elements,),
-            WRITE_VALUE,
-            dtype=_torch_dtype(torch, dtype_name),
-        )
-        if not torch.equal(after_remote_write_cpu, expected_after_write):
-            mismatch = int((after_remote_write_cpu != expected_after_write).sum().item())
-            raise ProbeFailure(f"exporter post-write mismatch_count={mismatch}")
-        connection.send(
-            {
+        if mapped_bytes:
+            validated_canaries = _validate_canaries(
+                torch,
+                canary_views,
+                canary_elements,
+                dtype_name,
+                expected_add=CANARY_ADD_VALUE,
+                phase="exporter-post-write",
+            )
+            validation_message = {
                 "stage": "exporter_validated",
+                "mode": "sparse_canary",
+                "validated_canaries": validated_canaries,
+                "write_add": CANARY_ADD_VALUE,
+            }
+        else:
+            after_remote_write = tensor.clone()
+            torch.npu.synchronize()
+            after_remote_write_cpu = after_remote_write.cpu()
+            expected_after_write = torch.full(
+                (elements,),
+                WRITE_VALUE,
+                dtype=_torch_dtype(torch, dtype_name),
+            )
+            if not torch.equal(after_remote_write_cpu, expected_after_write):
+                mismatch = int((after_remote_write_cpu != expected_after_write).sum().item())
+                raise ProbeFailure(f"exporter post-write mismatch_count={mismatch}")
+            validation_message = {
+                "stage": "exporter_validated",
+                "mode": "full_tensor",
                 "post_write_checksum": float(after_remote_write_cpu.sum().item()),
                 "post_write_first": float(after_remote_write_cpu[0].item()),
                 "post_write_last": float(after_remote_write_cpu[-1].item()),
             }
-        )
+        connection.send(validation_message)
 
         command = connection.recv()
         if command.get("op") != "cleanup":
             raise RuntimeError(f"unexpected exporter command: {command!r}")
         tensor = None
         storage = None
+        canary_views = None
         source = None
         initialized = None
         initialized_cpu = None
@@ -468,11 +765,19 @@ def _exporter(
         torch.npu.synchronize()
         bridge.destroy(region)
         region = None
-        connection.send({"stage": "exporter_freed"})
+        free_after_free, _ = bridge.hbm_mem_info(device_id)
+        connection.send(
+            {
+                "stage": "exporter_freed",
+                "hbm_free_after_free": free_after_free,
+                "hbm_recovered_bytes": free_after_free - free_after_allocate,
+            }
+        )
     except BaseException as error:
         _send_error(connection, "exporter", error)
     finally:
         tensor = None
+        canary_views = None
         del storage
         gc.collect()
         if bridge is not None and region is not None:
@@ -544,6 +849,21 @@ def parse_args() -> argparse.Namespace:
             "index_select representative rows before the write-back check."
         ),
     )
+    parser.add_argument(
+        "--mapped-bytes",
+        type=int,
+        default=0,
+        help=(
+            "Allocate and map this full byte count, bind one logical tensor, "
+            "and touch only bounded first/middle/last canary views."
+        ),
+    )
+    parser.add_argument(
+        "--canary-elements",
+        type=int,
+        default=256,
+        help="Elements in each bounded sparse canary view.",
+    )
     parser.add_argument("--stage-timeout", type=float, default=60.0)
     parser.add_argument(
         "--set-access",
@@ -555,22 +875,44 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
+    mode = "sparse_canary" if args.mapped_bytes else "full_tensor"
+    if args.mapped_bytes:
+        if args.row_width:
+            raise ValueError("--row-width cannot be used with --mapped-bytes")
+        _canary_byte_offsets(
+            args.mapped_bytes,
+            args.canary_elements,
+            args.dtype,
+        )
     started_at = time.time()
     result: dict[str, Any] = {
         "status": "BLOCKED",
         "hypothesis": (
-            "An importer-side ordinary torch NPU kernel can read an exporter "
-            "V2-mapped tensor and materialize selected rows locally without "
-            "a communication collective."
+            "A production-size V2-exported NPU0 allocation can be imported "
+            "and mapped on NPU1, bound as non-owning torch NPU storage, and "
+            "ordinary kernels can read/write bounded BF16 canaries without "
+            "a communication collective or importer physical allocation."
+            if args.mapped_bytes
+            else (
+                "An importer-side ordinary torch NPU kernel can read an "
+                "exporter V2-mapped tensor and materialize selected rows "
+                "locally without a communication collective."
+            )
         ),
         "config": {
+            "mode": mode,
             "exporter_device": args.exporter_device,
             "importer_device": args.importer_device,
             "elements": args.elements,
             "dtype": f"torch.{args.dtype}",
             "row_width": args.row_width,
+            "mapped_bytes": args.mapped_bytes,
+            "mapped_gib": args.mapped_bytes / (1024**3),
+            "canary_elements": args.canary_elements,
+            "canary_bytes_each": (args.canary_elements * _element_size(args.dtype)),
             "initial_offset": INITIAL_OFFSET,
             "write_value": WRITE_VALUE,
+            "canary_add_value": CANARY_ADD_VALUE,
             "set_access": args.set_access,
             "stage_timeout_seconds": args.stage_timeout,
             "library": str(Path(args.library).resolve()),
@@ -601,6 +943,8 @@ def main() -> int:
             args.elements,
             args.dtype,
             args.row_width,
+            args.mapped_bytes,
+            args.canary_elements,
             args.set_access,
         ),
     )
@@ -614,6 +958,8 @@ def main() -> int:
             args.importer_device,
             args.elements,
             args.dtype,
+            args.mapped_bytes,
+            args.canary_elements,
             args.set_access,
         ),
     )
