@@ -76,6 +76,48 @@ def _has_prefill(attn_state: AscendAttentionState) -> bool:
     }
 
 
+def _split_flat_slot_mapping(
+    slot_mapping: torch.Tensor,
+    block_size: int,
+) -> torch.Tensor:
+    """Convert flat slots to ``[block_id, in_page_offset]`` on device."""
+    return torch.stack(
+        [slot_mapping // block_size, slot_mapping % block_size],
+        dim=-1,
+    )
+
+
+def _build_aligned_slot_mappings(
+    slot_mapping: torch.Tensor,
+    packed_global_flat_slot_mapping: torch.Tensor | None,
+    num_rows: int,
+    block_size: int,
+) -> tuple[torch.Tensor, torch.Tensor | None]:
+    """Build local and packed-global slots with one compressor row count."""
+    local_rows = slot_mapping[:num_rows]
+    if packed_global_flat_slot_mapping is None:
+        return local_rows, None
+    return local_rows, _split_flat_slot_mapping(
+        packed_global_flat_slot_mapping[:num_rows],
+        block_size,
+    )
+
+
+def _packed_global_slots_for_c128(
+    packed_global_slots: torch.Tensor | None,
+    compressor_ratio: int,
+    num_input_tokens: int,
+) -> torch.Tensor | None:
+    """Gate and validate the packed-global producer metadata."""
+    if compressor_ratio != 128 or packed_global_slots is None:
+        return None
+    if packed_global_slots.ndim != 1:
+        raise ValueError("packed global slot mapping must be one-dimensional")
+    if packed_global_slots.shape[0] < num_input_tokens:
+        raise ValueError("packed global slot mapping is shorter than DSA input rows")
+    return packed_global_slots[:num_input_tokens]
+
+
 def _prepare_c128_owner_scatter(
     owner_cache: C128OwnerShardCache,
     slot_mapping: torch.Tensor,
@@ -168,6 +210,10 @@ class AscendDSAReqMetadata:
     qli_metadata: torch.Tensor = None
     cu_cmp_seqlen_list: torch.Tensor = None
     attn_mask: torch.Tensor | None = None
+    # Present only for packed C128 owner placement. Unlike ``slot_mapping``,
+    # these rows stay in the packed-global block domain so a no-barrier
+    # current-row overlay can address both local and remote destinations.
+    packed_global_slot_mapping: torch.Tensor | None = None
 
 
 @dataclass
@@ -248,6 +294,7 @@ class AscendDSACPMetadataBuilder(AttentionMetadataBuilder[AscendDSAMetadata]):
         self.num_actual_tokens: int | None = None
         self.block_table: torch.Tensor = None
         self.slot_mapping: torch.Tensor = None
+        self.packed_global_flat_slot_mapping: torch.Tensor | None = None
         self.seq_lens: torch.Tensor = None
         self.seq_lens_cpu: torch.Tensor = None
 
@@ -383,8 +430,14 @@ class AscendDSACPMetadataBuilder(AttentionMetadataBuilder[AscendDSAMetadata]):
             self.seq_lens_cpu = self.common_ratio_to_sas_metadata["seq_lens_cpu"]
 
         slot_mapping = common_attn_metadata.slot_mapping[:num_input_tokens]
-        self.slot_mapping[:num_input_tokens] = torch.stack(
-            [slot_mapping // self.block_size, slot_mapping % self.block_size], dim=-1
+        self.slot_mapping[:num_input_tokens] = _split_flat_slot_mapping(
+            slot_mapping,
+            self.block_size,
+        )
+        self.packed_global_flat_slot_mapping = _packed_global_slots_for_c128(
+            kwargs.get("packed_global_slot_mapping"),
+            self.compressor_ratio,
+            num_input_tokens,
         )
 
         self.block_table = common_attn_metadata.block_table_tensor[:num_reqs]
@@ -654,7 +707,12 @@ class AscendDSACPMetadataBuilder(AttentionMetadataBuilder[AscendDSAMetadata]):
             )
 
         slot_mapping_size = self._get_slot_mapping_size(input_positions_cpu, self.compressor_ratio)
-        slot_mapping = self.slot_mapping[:slot_mapping_size]
+        slot_mapping, packed_global_slot_mapping = _build_aligned_slot_mappings(
+            self.slot_mapping,
+            self.packed_global_flat_slot_mapping,
+            slot_mapping_size,
+            self.block_size,
+        )
 
         # --- SAS metadata (all requests combined) ---
         num_heads = self.model_config.hf_config.num_attention_heads
@@ -725,6 +783,7 @@ class AscendDSACPMetadataBuilder(AttentionMetadataBuilder[AscendDSAMetadata]):
             sas_metadata=sas_metadata,
             qli_metadata=qli_metadata,
             cu_cmp_seqlen_list=cu_cmp_seqlens,
+            packed_global_slot_mapping=packed_global_slot_mapping,
         )
 
     def _build_local_token_metadata(

@@ -101,8 +101,22 @@ class BlockTable:
             duplicate_size += num_speculative_tokens
         self.block_table = self._make_buffer(max_num_reqs * duplicate_size, logical_table_size, dtype=torch.int32)
         self.num_blocks_per_row = np.zeros(max_num_reqs, dtype=np.int32)
-        self.slot_mapping = self._make_buffer(
-            self.max_num_batched_tokens + 2 * self.pcp_world_size * self.max_num_reqs, dtype=torch.int32
+        slot_mapping_capacity = self.max_num_batched_tokens + 2 * self.pcp_world_size * self.max_num_reqs
+        self.slot_mapping = self._make_buffer(slot_mapping_capacity, dtype=torch.int32)
+        # Packed C128 owner placement rewrites the normal slot mapping in
+        # place: locally owned rows become owner-local slots and remote rows
+        # become padding. Preserve the pre-translation packed-global domain on
+        # device for the current-row overlay path. Other placements do not pay
+        # for this buffer and retain their established behavior.
+        self.packed_global_slot_mapping = (
+            torch.full(
+                (slot_mapping_capacity,),
+                PAD_SLOT_ID,
+                dtype=torch.int32,
+                device=self.device,
+            )
+            if self.packed_translator is not None and self.packed_translator.placement is PackedPlacement.C128_OWNER
+            else None
         )
 
         self.kernel_sizes = kernel_sizes
@@ -224,6 +238,7 @@ class BlockTable:
             PAD_ID=PAD_SLOT_ID,
             BLOCK_SIZE=1024,
         )
+        self._preserve_packed_global_slots(num_tokens)
         self._translate_packed_slots(num_tokens)
 
     def compute_slot_mapping_draft(self, req_indices: np.ndarray, positions: np.ndarray) -> None:
@@ -296,8 +311,27 @@ class BlockTable:
             if self.packed_translator is None:
                 self.slot_mapping.copy_to_gpu(req_indices.shape[0])
         if self.packed_translator is not None:
-            self._translate_packed_slots(req_indices.shape[0], cpu_source=True)
-            self.slot_mapping.copy_to_gpu(req_indices.shape[0])
+            num_slots = req_indices.shape[0]
+            if self.packed_global_slot_mapping is not None:
+                # The compressed mapping is produced on CPU today. Reuse its
+                # established H2D transfer, then snapshot and translate on
+                # device. Keep the CPU mirror translated as before without an
+                # additional host/device copy.
+                self.slot_mapping.copy_to_gpu(num_slots)
+                self._preserve_packed_global_slots(num_slots)
+                self._translate_packed_slots(num_slots)
+                self._translate_packed_slots(num_slots, cpu_source=True)
+            else:
+                self._translate_packed_slots(num_slots, cpu_source=True)
+                self.slot_mapping.copy_to_gpu(num_slots)
+
+    def _preserve_packed_global_slots(self, num_slots: int) -> None:
+        if self.packed_global_slot_mapping is None:
+            return
+        # Clear the complete reusable buffer before publishing the new active
+        # prefix so a shorter batch cannot expose rows from the prior step.
+        self.packed_global_slot_mapping.fill_(PAD_SLOT_ID)
+        self.packed_global_slot_mapping[:num_slots].copy_(self.slot_mapping.gpu[:num_slots])
 
     def _translate_packed_slots(
         self,
@@ -321,6 +355,8 @@ class BlockTable:
     def clear(self) -> None:
         self.block_table.fill_(0)
         self.block_table.cpu.fill_(0)
+        if self.packed_global_slot_mapping is not None:
+            self.packed_global_slot_mapping.fill_(PAD_SLOT_ID)
 
     def _convert_physical_to_logical_blocks(
         self,
@@ -345,6 +381,10 @@ class BlockTable:
     def get_device_tensor(self) -> torch.Tensor:
         """Returns the device tensor of the block table."""
         return self.block_table.gpu
+
+    def get_packed_global_slot_mapping(self) -> torch.Tensor | None:
+        """Return the pre-owner-translation device slots, when available."""
+        return self.packed_global_slot_mapping
 
     def get_cpu_tensor(self) -> torch.Tensor:
         """Returns the CPU tensor of the block table."""

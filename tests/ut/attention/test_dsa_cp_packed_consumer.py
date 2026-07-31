@@ -19,9 +19,12 @@ from vllm_ascend.attention.context_parallel.c128_packed_owner_route import (
     C128PackedSegment,
 )
 from vllm_ascend.attention.context_parallel.dsa_cp import (
+    _build_aligned_slot_mappings,
     _compressor_state_execution_block_table,
     _materialize_c128_owner_cache,
+    _packed_global_slots_for_c128,
     _prepare_c128_owner_scatter,
+    _split_flat_slot_mapping,
     _swa_execution_block_table,
 )
 
@@ -133,6 +136,50 @@ def test_packed_scatter_consumes_owner_local_slots_without_second_translation() 
         torch.tensor([[2], [3], [6]], dtype=torch.int32),
     )
     assert expected_rows == 5
+
+
+def test_packed_global_current_slots_keep_compressor_row_alignment() -> None:
+    block_size = 128
+    local_rows = _split_flat_slot_mapping(
+        torch.tensor([-1, 0, -1, 128, -1], dtype=torch.int32),
+        block_size,
+    )
+    packed_global_flat_slots = torch.tensor(
+        [-1, 0, 512, 640, -1],
+        dtype=torch.int32,
+    )
+
+    local_rows, packed_global_rows = _build_aligned_slot_mappings(
+        local_rows,
+        packed_global_flat_slots,
+        num_rows=4,
+        block_size=block_size,
+    )
+
+    assert packed_global_rows is not None
+    assert local_rows.shape == packed_global_rows.shape == (4, 2)
+    torch.testing.assert_close(
+        packed_global_rows,
+        torch.tensor(
+            [[-1, 127], [0, 0], [4, 0], [5, 0]],
+            dtype=torch.int32,
+        ),
+    )
+
+
+def test_packed_global_current_slots_are_exposed_only_for_c128() -> None:
+    flat_slots = torch.tensor([0, 512, 640, -1, -1], dtype=torch.int32)
+
+    assert _packed_global_slots_for_c128(None, 128, 4) is None
+    assert _packed_global_slots_for_c128(flat_slots, 4, 4) is None
+    selected = _packed_global_slots_for_c128(flat_slots, 128, 4)
+    assert selected is not None
+    torch.testing.assert_close(selected, flat_slots[:4])
+
+    with pytest.raises(ValueError, match="one-dimensional"):
+        _packed_global_slots_for_c128(flat_slots.view(1, -1), 128, 4)
+    with pytest.raises(ValueError, match="shorter than DSA input rows"):
+        _packed_global_slots_for_c128(flat_slots[:2], 128, 4)
 
 
 def test_packed_scatter_masks_sentinel_and_padding_without_device_sync() -> None:

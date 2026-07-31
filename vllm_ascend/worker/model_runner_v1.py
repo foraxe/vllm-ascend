@@ -2843,9 +2843,13 @@ class NPUModelRunner(GPUModelRunner):
                 num_reqs,
             )
 
-        def _get_block_table_and_slot_mapping(kv_cache_gid: int, total_num_scheduled_tokens_compressed_list: list[int]):
+        def _get_block_table_and_slot_mapping(
+            kv_cache_gid: int,
+            total_num_scheduled_tokens_compressed_list: list[int] | None,
+        ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor | None]:
             assert num_reqs_padded is not None and num_tokens_padded is not None
             kv_cache_spec = kv_cache_groups[kv_cache_gid].kv_cache_spec
+            packed_global_slot_mapping = None
             if self.pcp_size > 1:
                 total_num_pcp_pads = sum(self.pcp_manager.num_pcp_pads_cpu[:num_reqs])
                 if self.pcp_manager.pcp_use_hybrid_attn:
@@ -2870,16 +2874,34 @@ class NPUModelRunner(GPUModelRunner):
             else:
                 blk_table = self.input_batch.block_table[kv_cache_gid]
                 slot_mapping = blk_table.slot_mapping.gpu[:maybe_pcp_full_tokens]
-                maybe_num_reqs_padded = num_reqs_padded * self.decode_token_per_req if self.use_cp else num_reqs_padded
+                packed_global_slots = blk_table.get_packed_global_slot_mapping()
+                if packed_global_slots is not None and self.pcp_size == 1:
+                    packed_global_slot_mapping = packed_global_slots[
+                        :maybe_pcp_full_tokens
+                    ]
+                maybe_num_reqs_padded = (
+                    num_reqs_padded * self.decode_token_per_req
+                    if self.use_cp
+                    else num_reqs_padded
+                )
                 blk_table_tensor = blk_table.get_device_tensor()[:maybe_num_reqs_padded]
 
                 # Fill unused with -1. Needed for reshape_and_cache in full cuda
                 # graph mode. `blk_table_tensor` -1 to match mamba PAD_SLOT_ID
                 if self.pcp_size == 1:
                     if self.use_compress and total_num_scheduled_tokens_compressed_list is not None:
-                        slot_mapping[
+                        num_compressed_tokens = (
                             total_num_scheduled_tokens_compressed_list[
-                                kv_cache_gid]:num_tokens_padded].fill_(-1)
+                                kv_cache_gid
+                            ]
+                        )
+                        slot_mapping[
+                            num_compressed_tokens:num_tokens_padded
+                        ].fill_(-1)
+                        if packed_global_slot_mapping is not None:
+                            packed_global_slot_mapping[
+                                num_compressed_tokens:num_tokens_padded
+                            ].fill_(-1)
                     elif self.use_compress:
                         # DSA dummy/graph-capture runs do not go through
                         # _prepare_inputs(), so no fresh compressed cache
@@ -2888,9 +2910,17 @@ class NPUModelRunner(GPUModelRunner):
                         # and [block, offset] scatter indices to DSA kernels.
                         slot_mapping[:num_tokens_padded].fill_(0)
                         blk_table_tensor[:maybe_num_reqs_padded].fill_(0)
+                        if packed_global_slot_mapping is not None:
+                            packed_global_slot_mapping[
+                                :num_tokens_padded
+                            ].fill_(-1)
                     else:
                         slot_mapping[num_tokens:num_tokens_padded].fill_(-1)
                         blk_table_tensor[num_reqs:num_reqs_padded].fill_(0)
+                        if packed_global_slot_mapping is not None:
+                            packed_global_slot_mapping[
+                                num_tokens:num_tokens_padded
+                            ].fill_(-1)
             if self.pcp_size > 1:
                 slot_mapping = self.pcp_manager.get_padded_slot_mapping(
                     num_tokens,
@@ -2909,7 +2939,11 @@ class NPUModelRunner(GPUModelRunner):
                     self.routed_experts_slot_mapping_device[:n].copy_(
                         slot_mapping
                     )
-            return blk_table_tensor, slot_mapping
+            return (
+                blk_table_tensor,
+                slot_mapping,
+                packed_global_slot_mapping,
+            )
 
         if self.use_compress and num_scheduled_tokens_compressed_list is not None:
             total_num_scheduled_tokens_compressed_list = [
@@ -2922,8 +2956,13 @@ class NPUModelRunner(GPUModelRunner):
             total_num_scheduled_tokens_compressed_list = None
             num_reqs_actual = num_reqs
 
-        block_table_gid_0, slot_mapping_gid_0 = _get_block_table_and_slot_mapping(
-            0, total_num_scheduled_tokens_compressed_list)  # type: ignore[arg-type]
+        (
+            block_table_gid_0,
+            slot_mapping_gid_0,
+            packed_global_slot_mapping_gid_0,
+        ) = _get_block_table_and_slot_mapping(
+            0, total_num_scheduled_tokens_compressed_list
+        )  # type: ignore[arg-type]
         self.long_seq_metadata, block_table_gid_0 = _get_pcp_metadata(block_table_gid_0)
         num_computed_tokens_cpu = self.input_batch.num_computed_tokens_cpu_tensor[
             :num_reqs_padded
@@ -2983,6 +3022,7 @@ class NPUModelRunner(GPUModelRunner):
             prefill_ratio_to_sas_metadata: dict,
             decode_ratio_to_sas_metadata: dict,
             common_ratio_to_sas_metadata: dict,
+            packed_global_slot_mapping: torch.Tensor | None,
             ubid: int | None = None,
         ) -> None:
             attn_group = self.attn_groups[kv_cache_gid][attn_gid]
@@ -3018,6 +3058,14 @@ class NPUModelRunner(GPUModelRunner):
                         common_ratio_to_sas_metadata=common_ratio_to_sas_metadata,
                         block_size=attn_group.kv_cache_spec.block_size,
                         )
+
+                if (
+                    isinstance(builder, AscendDSACPMetadataBuilder)
+                    and packed_global_slot_mapping is not None
+                ):
+                    extra_attn_metadata_args[
+                        "packed_global_slot_mapping"
+                    ] = packed_global_slot_mapping
 
             # add kvcomp_metadata into common_attn_metadata
             if (for_cudagraph_capture
@@ -3058,6 +3106,7 @@ class NPUModelRunner(GPUModelRunner):
         spec_decode_common_attn_metadata = None
         for kv_cache_gid, kv_cache_group in enumerate(self.kv_cache_config.kv_cache_groups):
             cm = copy(cm_base)  # shallow copy
+            packed_global_slot_mapping = packed_global_slot_mapping_gid_0
             # Basically only the encoder seq_lens, block_table and slot_mapping change
             # for each kv_cache_group.
             cm.encoder_seq_lens, cm.encoder_seq_lens_cpu = self._get_encoder_seq_lens(
@@ -3078,8 +3127,13 @@ class NPUModelRunner(GPUModelRunner):
                     cm.query_start_loc = self.gdn_query_start_loc.gpu[: num_reqs_padded + 1]
 
             if kv_cache_gid > 0:
-                cm.block_table_tensor, cm.slot_mapping = _get_block_table_and_slot_mapping(
-                    kv_cache_gid, total_num_scheduled_tokens_compressed_list)  # type: ignore[arg-type]
+                (
+                    cm.block_table_tensor,
+                    cm.slot_mapping,
+                    packed_global_slot_mapping,
+                ) = _get_block_table_and_slot_mapping(
+                    kv_cache_gid, total_num_scheduled_tokens_compressed_list
+                )  # type: ignore[arg-type]
             if self.speculative_config and spec_decode_common_attn_metadata is None:
                 if isinstance(self.drafter, AscendEagleProposer | AscendDraftModelProposer | AscendDflashProposer):
                     if self.drafter.attn_layer_names[0] in kv_cache_group.layer_names:
@@ -3093,7 +3147,7 @@ class NPUModelRunner(GPUModelRunner):
                 _build_attn_group_metadata(
                     kv_cache_gid, attn_gid, cm, num_reqs_actual,
                     prefill_ratio_to_sas_metadata, decode_ratio_to_sas_metadata,
-                    common_ratio_to_sas_metadata)
+                    common_ratio_to_sas_metadata, packed_global_slot_mapping)
         if self.is_mm_prefix_lm:
             req_doc_ranges = {}
             for req_id in self.input_batch.req_ids:

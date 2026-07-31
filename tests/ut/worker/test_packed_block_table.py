@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM-Ascend project
 
+import inspect
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -297,6 +298,7 @@ def test_hybrid_slot_translation_restores_component_physical_offsets() -> None:
         table.slot_mapping.np[:4],
         np.array([0, 64, 128, 192], dtype=np.int32),
     )
+    assert table.get_packed_global_slot_mapping() is None
 
 
 def test_c128_slots_are_owner_local_and_reserve_physical_slot_zero() -> None:
@@ -325,6 +327,77 @@ def test_c128_slots_are_owner_local_and_reserve_physical_slot_zero() -> None:
         table.slot_mapping.np[:8],
         np.array([0, -1, 128, -1, -1, -1, 256, -1], dtype=np.int32),
     )
+
+
+def test_c128_preserves_global_current_slots_and_clears_reused_tail() -> None:
+    table = _block_table(
+        block_size=128,
+        kernel_size=128,
+        translator=_translator(
+            _plan(),
+            "c128",
+            "c128_owner",
+            PackedPlacement.C128_OWNER,
+            tp_rank=1,
+        ),
+        cp_world_size=2,
+        cp_rank=1,
+    )
+    table.add_row([0, 4, 5], row_idx=0)
+
+    table.compute_slot_mapping_draft(
+        req_indices=np.zeros(6, dtype=np.int32),
+        positions=np.array([0, 1, 256, 257, 512, 513], dtype=np.int32),
+    )
+
+    # The ordinary mapping is owner-local: global page 4 is remote, page 5
+    # becomes owner-local page 1, and the CP mask remains padding. The separate
+    # device buffer retains the corresponding packed-global source rows.
+    np.testing.assert_array_equal(
+        table.slot_mapping.np[:6],
+        np.array([-1, 0, -1, -1, -1, 128], dtype=np.int32),
+    )
+    torch.testing.assert_close(
+        table.slot_mapping.gpu[:6],
+        torch.tensor([-1, 0, -1, -1, -1, 128], dtype=torch.int32),
+    )
+    global_slots = table.get_packed_global_slot_mapping()
+    assert global_slots is not None
+    torch.testing.assert_close(
+        global_slots[:6],
+        torch.tensor([-1, 0, -1, 512, -1, 640], dtype=torch.int32),
+    )
+
+    # Reusing the table for a shorter batch replaces the active prefix and
+    # clears every old tail row instead of leaking the previous request.
+    table.compute_slot_mapping_draft(
+        req_indices=np.zeros(2, dtype=np.int32),
+        positions=np.array([1, 513], dtype=np.int32),
+    )
+    torch.testing.assert_close(
+        global_slots[:6],
+        torch.tensor([0, 640, -1, -1, -1, -1], dtype=torch.int32),
+    )
+
+    table.clear()
+    torch.testing.assert_close(
+        global_slots,
+        torch.full_like(global_slots, -1),
+    )
+
+
+def test_c128_global_slot_snapshot_has_no_host_sync_or_collective() -> None:
+    source = inspect.getsource(BlockTable._preserve_packed_global_slots)
+    for forbidden in (
+        ".item(",
+        ".tolist(",
+        ".cpu(",
+        'to("cpu"',
+        "all_gather",
+        "all_to_all",
+        "barrier",
+    ):
+        assert forbidden not in source
 
 
 @pytest.mark.parametrize("tp_rank", range(4))
@@ -729,6 +802,7 @@ def test_input_batch_activates_only_explicit_translator_dependency() -> None:
     )
 
     assert input_batch.block_table[0].packed_translator is translator
+    assert input_batch.block_table[0].get_packed_global_slot_mapping() is not None
     feature_off_batch = NPUInputBatch(
         max_num_reqs=1,
         max_model_len=128,
@@ -740,6 +814,7 @@ def test_input_batch_activates_only_explicit_translator_dependency() -> None:
         kernel_block_sizes=[[128]],
     )
     assert feature_off_batch.block_table[0].packed_translator is None
+    assert feature_off_batch.block_table[0].get_packed_global_slot_mapping() is None
 
 
 def _snapshot_row(
