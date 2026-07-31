@@ -138,6 +138,9 @@ def _materialize_c128_owner_cache(
     owner_cache: C128OwnerShardCache,
     block_table: torch.Tensor,
     *,
+    peer_materialization_plan: object | None,
+    peer_current_row_overlay: object | None,
+    current_rows: torch.Tensor | None,
     selective: bool,
     tp_rank: int,
     group,
@@ -149,6 +152,20 @@ def _materialize_c128_owner_cache(
     this materialization boundary, then returns the scratch-local table
     consumed by sparse attention.
     """
+    if owner_cache.peer_materializer is not None:
+        if (
+            peer_materialization_plan is None
+            or peer_current_row_overlay is None
+            or current_rows is None
+        ):
+            raise RuntimeError(
+                "packed C128 peer materialization metadata is incomplete"
+            )
+        return owner_cache.materialize_peer_for_attention(
+            peer_materialization_plan,
+            overlay=peer_current_row_overlay,
+            current_rows=current_rows,
+        )
     materialize = owner_cache.materialize_selected_for_attention if selective else owner_cache.materialize_for_attention
     return materialize(
         block_table,
@@ -214,6 +231,8 @@ class AscendDSAReqMetadata:
     # these rows stay in the packed-global block domain so a no-barrier
     # current-row overlay can address both local and remote destinations.
     packed_global_slot_mapping: torch.Tensor | None = None
+    c128_peer_materialization_plan: object | None = None
+    c128_peer_current_row_overlay: object | None = None
 
 
 @dataclass
@@ -445,6 +464,24 @@ class AscendDSACPMetadataBuilder(AttentionMetadataBuilder[AscendDSAMetadata]):
         req_metadata = self.build_req_metadata(
             common_attn_metadata, input_positions, input_positions_cpu, num_input_tokens, num_reqs_actual, attn_state
         )
+        peer_materialization = kwargs.get(
+            "c128_peer_materialization_plan"
+        )
+        peer_overlay = kwargs.get("c128_peer_current_row_overlay")
+        if (peer_materialization is None) != (peer_overlay is None):
+            raise ValueError(
+                "C128 peer materialization and overlay must be provided "
+                "together"
+            )
+        if peer_materialization is not None:
+            if self.compressor_ratio != 128:
+                raise ValueError(
+                    "peer materialization is valid only for C128 metadata"
+                )
+            req_metadata.c128_peer_materialization_plan = (
+                peer_materialization
+            )
+            req_metadata.c128_peer_current_row_overlay = peer_overlay
 
         return self.metadata_cls(  # type: ignore
             num_input_tokens=common_attn_metadata.num_input_tokens,
@@ -1623,6 +1660,15 @@ class AscendDSACPImpl(DSAAttentionImpl):
                 cmp_kv, cmp_block_table = _materialize_c128_owner_cache(
                     c128_owner_cache,
                     cmp_block_table,
+                    peer_materialization_plan=(
+                        compressor_attn_metadata.req_metadata
+                        .c128_peer_materialization_plan
+                    ),
+                    peer_current_row_overlay=(
+                        compressor_attn_metadata.req_metadata
+                        .c128_peer_current_row_overlay
+                    ),
+                    current_rows=compressed_kv,
                     selective=self.enable_c128_owner_selective_stage,
                     tp_rank=self.tp_rank,
                     group=self.tp_group.device_group,

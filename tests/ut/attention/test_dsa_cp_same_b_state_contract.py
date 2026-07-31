@@ -217,6 +217,9 @@ def test_c128_state_interface_continues_across_5120_plus_3080_on_replicated_view
     first_attention_view, first_attention_table = _materialize_c128_owner_cache(
         owner_cache,
         c128_attention_global_table,
+        peer_materialization_plan=None,
+        peer_current_row_overlay=None,
+        current_rows=None,
         selective=selective,
         tp_rank=0,
         group="hccl",
@@ -242,6 +245,9 @@ def test_c128_state_interface_continues_across_5120_plus_3080_on_replicated_view
     second_attention_view, second_attention_table = _materialize_c128_owner_cache(
         owner_cache,
         c128_attention_global_table,
+        peer_materialization_plan=None,
+        peer_current_row_overlay=None,
+        current_rows=None,
         selective=selective,
         tp_rank=0,
         group="hccl",

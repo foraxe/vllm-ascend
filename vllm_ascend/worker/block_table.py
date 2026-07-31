@@ -118,6 +118,15 @@ class BlockTable:
             if self.packed_translator is not None and self.packed_translator.placement is PackedPlacement.C128_OWNER
             else None
         )
+        self.packed_global_slot_mapping_cpu = (
+            np.full(
+                (slot_mapping_capacity,),
+                PAD_SLOT_ID,
+                dtype=np.int32,
+            )
+            if self.packed_global_slot_mapping is not None
+            else None
+        )
 
         self.kernel_sizes = kernel_sizes
         self.cp_kv_cache_interleave_size = cp_kv_cache_interleave_size
@@ -239,6 +248,10 @@ class BlockTable:
             BLOCK_SIZE=1024,
         )
         self._preserve_packed_global_slots(num_tokens)
+        if self.packed_global_slot_mapping_cpu is not None:
+            # This GPU-only path has no authoritative CPU source. Never leave
+            # a certificate from the preceding request visible.
+            self.packed_global_slot_mapping_cpu.fill(PAD_SLOT_ID)
         self._translate_packed_slots(num_tokens)
 
     def compute_slot_mapping_draft(self, req_indices: np.ndarray, positions: np.ndarray) -> None:
@@ -320,6 +333,7 @@ class BlockTable:
                 self.slot_mapping.copy_to_gpu(num_slots)
                 self._preserve_packed_global_slots(num_slots)
                 self._translate_packed_slots(num_slots)
+                self._preserve_packed_global_slots_cpu(num_slots)
                 self._translate_packed_slots(num_slots, cpu_source=True)
             else:
                 self._translate_packed_slots(num_slots, cpu_source=True)
@@ -332,6 +346,15 @@ class BlockTable:
         # prefix so a shorter batch cannot expose rows from the prior step.
         self.packed_global_slot_mapping.fill_(PAD_SLOT_ID)
         self.packed_global_slot_mapping[:num_slots].copy_(self.slot_mapping.gpu[:num_slots])
+
+    def _preserve_packed_global_slots_cpu(self, num_slots: int) -> None:
+        """Snapshot the owner write domain before its in-place CPU rewrite."""
+        if self.packed_global_slot_mapping_cpu is None:
+            return
+        self.packed_global_slot_mapping_cpu.fill(PAD_SLOT_ID)
+        self.packed_global_slot_mapping_cpu[:num_slots] = (
+            self.slot_mapping.np[:num_slots]
+        )
 
     def _translate_packed_slots(
         self,
@@ -357,6 +380,8 @@ class BlockTable:
         self.block_table.cpu.fill_(0)
         if self.packed_global_slot_mapping is not None:
             self.packed_global_slot_mapping.fill_(PAD_SLOT_ID)
+        if self.packed_global_slot_mapping_cpu is not None:
+            self.packed_global_slot_mapping_cpu.fill(PAD_SLOT_ID)
 
     def _convert_physical_to_logical_blocks(
         self,
@@ -385,6 +410,10 @@ class BlockTable:
     def get_packed_global_slot_mapping(self) -> torch.Tensor | None:
         """Return the pre-owner-translation device slots, when available."""
         return self.packed_global_slot_mapping
+
+    def get_packed_global_slot_mapping_cpu(self) -> np.ndarray | None:
+        """Return CPU current rows captured before owner-local translation."""
+        return self.packed_global_slot_mapping_cpu
 
     def get_cpu_tensor(self) -> torch.Tensor:
         """Returns the CPU tensor of the block table."""

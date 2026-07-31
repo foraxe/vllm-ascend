@@ -987,6 +987,10 @@ class PackedArenaRuntime:
         except BaseException as error:
             retained = getattr(error, "lease", None)
             if retained is not None:
+                if not callable(getattr(retained, "close", None)):
+                    raise TypeError(
+                        "retained packed peer lease must be closeable"
+                    ) from error
                 self._peer_lease = retained
             raise
         if peer_lease is None or not callable(
@@ -1061,6 +1065,27 @@ class PackedArenaRuntime:
         )
         self._installed_view_keys.add(view_key)
 
+    def install_teardown_dependency(
+        self,
+        dependency_key: str,
+        release: Callable[[], None],
+    ) -> None:
+        """Register a non-arena dependency released before peer unmapping."""
+        self._require_open()
+        if not dependency_key:
+            raise ValueError("packed-arena dependency key must be non-empty")
+        if not callable(release):
+            raise TypeError("packed-arena dependency releaser must be callable")
+        token = self._next_view_token
+        self._next_view_token += 1
+        self._view_owners.append(
+            _PackedArenaViewOwner(
+                token=token,
+                bucket=f"dependency:{dependency_key}",
+                release=release,
+            )
+        )
+
     def seal_views(self) -> None:
         """Prove every plan-required component-copy and scratch view exists."""
         self._require_open()
@@ -1078,6 +1103,15 @@ class PackedArenaRuntime:
         """
         if self._state is not PackedArenaRuntimeState.SEALED:
             raise RuntimeError("packed-arena runtime must be sealed before publication; " f"state={self._state.value}")
+        if self._peer_lease is not None and getattr(
+            self._peer_lease,
+            "consumer_views_committed",
+            False,
+        ) is not True:
+            raise RuntimeError(
+                "packed-arena peer consumer views must commit before "
+                "publication"
+            )
         self._state = PackedArenaRuntimeState.PUBLISHED
 
     def release_tensor_views(self) -> None:

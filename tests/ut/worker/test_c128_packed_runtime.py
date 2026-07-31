@@ -709,6 +709,8 @@ def test_composite_runtime_closes_views_then_peer_then_local_arena() -> None:
     runtime = _open_runtime(events)
 
     class PeerLease:
+        consumer_views_committed = True
+
         def close(self) -> None:
             events.append(("close_peer",))
 
@@ -744,6 +746,7 @@ def test_composite_runtime_retains_failed_peer_before_local_close() -> None:
     runtime = _open_runtime(events)
 
     class RetryPeerLease:
+        consumer_views_committed = True
         attempts = 0
 
         def close(self) -> None:
@@ -768,6 +771,37 @@ def test_composite_runtime_retains_failed_peer_before_local_close() -> None:
     assert runtime.peer_lease is None
     assert runtime.state is PackedArenaRuntimeState.CLOSED
     assert events.index(("close_peer", 2)) < events.index(("close_binding",))
+
+
+def test_partial_peer_open_is_retained_for_retry_before_local_close() -> None:
+    events: list[tuple[object, ...]] = []
+    runtime = _open_runtime(events)
+
+    class PartialPeer:
+        def close(self) -> None:
+            events.append(("close_partial_peer",))
+
+    partial = PartialPeer()
+
+    class PeerOpenError(RuntimeError):
+        def __init__(self) -> None:
+            self.lease = partial
+            super().__init__("lost peer startup control")
+
+    def fail_open(_owner):
+        raise PeerOpenError()
+
+    with pytest.raises(PeerOpenError, match="lost peer startup control"):
+        runtime.open_peer_lease(fail_open)
+    assert runtime.peer_lease is partial
+    events.clear()
+
+    runtime.close()
+
+    assert events.index(("close_partial_peer",)) < events.index(
+        ("close_binding",)
+    )
+    assert runtime.state is PackedArenaRuntimeState.CLOSED
 
 
 def test_failed_view_install_does_not_publish_a_lease_pin() -> None:

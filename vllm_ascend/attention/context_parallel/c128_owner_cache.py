@@ -21,7 +21,7 @@ ownership or compressor-state semantics.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 import torch
@@ -287,6 +287,16 @@ class C128OwnerShardCache:
     tp_size: int
     debug: bool = False
     packed_route: C128PackedOwnerRoute | None = None
+    _peer_materializer: object | None = field(
+        default=None,
+        init=False,
+        repr=False,
+    )
+    _peer_materialization_calls: int = field(
+        default=0,
+        init=False,
+        repr=False,
+    )
 
     def _trace(self, message: str) -> None:
         if self.debug:
@@ -299,6 +309,51 @@ class C128OwnerShardCache:
     @property
     def stage_capacity_pages(self) -> int:
         return self.stage_cache.shape[0]
+
+    @property
+    def peer_materializer(self) -> object | None:
+        return self._peer_materializer
+
+    @property
+    def peer_materialization_calls(self) -> int:
+        return self._peer_materialization_calls
+
+    def attach_peer_materializer(self, materializer: object) -> None:
+        """Attach one startup-validated, non-owning peer executor."""
+        if self.packed_route is None:
+            raise RuntimeError(
+                "peer materialization requires a packed C128 route"
+            )
+        if self._peer_materializer is not None:
+            raise RuntimeError("C128 peer materializer is already attached")
+        if getattr(materializer, "route", None) != self.packed_route:
+            raise ValueError("C128 peer materializer route mismatch")
+        if getattr(materializer, "scratch", None) is not self.stage_cache:
+            raise ValueError("C128 peer materializer scratch mismatch")
+        self._peer_materializer = materializer
+
+    def drop_peer_materializer(self) -> None:
+        """Drop all borrowed peer-root views before peer unmap."""
+        self._peer_materializer = None
+
+    def materialize_peer_for_attention(
+        self,
+        plan: object,
+        *,
+        overlay: object,
+        current_rows: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Run the sealed peer executor with no lifecycle or collective work."""
+        materializer = self._peer_materializer
+        if materializer is None:
+            raise RuntimeError("C128 peer materializer is not attached")
+        self._peer_materialization_calls += 1
+        view = materializer.materialize_prevalidated(
+            plan,
+            overlay=overlay,
+            current_rows=current_rows,
+        )
+        return view.cache, view.block_table
 
     def _validate_packed_views(
         self,

@@ -1004,3 +1004,46 @@ class C128PeerMaterializer:
             cache=self.scratch,
             block_table=plan.scratch_local_block_table,
         )
+
+    def materialize_prevalidated(
+        self,
+        plan: C128PeerCompiledMaterializationPlan,
+        *,
+        overlay: C128PeerCompiledDeviceCurrentRowOverlay,
+        current_rows: torch.Tensor,
+    ) -> C128PeerMaterializedView:
+        """Execute startup/request-compile validated metadata on the hot path.
+
+        The compressor may expose an ABI padding row.  Slice by the certified
+        metadata row count without querying the asynchronous result's shape;
+        every source index is already bounded by that certificate.
+        """
+        for owner_batch in plan.owner_batches:
+            selected_pages = self._roots[owner_batch.owner_rank].index_select(
+                0,
+                owner_batch.owner_local_slots,
+            )
+            self.scratch.index_copy_(
+                0,
+                owner_batch.scratch_slots,
+                selected_pages,
+            )
+
+        certified_rows = current_rows[:overlay.expected_source_rows]
+        if overlay.entry_count:
+            selected_rows = certified_rows.index_select(
+                0,
+                overlay.source_rows,
+            )
+            self.scratch.view(
+                -1,
+                *self.scratch.shape[2:],
+            ).index_copy_(
+                0,
+                overlay.flat_scratch_slots,
+                selected_rows,
+            )
+        return C128PeerMaterializedView(
+            cache=self.scratch,
+            block_table=plan.scratch_local_block_table,
+        )

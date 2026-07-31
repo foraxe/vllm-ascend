@@ -698,6 +698,33 @@ def test_peer_lease_maps_once_then_request_path_only_returns_alias() -> None:
     assert counters.request_map_calls == 0
     assert counters.request_control_collective_calls == 0
     assert counters.request_fence_calls == 0
+
+
+def test_consumer_views_commit_is_collective_and_exactly_once() -> None:
+    trace: list[tuple[object, ...]] = []
+    lease, _, _, _ = _open_fake_lease(trace)
+
+    lease.commit_consumer_views()
+
+    assert lease.consumer_views_committed
+    assert ("gather_stage", "consumer_views", True) in trace
+    assert lease.counters.startup_control_exchange_calls == 5
+    with pytest.raises(RuntimeError, match="already attempted"):
+        lease.commit_consumer_views()
+
+
+def test_local_consumer_view_failure_is_globally_rejected() -> None:
+    trace: list[tuple[object, ...]] = []
+    lease, _, _, _ = _open_fake_lease(trace)
+
+    with pytest.raises(
+        PackedVmmPeerStartupError,
+        match="local view failed",
+    ):
+        lease.commit_consumer_views(RuntimeError("local view failed"))
+
+    assert not lease.consumer_views_committed
+    assert ("gather_stage", "consumer_views", False) in trace
     exported_handles = [event[1] for event in trace if event[0] == "export"]
     assert [handle.value for handle in exported_handles] == [_LOCAL_PHYSICAL_HANDLE]
 

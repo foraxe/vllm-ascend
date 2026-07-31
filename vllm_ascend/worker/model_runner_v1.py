@@ -299,6 +299,9 @@ class NPUModelRunner(GPUModelRunner):
             str,
             C128OwnerShardCache,
         ] = {}
+        self._c128_packed_peer_materializers: dict[str, Any] = {}
+        self._c128_packed_peer_raw_roots: dict[int, torch.Tensor] = {}
+        self._c128_packed_peer_plan_compiles = 0
         # Every out-of-band data_ptr registration needs an exact lifecycle
         # owner, including the legacy compact-owner path that does not open a
         # packed arena. Packed entries are also retained here; their runtime
@@ -333,6 +336,22 @@ class NPUModelRunner(GPUModelRunner):
                 raise ValueError("enable_c128_owner_shard requires tensor parallel size > 1")
             if not self.use_compress:
                 raise ValueError("enable_c128_owner_shard requires a DeepSeek-V4 compressed-cache model")
+        if self.enable_c128_packed_vmm_arena:
+            if bool(
+                additional_config.get(
+                    "enable_c128_owner_local_compressor",
+                    False,
+                )
+            ) or bool(
+                additional_config.get(
+                    "enable_dsa_cp_local_current_kv",
+                    False,
+                )
+            ):
+                raise ValueError(
+                    "packed C128 peer materialization requires local-current "
+                    "compressor collectives disabled"
+                )
         # One full local execution view is shared by sequential C128 layers;
         # persistent owner shards remain per layer.  The key includes layout
         # so incompatible cache families can never alias a workspace.
@@ -2785,6 +2804,117 @@ class NPUModelRunner(GPUModelRunner):
             cudagraph_stats,
         )
 
+    def _compile_c128_packed_peer_request(
+        self,
+        *,
+        kv_cache_gid: int,
+        num_reqs: int,
+        current_row_count: int,
+        packed_global_flat_slot_mapping: torch.Tensor | None,
+    ) -> tuple[Any, Any] | None:
+        """Compile one immutable C128 peer execution object per chunk."""
+        if self._c128_packed_arena_runtime is None:
+            return None
+        kv_cache_group = self.kv_cache_config.kv_cache_groups[kv_cache_gid]
+        owner_layers = tuple(
+            layer_name
+            for layer_name in kv_cache_group.layer_names
+            if layer_name in self._c128_packed_registered_owner_caches
+        )
+        if not owner_layers:
+            return None
+        if packed_global_flat_slot_mapping is None:
+            raise RuntimeError(
+                "packed C128 peer request requires device global slots"
+            )
+        representative = self._c128_packed_registered_owner_caches[
+            owner_layers[0]
+        ]
+        route = representative.packed_route
+        if route is None:
+            raise RuntimeError("packed C128 request has no owner route")
+        for layer_name in owner_layers[1:]:
+            layer_route = self._c128_packed_registered_owner_caches[
+                layer_name
+            ].packed_route
+            if (
+                layer_route is None
+                or layer_route.tp_size != route.tp_size
+                or layer_route.group_index != route.group_index
+                or layer_route.logical_start != route.logical_start
+                or layer_route.logical_stop != route.logical_stop
+                or layer_route.page_size_bytes != route.page_size_bytes
+                or layer_route.max_scratch_pages != route.max_scratch_pages
+            ):
+                raise RuntimeError(
+                    "packed C128 layers do not share request routing geometry"
+                )
+
+        block_table = self.input_batch.block_table[kv_cache_gid]
+        global_slots_cpu = (
+            block_table.get_packed_global_slot_mapping_cpu()
+        )
+        if global_slots_cpu is None:
+            raise RuntimeError(
+                "packed C128 peer request requires CPU global slots"
+            )
+        if current_row_count < 0 or current_row_count > len(global_slots_cpu):
+            raise ValueError("packed C128 current-row count is out of range")
+
+        from vllm_ascend.attention.context_parallel.c128_peer_materializer import (
+            C128GlobalCurrentRowMapping,
+            compile_c128_device_current_row_overlay,
+            compile_c128_peer_materialization,
+            plan_c128_current_row_overlay,
+            plan_c128_peer_materialization,
+        )
+
+        cpu_block_table = block_table.get_numpy_array()[:num_reqs]
+        materialization = plan_c128_peer_materialization(
+            route,
+            tuple(tuple(row) for row in cpu_block_table),
+            destination_rank=self._c128_packed_arena_runtime.tp_rank,
+        )
+        compiled = compile_c128_peer_materialization(
+            route,
+            materialization,
+            device=self.device,
+            block_table_dtype=torch.int32,
+            global_id_dtype=torch.int32,
+        )
+        global_current_rows = (
+            C128GlobalCurrentRowMapping.from_pre_translation_flat_slots(
+                global_slots_cpu[:current_row_count],
+                tokens_per_page=block_table.block_size,
+            )
+        )
+        overlay = plan_c128_current_row_overlay(
+            route,
+            materialization,
+            global_current_rows,
+        )
+        flat_slots = packed_global_flat_slot_mapping[:current_row_count]
+        device_global_rows = torch.stack(
+            [
+                flat_slots // block_table.block_size,
+                flat_slots % block_table.block_size,
+            ],
+            dim=-1,
+        )
+        compiled_overlay = compile_c128_device_current_row_overlay(
+            route,
+            materialization,
+            compiled,
+            overlay,
+            device_global_rows,
+        )
+        self._c128_packed_peer_plan_compiles = getattr(
+            self,
+            "_c128_packed_peer_plan_compiles",
+            0,
+        ) + 1
+        return compiled, compiled_overlay
+
     def _build_attention_metadata(
         self,
         num_tokens: int,
@@ -3023,6 +3153,7 @@ class NPUModelRunner(GPUModelRunner):
             decode_ratio_to_sas_metadata: dict,
             common_ratio_to_sas_metadata: dict,
             packed_global_slot_mapping: torch.Tensor | None,
+            c128_peer_request: tuple[Any, Any] | None,
             ubid: int | None = None,
         ) -> None:
             attn_group = self.attn_groups[kv_cache_gid][attn_gid]
@@ -3066,6 +3197,19 @@ class NPUModelRunner(GPUModelRunner):
                     extra_attn_metadata_args[
                         "packed_global_slot_mapping"
                     ] = packed_global_slot_mapping
+                if (
+                    isinstance(builder, AscendDSACPMetadataBuilder)
+                    and compress_ratio == 128
+                    and c128_peer_request is not None
+                ):
+                    (
+                        extra_attn_metadata_args[
+                            "c128_peer_materialization_plan"
+                        ],
+                        extra_attn_metadata_args[
+                            "c128_peer_current_row_overlay"
+                        ],
+                    ) = c128_peer_request
 
             # add kvcomp_metadata into common_attn_metadata
             if (for_cudagraph_capture
@@ -3134,6 +3278,23 @@ class NPUModelRunner(GPUModelRunner):
                 ) = _get_block_table_and_slot_mapping(
                     kv_cache_gid, total_num_scheduled_tokens_compressed_list
                 )  # type: ignore[arg-type]
+            c128_peer_request = None
+            if (
+                self._c128_packed_arena_runtime is not None
+                and total_num_scheduled_tokens_compressed_list is not None
+            ):
+                c128_peer_request = self._compile_c128_packed_peer_request(
+                    kv_cache_gid=kv_cache_gid,
+                    num_reqs=num_reqs_actual,
+                    current_row_count=(
+                        total_num_scheduled_tokens_compressed_list[
+                            kv_cache_gid
+                        ]
+                    ),
+                    packed_global_flat_slot_mapping=(
+                        packed_global_slot_mapping
+                    ),
+                )
             if self.speculative_config and spec_decode_common_attn_metadata is None:
                 if isinstance(self.drafter, AscendEagleProposer | AscendDraftModelProposer | AscendDflashProposer):
                     if self.drafter.attn_layer_names[0] in kv_cache_group.layer_names:
@@ -3147,7 +3308,10 @@ class NPUModelRunner(GPUModelRunner):
                 _build_attn_group_metadata(
                     kv_cache_gid, attn_gid, cm, num_reqs_actual,
                     prefill_ratio_to_sas_metadata, decode_ratio_to_sas_metadata,
-                    common_ratio_to_sas_metadata, packed_global_slot_mapping)
+                    common_ratio_to_sas_metadata,
+                    packed_global_slot_mapping,
+                    c128_peer_request,
+                )
         if self.is_mm_prefix_lm:
             req_doc_ranges = {}
             for req_id in self.input_batch.req_ids:
@@ -3641,11 +3805,20 @@ class NPUModelRunner(GPUModelRunner):
                 kv_cache_config,
                 contract=packed_startup_contract,
             )
-            kv_caches = self._initialize_kv_cache_from_c128_packed_arena(
-                runtime,
-                kv_cache_config,
-                bind_to_model=True,
-            )
+            try:
+                self._open_c128_packed_peer_lease(runtime)
+                kv_caches = self._initialize_kv_cache_from_c128_packed_arena(
+                    runtime,
+                    kv_cache_config,
+                    bind_to_model=True,
+                )
+            except BaseException as startup_error:
+                try:
+                    runtime.close()
+                except BaseException as cleanup_error:
+                    self._c128_packed_arena_runtime = runtime
+                    raise cleanup_error from startup_error
+                raise
             # The pinned packed profile excludes speculative decoding,
             # external KV transfer, and routed-expert capture. Returning here
             # makes publication the last fallible startup transition; there
@@ -3783,6 +3956,38 @@ class NPUModelRunner(GPUModelRunner):
             arena_fence=synchronize_npu,
             quiesce=synchronize_npu,
         )
+
+    def _open_c128_packed_peer_lease(self, runtime: Any) -> Any:
+        """Import the fixed wide bucket once on the existing TP CPU group."""
+        from vllm_ascend.attention.context_parallel.c128_packed_peer_lease import (
+            AscendAclPackedPeerBackend,
+            PackedVmmPeerLease,
+            TorchDistributedCpuControlGroup,
+        )
+        from vllm_ascend.attention.context_parallel.c128_packed_torch_npu import (
+            TorchNpuPackedArenaTensorFactory,
+        )
+
+        tp_group = get_tp_group()
+        control = TorchDistributedCpuControlGroup(
+            group=tp_group.cpu_group,
+            timeout_seconds=30.0,
+        )
+
+        def open_peer(owner_arena: Any) -> Any:
+            return PackedVmmPeerLease.open(
+                owner_arena=owner_arena,
+                shared_buckets=("page_131072",),
+                backend=AscendAclPackedPeerBackend(),
+                tensor_factory=TorchNpuPackedArenaTensorFactory(),
+                control=control,
+                fence=torch.npu.synchronize,
+                metadata_fingerprint=(
+                    runtime.contract.metadata_fingerprint
+                ),
+            )
+
+        return runtime.open_peer_lease(open_peer)
 
     def _install_c128_packed_arena_runtime(
         self,
@@ -3944,6 +4149,127 @@ class NPUModelRunner(GPUModelRunner):
 
         runtime.install_tensor_views(view_key, install)
 
+    def _attach_c128_packed_peer_materializers(
+        self,
+        runtime: Any,
+    ) -> None:
+        """Build exact typed per-layer roots from startup-mapped wide buckets."""
+        from vllm_ascend.attention.context_parallel.c128_peer_materializer import (
+            C128PeerMaterializer,
+            C128PeerTensorRoots,
+        )
+
+        peer_lease = getattr(runtime, "peer_lease", None)
+        if peer_lease is None:
+            return
+        if self._c128_packed_peer_materializers:
+            raise RuntimeError("packed C128 peer materializers already exist")
+        if self._c128_packed_peer_raw_roots:
+            raise RuntimeError("packed C128 peer roots already exist")
+
+        tp_rank = runtime.tp_rank
+        tp_size = runtime.contract.plan.tp_size
+        raw_roots: dict[int, torch.Tensor] = {}
+        materializers: dict[str, Any] = {}
+        attached_caches: list[C128OwnerShardCache] = []
+        try:
+            for owner_rank in range(tp_size):
+                if owner_rank == tp_rank:
+                    continue
+                root = peer_lease.borrow_startup_tensor(
+                    owner_rank=owner_rank,
+                    key="page_131072",
+                )
+                if not isinstance(root, torch.Tensor):
+                    raise TypeError(
+                        f"peer bucket root {owner_rank} must be a Tensor"
+                    )
+                if (
+                    root.dtype is not torch.uint8
+                    or root.ndim != 1
+                    or not root.is_contiguous()
+                ):
+                    raise ValueError(
+                        f"peer bucket root {owner_rank} must be contiguous "
+                        "one-dimensional uint8"
+                    )
+                raw_roots[owner_rank] = root
+
+            for layer_name, owner_cache in (
+                self._c128_packed_registered_owner_caches.items()
+            ):
+                route = owner_cache.packed_route
+                if route is None:
+                    raise RuntimeError(
+                        f"packed C128 layer {layer_name!r} has no route"
+                    )
+                roots: list[torch.Tensor] = []
+                page_shape = tuple(owner_cache.persistent_cache.shape[1:])
+                for owner_rank in range(tp_size):
+                    if owner_rank == tp_rank:
+                        typed_root = owner_cache.persistent_cache
+                    else:
+                        raw_root = raw_roots[owner_rank]
+                        segment = route.persistent_segments[owner_rank]
+                        page_count = route.required_persistent_pages(
+                            owner_rank
+                        )
+                        byte_count = page_count * route.page_size_bytes
+                        if segment.base_bytes + byte_count > raw_root.numel():
+                            raise ValueError(
+                                "peer C128 persistent segment exceeds its "
+                                f"wide bucket: layer={layer_name!r} "
+                                f"owner={owner_rank}"
+                            )
+                        raw_segment = raw_root.narrow(
+                            0,
+                            segment.base_bytes,
+                            byte_count,
+                        )
+                        typed_root = raw_segment.view(
+                            owner_cache.persistent_cache.dtype
+                        ).view(page_count, *page_shape)
+                        if (
+                            typed_root.data_ptr()
+                            != raw_root.data_ptr() + segment.base_bytes
+                        ):
+                            raise RuntimeError(
+                                "peer C128 typed root changed the packed "
+                                "segment address"
+                            )
+                    roots.append(typed_root)
+                materializer = C128PeerMaterializer(
+                    route=route,
+                    destination_rank=tp_rank,
+                    peer_roots=C128PeerTensorRoots(tuple(roots)),
+                    scratch=owner_cache.stage_cache,
+                )
+                owner_cache.attach_peer_materializer(materializer)
+                attached_caches.append(owner_cache)
+                materializers[layer_name] = materializer
+        except BaseException:
+            for owner_cache in reversed(attached_caches):
+                owner_cache.drop_peer_materializer()
+            materializers.clear()
+            raw_roots.clear()
+            raise
+
+        self._c128_packed_peer_materializers = materializers
+        self._c128_packed_peer_raw_roots = raw_roots
+
+        def release_peer_views() -> None:
+            for owner_cache in tuple(
+                self._c128_packed_registered_owner_caches.values()
+            ):
+                owner_cache.drop_peer_materializer()
+            self._c128_packed_peer_materializers.clear()
+            self._c128_packed_peer_raw_roots.clear()
+
+        runtime.install_teardown_dependency(
+            "c128_peer_materializers",
+            release_peer_views,
+        )
+
     @staticmethod
     def _c128_packed_component_pages(
         plan: Any,
@@ -4085,6 +4411,8 @@ class NPUModelRunner(GPUModelRunner):
             tuple[object, bool, object],
             ...,
         ] = ()
+        peer_lease = getattr(runtime, "peer_lease", None)
+        peer_commit_attempted = False
         try:
             serialized_groups = self._c128_packed_sequence(
                 metadata.get("groups"),
@@ -4359,12 +4687,17 @@ class NPUModelRunner(GPUModelRunner):
                 kv_cache_config,
                 raw_tensors,
             )
+            if peer_lease is not None:
+                self._attach_c128_packed_peer_materializers(runtime)
             if bind_to_model:
                 self._bind_initialized_kv_caches(
                     kv_cache_config,
                     kv_caches,
                 )
             runtime.seal_views()
+            if peer_lease is not None:
+                peer_commit_attempted = True
+                peer_lease.commit_consumer_views()
             self._install_c128_packed_arena_runtime(
                 runtime,
                 kv_cache_config,
@@ -4386,8 +4719,36 @@ class NPUModelRunner(GPUModelRunner):
                 len(raw_tensors),
                 len(scratch_tensors),
             )
+            if peer_lease is not None:
+                peer_counters = peer_lease.counters
+                peer_aliases = peer_lease.aliases
+                logger.warning(
+                    "C128_PACKED_PEER_ACCOUNTING rank=%d "
+                    "shared_bucket=page_131072 remote_aliases=%d "
+                    "remote_va_bytes=%d remote_physical_bytes=0 "
+                    "startup_tensor_borrows=%d request_tensor_calls=%d "
+                    "request_import_calls=%d request_map_calls=%d "
+                    "request_control_collective_calls=%d "
+                    "request_fence_calls=%d",
+                    accounting.tp_rank,
+                    len(peer_aliases),
+                    sum(alias.size_bytes for alias in peer_aliases),
+                    peer_counters.startup_tensor_borrow_calls,
+                    peer_counters.request_tensor_calls,
+                    peer_counters.request_import_calls,
+                    peer_counters.request_map_calls,
+                    peer_counters.request_control_collective_calls,
+                    peer_counters.request_fence_calls,
+                )
             return kv_caches
         except BaseException as construction_error:
+            coordinated_failure: BaseException | None = None
+            if peer_lease is not None and not peer_commit_attempted:
+                try:
+                    peer_commit_attempted = True
+                    peer_lease.commit_consumer_views(construction_error)
+                except BaseException as error:
+                    coordinated_failure = error
             if previous_bound_kv_caches is not None:
                 self.kv_caches.clear()
                 self.kv_caches.extend(previous_bound_kv_caches)
@@ -4449,6 +4810,8 @@ class NPUModelRunner(GPUModelRunner):
                     )
                     raw_tensors.clear()
                     scratch_tensors.clear()
+            if coordinated_failure is not None:
+                raise coordinated_failure from construction_error
             raise
 
     def _close_c128_packed_arena_runtime(self) -> None:

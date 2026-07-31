@@ -936,6 +936,7 @@ class PackedVmmPeerCounters:
     startup_reserve_calls: int
     startup_map_calls: int
     startup_bind_calls: int
+    startup_tensor_borrow_calls: int
     request_tensor_calls: int
     request_import_calls: int
     request_map_calls: int
@@ -1147,6 +1148,8 @@ class PackedVmmPeerLease:
         self._fenced = False
         self._imports_released = False
         self._owner_export_pin_released = False
+        self._consumer_views_commit_attempted = False
+        self._consumer_views_committed = False
         self._counter_values: dict[str, int] = {
             field_name: 0 for field_name in PackedVmmPeerCounters.__dataclass_fields__
         }
@@ -1161,6 +1164,7 @@ class PackedVmmPeerLease:
         tensor_factory: PackedArenaTensorFactory,
         control: PeerControlGroup,
         fence: Callable[[], None],
+        metadata_fingerprint: str | None = None,
     ) -> PackedVmmPeerLease:
         rank = control.rank
         world_size = control.world_size
@@ -1227,10 +1231,23 @@ class PackedVmmPeerLease:
 
         device_index = owner_arena.device_index
         allocation_schema = tuple((allocation.key, allocation.size_bytes) for allocation in allocations)
-        metadata_fingerprint = _arena_metadata_fingerprint(
-            owner_arena=owner_arena,
-            allocation_schema=allocation_schema,
-        )
+        if metadata_fingerprint is None:
+            metadata_fingerprint = _arena_metadata_fingerprint(
+                owner_arena=owner_arena,
+                allocation_schema=allocation_schema,
+            )
+        elif (
+            not isinstance(metadata_fingerprint, str)
+            or len(metadata_fingerprint) != 64
+            or any(
+                character not in "0123456789abcdef"
+                for character in metadata_fingerprint
+            )
+        ):
+            owner_export_pin.release()
+            raise ValueError(
+                "metadata_fingerprint must be a lowercase SHA-256 digest"
+            )
         lease = cls(
             rank=rank,
             world_size=world_size,
@@ -1268,6 +1285,10 @@ class PackedVmmPeerLease:
     @property
     def counters(self) -> PackedVmmPeerCounters:
         return PackedVmmPeerCounters(**self._counter_values)
+
+    @property
+    def consumer_views_committed(self) -> bool:
+        return self._consumer_views_committed
 
     @property
     def aliases(self) -> tuple[PeerAlias, ...]:
@@ -1499,6 +1520,20 @@ class PackedVmmPeerLease:
         # request path did not regress into lazy import or lazy map behavior.
         return allocation.binding.tensor()
 
+    def borrow_startup_tensor(self, *, owner_rank: int, key: str) -> object:
+        """Snapshot a pre-bound alias while constructing persistent views."""
+        self._require_open()
+        try:
+            allocation = self._aliases[(owner_rank, key)]
+        except KeyError as error:
+            raise ValueError(
+                f"unknown peer alias rank{owner_rank}/{key}"
+            ) from error
+        if allocation.binding is None:
+            raise RuntimeError("peer alias has no tensor binding")
+        self._increment("startup_tensor_borrow_calls")
+        return allocation.binding.tensor()
+
     def _cleanup_local_aliases(self) -> None:
         failures: list[PackedVmmPeerCleanupFailure] = []
         if not self._fenced and any(allocation.mapped for allocation in self._aliases.values()):
@@ -1635,6 +1670,11 @@ class PackedVmmPeerLease:
         failure here, ensuring peers do not publish while it enters teardown.
         """
         self._require_open()
+        if self._consumer_views_commit_attempted:
+            raise RuntimeError(
+                "consumer_views startup commit was already attempted"
+            )
+        self._consumer_views_commit_attempted = True
         local = PeerStartupStageResult(
             stage="consumer_views",
             rank=self.rank,
@@ -1661,6 +1701,7 @@ class PackedVmmPeerLease:
                 stage="consumer_views",
                 failures=failures,
             )
+        self._consumer_views_committed = True
 
     def _cleanup_after_lost_control(self) -> PackedVmmPeerCleanupError | None:
         try:
@@ -1805,6 +1846,7 @@ def maybe_create_packed_vmm_peer_lease(
     tensor_factory: PackedArenaTensorFactory | None = None,
     control: PeerControlGroup | None = None,
     fence: Callable[[], None] | None = None,
+    metadata_fingerprint: str | None = None,
 ) -> PackedVmmPeerLease | None:
     """Open peer aliases only after the explicit feature gate is enabled."""
     if not enabled:
@@ -1828,4 +1870,5 @@ def maybe_create_packed_vmm_peer_lease(
         tensor_factory=tensor_factory,
         control=control,
         fence=fence,
+        metadata_fingerprint=metadata_fingerprint,
     )

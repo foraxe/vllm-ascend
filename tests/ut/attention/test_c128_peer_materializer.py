@@ -549,7 +549,9 @@ def test_materializer_snapshots_provider_roots_at_construction() -> None:
     assert provider.calls == route.tp_size
 
 
-def test_5120_plus_3080_current_rows_match_replicated_continuation_oracle() -> None:
+def test_5120_plus_3080_prevalidated_rows_match_replicated_continuation_oracle(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Two chunk overlays preserve old rows and replace new rows in order."""
     prefix_rows = 5_120 // 128
     # The 3080-token tail produces 24 complete persistent C128 rows; the
@@ -596,7 +598,11 @@ def test_5120_plus_3080_current_rows_match_replicated_continuation_oracle() -> N
     replicated = torch.zeros(1, 128, 1)
 
     prefix_mapping = tuple((18, row) for row in range(prefix_rows))
-    prefix_values = torch.arange(1, prefix_rows + 1, dtype=torch.float32).view(-1, 1)
+    prefix_values = torch.arange(
+        1,
+        prefix_rows + 2,
+        dtype=torch.float32,
+    ).view(-1, 1)
     prefix_overlay = plan_c128_current_row_overlay(
         route,
         plan,
@@ -609,12 +615,26 @@ def test_5120_plus_3080_current_rows_match_replicated_continuation_oracle() -> N
         prefix_overlay,
         torch.tensor(prefix_mapping, dtype=torch.int32),
     )
-    materializer.materialize(
-        compiled_plan,
-        overlay=compiled_prefix_overlay,
-        current_rows=prefix_values,
-    )
-    replicated[0, :prefix_rows] = prefix_values
+    def _forbidden(*args: object, **kwargs: object) -> None:
+        raise AssertionError("hot materialization used a control-plane API")
+
+    with monkeypatch.context() as hot_guard:
+        hot_guard.setattr(torch.distributed, "all_gather", _forbidden)
+        hot_guard.setattr(torch.distributed, "all_to_all_single", _forbidden)
+        if hasattr(torch, "npu") and hasattr(torch.npu, "synchronize"):
+            hot_guard.setattr(torch.npu, "synchronize", _forbidden)
+        hot_guard.setattr(torch.Tensor, "item", _forbidden)
+        hot_guard.setattr(torch.Tensor, "tolist", _forbidden)
+        hot_guard.setattr(torch, "tensor", _forbidden)
+        hot_guard.setattr(torch, "empty", _forbidden)
+        hot_guard.setattr(torch, "arange", _forbidden)
+        materializer.materialize_prevalidated(
+            compiled_plan,
+            overlay=compiled_prefix_overlay,
+            # The final row is the compressor ABI pad and must not be consumed.
+            current_rows=prefix_values,
+        )
+    replicated[0, :prefix_rows] = prefix_values[:prefix_rows]
     torch.testing.assert_close(scratch, replicated)
 
     # Owner persistence becomes the next historical peer snapshot.
@@ -623,7 +643,7 @@ def test_5120_plus_3080_current_rows_match_replicated_continuation_oracle() -> N
     tail_mapping = tuple((18, prefix_rows + row) for row in range(tail_rows))
     tail_values = torch.arange(
         prefix_rows + 1,
-        total_rows + 1,
+        total_rows + 2,
         dtype=torch.float32,
     ).view(-1, 1)
     tail_overlay = plan_c128_current_row_overlay(
@@ -638,12 +658,23 @@ def test_5120_plus_3080_current_rows_match_replicated_continuation_oracle() -> N
         tail_overlay,
         torch.tensor(tail_mapping, dtype=torch.int32),
     )
-    materializer.materialize(
-        compiled_plan,
-        overlay=compiled_tail_overlay,
-        current_rows=tail_values,
-    )
-    replicated[0, prefix_rows:total_rows] = tail_values
+    with monkeypatch.context() as hot_guard:
+        hot_guard.setattr(torch.distributed, "all_gather", _forbidden)
+        hot_guard.setattr(torch.distributed, "all_to_all_single", _forbidden)
+        if hasattr(torch, "npu") and hasattr(torch.npu, "synchronize"):
+            hot_guard.setattr(torch.npu, "synchronize", _forbidden)
+        hot_guard.setattr(torch.Tensor, "item", _forbidden)
+        hot_guard.setattr(torch.Tensor, "tolist", _forbidden)
+        hot_guard.setattr(torch, "tensor", _forbidden)
+        hot_guard.setattr(torch, "empty", _forbidden)
+        hot_guard.setattr(torch, "arange", _forbidden)
+        materializer.materialize_prevalidated(
+            compiled_plan,
+            overlay=compiled_tail_overlay,
+            # Again, expose N+1 rows and consume only the certified N rows.
+            current_rows=tail_values,
+        )
+    replicated[0, prefix_rows:total_rows] = tail_values[:tail_rows]
     torch.testing.assert_close(scratch, replicated)
 
 
@@ -704,6 +735,7 @@ def test_request_execution_uses_no_collective_sync_or_device_value_read(
 def test_execution_source_contains_no_forbidden_request_path_calls() -> None:
     for implementation in (
         C128PeerMaterializer.materialize,
+        C128PeerMaterializer.materialize_prevalidated,
         C128PeerMaterializer._overlay_current_rows,
         C128PeerMaterializer._overlay_device_current_rows,
     ):

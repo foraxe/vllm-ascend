@@ -353,6 +353,9 @@ def test_packed_materialization_reads_sentinel_prefixed_owner_pages(
     staged, scratch_local = _materialize_c128_owner_cache(
         owner_cache,
         packed_global,
+        peer_materialization_plan=None,
+        peer_current_row_overlay=None,
+        current_rows=None,
         selective=selective,
         tp_rank=0,
         group=object(),
@@ -447,6 +450,7 @@ def test_packed_full_materialization_routes_two_owner_payloads(
 def test_dsa_materialization_helper_forwards_packed_global_table_unchanged() -> None:
     """DSA delegates the ID-domain boundary to its registered owner cache."""
     owner_cache = MagicMock(spec=C128OwnerShardCache)
+    owner_cache.peer_materializer = None
     block_table = torch.tensor([[7, 9, 0]], dtype=torch.int32)
     staged = torch.empty(2, 2, 1, 3)
     remapped = torch.tensor([[0, 1, -1]], dtype=torch.int32)
@@ -458,6 +462,9 @@ def test_dsa_materialization_helper_forwards_packed_global_table_unchanged() -> 
     result = _materialize_c128_owner_cache(
         owner_cache,
         block_table,
+        peer_materialization_plan=None,
+        peer_current_row_overlay=None,
+        current_rows=None,
         selective=True,
         tp_rank=2,
         group="hccl",
@@ -471,3 +478,44 @@ def test_dsa_materialization_helper_forwards_packed_global_table_unchanged() -> 
         group="hccl",
     )
     assert owner_cache.materialize_selected_for_attention.call_args.args[0] is block_table
+
+
+def test_dsa_peer_materialization_bypasses_legacy_hccl_methods() -> None:
+    owner_cache = MagicMock(spec=C128OwnerShardCache)
+    owner_cache.peer_materializer = object()
+    staged = torch.empty(65, 128, 1, 4)
+    remapped = torch.tensor([[0, -1]], dtype=torch.int32)
+    owner_cache.materialize_peer_for_attention.return_value = (
+        staged,
+        remapped,
+    )
+    owner_cache.materialize_for_attention.side_effect = AssertionError(
+        "legacy full-union HCCL path called"
+    )
+    owner_cache.materialize_selected_for_attention.side_effect = (
+        AssertionError("legacy selective HCCL path called")
+    )
+    plan = object()
+    overlay = object()
+    current_rows = torch.empty(40, 1, 4)
+
+    result = _materialize_c128_owner_cache(
+        owner_cache,
+        torch.tensor([[18, 0]], dtype=torch.int32),
+        peer_materialization_plan=plan,
+        peer_current_row_overlay=overlay,
+        current_rows=current_rows,
+        selective=True,
+        tp_rank=2,
+        group="forbidden-hccl",
+    )
+
+    assert result[0] is staged
+    assert result[1] is remapped
+    owner_cache.materialize_peer_for_attention.assert_called_once_with(
+        plan,
+        overlay=overlay,
+        current_rows=current_rows,
+    )
+    owner_cache.materialize_for_attention.assert_not_called()
+    owner_cache.materialize_selected_for_attention.assert_not_called()

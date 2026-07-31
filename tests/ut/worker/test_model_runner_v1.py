@@ -1,4 +1,5 @@
 import unittest
+from dataclasses import replace
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -16,6 +17,10 @@ from vllm_ascend.attention.context_parallel.c128_owner_cache import (
     C128OwnerShardCache,
     get_c128_owner_cache,
     register_c128_owner_cache,
+)
+from vllm_ascend.attention.context_parallel.c128_packed_owner_route import (
+    C128PackedOwnerRoute,
+    C128PackedSegment,
 )
 from vllm_ascend.attention.context_parallel.c128_packed_pool import (
     PackedPlacement,
@@ -50,6 +55,8 @@ class TestNPUModelRunnerKVCache(unittest.TestCase):
         runner._c128_packed_scratch_raw_tensors = {}
         runner._c128_packed_owner_route_table = None
         runner._c128_packed_registered_owner_caches = {}
+        runner._c128_packed_peer_materializers = {}
+        runner._c128_packed_peer_raw_roots = {}
         backend = MagicMock()
         backend.get_kv_cache_shape.side_effect = lambda num_blocks, block_size, num_kv_heads, head_size: (
             2,
@@ -288,6 +295,7 @@ class TestNPUModelRunnerPackedArenaLifecycle(unittest.TestCase):
         runner.may_reinitialize_input_batch = MagicMock()
         runner._allocate_kv_cache_tensors = MagicMock()
         runner._get_c128_owner_stage_cache = MagicMock()
+        runner._open_c128_packed_peer_lease = MagicMock()
 
     def _strict_startup_contract_and_metadata(self):
         from vllm_ascend.worker.c128_packed_runtime import (
@@ -456,6 +464,7 @@ class TestNPUModelRunnerPackedArenaLifecycle(unittest.TestCase):
             packed_config,
             bind_to_model=True,
         )
+        runner._open_c128_packed_peer_lease.assert_called_once_with(runtime)
         runner.initialize_kv_cache_tensors.assert_not_called()
         runner._allocate_kv_cache_tensors.assert_not_called()
         runner._get_c128_owner_stage_cache.assert_not_called()
@@ -478,6 +487,7 @@ class TestNPUModelRunnerPackedArenaLifecycle(unittest.TestCase):
             runner.initialize_kv_cache(kv_cache_config)
 
         mock_backend_type.assert_not_called()
+        runner._open_c128_packed_peer_lease.assert_not_called()
         runner.may_reinitialize_input_batch.assert_called_once()
         runner.initialize_kv_cache_tensors.assert_called_once()
         runner._allocate_kv_cache_tensors.assert_not_called()
@@ -580,6 +590,8 @@ class _FakePackedArenaRuntime:
         self.expected_keys = set(view_buckets)
         self.installed_keys = set()
         self.releasers = []
+        self.dependencies = []
+        self.peer_lease = None
         self.state = PackedArenaRuntimeState.OPEN
         self.closed = False
         self.close_failures_remaining = 0
@@ -609,6 +621,9 @@ class _FakePackedArenaRuntime:
             raise RuntimeError("missing packed views")
         self.state = PackedArenaRuntimeState.SEALED
 
+    def install_teardown_dependency(self, _key, release):
+        self.dependencies.append(release)
+
     def publish(self):
         from vllm_ascend.worker.c128_packed_runtime import (
             PackedArenaRuntimeState,
@@ -627,6 +642,8 @@ class _FakePackedArenaRuntime:
             self.close_failures_remaining -= 1
             self.state = PackedArenaRuntimeState.CLEANUP_FAILED
             raise RuntimeError("synthetic cleanup failure")
+        while self.dependencies:
+            self.dependencies.pop()()
         while self.releasers:
             self.releasers.pop()()
         self.state = PackedArenaRuntimeState.CLOSED
@@ -1262,6 +1279,216 @@ class TestNPUModelRunnerPackedAllocatorReshape(unittest.TestCase):
         self.assertEqual(
             runner._c128_packed_registered_owner_caches,
             {},
+        )
+
+    def test_peer_roots_are_exact_typed_segments_and_lifecycle_owned(self):
+        plan, metadata = self._plan_and_metadata()
+        runner, runtime, kv_cache_config = self._build_runner(
+            plan,
+            metadata,
+        )
+        self._configure_representative_compressed_reshape(
+            runner,
+            kv_cache_config,
+        )
+        runner._c128_packed_peer_materializers = {}
+        runner._c128_packed_peer_raw_roots = {}
+
+        remote_bytes = next(
+            bucket.total_allocated_bytes_by_rank[0]
+            for bucket in plan.bucket_accounting
+            if bucket.bucket == "owner"
+        )
+        remote_root = torch.arange(
+            remote_bytes,
+            dtype=torch.uint8,
+        )
+
+        class PeerLease:
+            def __init__(self):
+                self.borrow_calls = []
+                self.commit_calls = 0
+                self.counters = SimpleNamespace(
+                    startup_tensor_borrow_calls=1,
+                    request_tensor_calls=0,
+                    request_import_calls=0,
+                    request_map_calls=0,
+                    request_control_collective_calls=0,
+                    request_fence_calls=0,
+                )
+                self.aliases = (SimpleNamespace(size_bytes=remote_bytes),)
+
+            def borrow_startup_tensor(self, *, owner_rank, key):
+                self.borrow_calls.append((owner_rank, key))
+                return remote_root
+
+            def commit_consumer_views(self, error=None):
+                self.commit_calls += 1
+                if error is not None:
+                    raise error
+
+        peer = PeerLease()
+        runtime.peer_lease = peer
+
+        def install_runtime(installed_runtime, _config):
+            installed_runtime.publish()
+            runner._c128_packed_arena_runtime = installed_runtime
+
+        runner._install_c128_packed_arena_runtime = install_runtime
+        with patch(
+            "vllm_ascend.worker.packed_block_table."
+            "packed_block_table_translators_from_metadata",
+            return_value=(object(), object()),
+        ):
+            runner._initialize_kv_cache_from_c128_packed_arena(
+                runtime,
+                kv_cache_config,
+            )
+
+        owner_cache = runner._c128_packed_registered_owner_caches[
+            "owner_attn"
+        ]
+        materializer = owner_cache.peer_materializer
+        self.assertIsNotNone(materializer)
+        assert materializer is not None
+        route = owner_cache.packed_route
+        assert route is not None
+        remote_segment = route.persistent_segments[0]
+        self.assertEqual(
+            materializer._roots[0].data_ptr(),
+            remote_root.data_ptr() + remote_segment.base_bytes,
+        )
+        self.assertEqual(
+            materializer._roots[0].shape[0],
+            route.required_persistent_pages(0),
+        )
+        self.assertIs(materializer._roots[1], owner_cache.persistent_cache)
+        self.assertEqual(peer.borrow_calls, [(0, "page_131072")])
+        self.assertEqual(peer.commit_calls, 1)
+
+        runtime.close()
+
+        self.assertIsNone(owner_cache.peer_materializer)
+        self.assertEqual(runner._c128_packed_peer_materializers, {})
+        self.assertEqual(runner._c128_packed_peer_raw_roots, {})
+
+    def test_peer_request_compiles_once_per_group_for_5120_then_3080(self):
+        """CPU certificates compile once per chunk and clear the reused tail."""
+        prefix_rows = 5_120 // 128
+        tail_rows = 3_080 // 128
+        page_size_bytes = 128 * torch.empty(
+            (), dtype=torch.float32
+        ).element_size()
+        route = C128PackedOwnerRoute(
+            schema_version=1,
+            runtime_abi_ready=True,
+            tp_size=1,
+            group_index=0,
+            group_name="c128",
+            component_name="compress_kv",
+            layer_name="layer_0",
+            copy_index=0,
+            logical_start=18,
+            logical_stop=19,
+            page_size_bytes=page_size_bytes,
+            allocation_granularity_bytes=page_size_bytes,
+            persistent_segments=(
+                C128PackedSegment(0, 0, 2 * page_size_bytes),
+            ),
+            scratch_segments=(
+                C128PackedSegment(
+                    0,
+                    2 * page_size_bytes,
+                    page_size_bytes,
+                ),
+            ),
+            max_scratch_pages=1,
+        )
+        layer_1_route = replace(
+            route,
+            layer_name="layer_1",
+            copy_index=1,
+        )
+        global_slots_cpu = np.full(65, -1, dtype=np.int32)
+        global_slots_device = torch.full((65,), -1, dtype=torch.int32)
+
+        class CertifiedBlockTable:
+            block_size = 128
+
+            @staticmethod
+            def get_numpy_array():
+                return np.array([[18]], dtype=np.int32)
+
+            @staticmethod
+            def get_packed_global_slot_mapping_cpu():
+                return global_slots_cpu
+
+        runner = NPUModelRunner.__new__(NPUModelRunner)
+        runner.device = torch.device("cpu")
+        runner._c128_packed_arena_runtime = SimpleNamespace(tp_rank=0)
+        runner._c128_packed_peer_plan_compiles = 0
+        runner._c128_packed_registered_owner_caches = {
+            "layer_0": SimpleNamespace(packed_route=route),
+            "layer_1": SimpleNamespace(packed_route=layer_1_route),
+        }
+        runner.kv_cache_config = SimpleNamespace(
+            kv_cache_groups=[
+                SimpleNamespace(layer_names=["layer_0", "layer_1"])
+            ]
+        )
+        runner.input_batch = SimpleNamespace(
+            block_table=[CertifiedBlockTable()]
+        )
+
+        global_slots_cpu[:prefix_rows] = (
+            18 * 128 + np.arange(prefix_rows, dtype=np.int32)
+        )
+        global_slots_device[:prefix_rows].copy_(
+            torch.from_numpy(global_slots_cpu[:prefix_rows])
+        )
+        prefix_plan, prefix_overlay = (
+            runner._compile_c128_packed_peer_request(
+                kv_cache_gid=0,
+                num_reqs=1,
+                current_row_count=prefix_rows,
+                packed_global_flat_slot_mapping=global_slots_device,
+            )
+        )
+        self.assertEqual(runner._c128_packed_peer_plan_compiles, 1)
+        self.assertEqual(prefix_plan.staged_pages, 1)
+        self.assertEqual(prefix_overlay.expected_source_rows, prefix_rows)
+        self.assertEqual(prefix_overlay.entry_count, prefix_rows)
+
+        # Reuse the same fixed-capacity certificate buffers for a shorter tail.
+        # Clearing the complete buffers prevents rows 24..39 from leaking from
+        # the preceding chunk into the new compiled overlay.
+        global_slots_cpu.fill(-1)
+        global_slots_device.fill_(-1)
+        global_slots_cpu[:tail_rows] = (
+            18 * 128
+            + prefix_rows
+            + np.arange(tail_rows, dtype=np.int32)
+        )
+        global_slots_device[:tail_rows].copy_(
+            torch.from_numpy(global_slots_cpu[:tail_rows])
+        )
+        tail_plan, tail_overlay = runner._compile_c128_packed_peer_request(
+            kv_cache_gid=0,
+            num_reqs=1,
+            current_row_count=tail_rows,
+            packed_global_flat_slot_mapping=global_slots_device,
+        )
+        self.assertEqual(runner._c128_packed_peer_plan_compiles, 2)
+        self.assertEqual(tail_plan.staged_pages, 1)
+        self.assertEqual(tail_overlay.expected_source_rows, tail_rows)
+        self.assertEqual(tail_overlay.entry_count, tail_rows)
+        np.testing.assert_array_equal(
+            global_slots_cpu[tail_rows:],
+            np.full(65 - tail_rows, -1, dtype=np.int32),
+        )
+        torch.testing.assert_close(
+            global_slots_device[tail_rows:],
+            torch.full((65 - tail_rows,), -1, dtype=torch.int32),
         )
 
     def test_post_reshape_failure_unregisters_owner_cache(self):

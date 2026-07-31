@@ -362,10 +362,16 @@ def test_c128_preserves_global_current_slots_and_clears_reused_tail() -> None:
         torch.tensor([-1, 0, -1, -1, -1, 128], dtype=torch.int32),
     )
     global_slots = table.get_packed_global_slot_mapping()
+    global_slots_cpu = table.get_packed_global_slot_mapping_cpu()
     assert global_slots is not None
+    assert global_slots_cpu is not None
     torch.testing.assert_close(
         global_slots[:6],
         torch.tensor([-1, 0, -1, 512, -1, 640], dtype=torch.int32),
+    )
+    np.testing.assert_array_equal(
+        global_slots_cpu[:6],
+        np.array([-1, 0, -1, 512, -1, 640], dtype=np.int32),
     )
 
     # Reusing the table for a shorter batch replaces the active prefix and
@@ -378,11 +384,19 @@ def test_c128_preserves_global_current_slots_and_clears_reused_tail() -> None:
         global_slots[:6],
         torch.tensor([0, 640, -1, -1, -1, -1], dtype=torch.int32),
     )
+    np.testing.assert_array_equal(
+        global_slots_cpu[:6],
+        np.array([0, 640, -1, -1, -1, -1], dtype=np.int32),
+    )
 
     table.clear()
     torch.testing.assert_close(
         global_slots,
         torch.full_like(global_slots, -1),
+    )
+    np.testing.assert_array_equal(
+        global_slots_cpu,
+        np.full_like(global_slots_cpu, -1),
     )
 
 
