@@ -1,13 +1,16 @@
 # DSA-CP owner-history prefill journal
 
-Owner: Codex session `019fa36a-956a-7372-aceb-19d91f08f990`.
+Bootstrap owner: Codex session `019fa36a-956a-7372-aceb-19d91f08f990`.
+Current integration session: `019fa8c2-cac0-79a3-a661-19fe283e537e`.
 
 ## Scope and acceptance gates
 
-This is a prefill-only DSV4 DSA-CP project.  Its objective is to reduce
-persistent DSA KV storage without adding a remote-pointer dependency to the
-stock attention kernel.  Current executable evidence is DSV4-Flash TP8/EP8
-on the `.204` A3 node; DSV4-Pro remains the final model target.
+This is a prefill-only DSV4 DSA-CP project. Its current objective is to keep
+the proven same-B packed-owner capacity while replacing per-layer C128 HCCL
+staging with selected-row reads from startup-imported V2 peer mappings into a
+bounded local workspace. The stock attention kernel continues to consume
+local tensors. Current executable evidence is DSV4-Flash TP8/EP8 on the `.32`
+A3 node; DSV4-Pro remains the final model target.
 
 - Versioned bootstrap anchor:
   `codex/a3-dsv4-pro-prefill-019fa36a` at `cd2803e`.
@@ -18,10 +21,27 @@ on the `.204` A3 node; DSV4-Pro remains the final model target.
 - Capacity: report unique physical bytes per rank, prove the original
   replicated backing is absent, and measure usable request/token capacity.
   Report bounded materialization scratch separately.
+- Communication: after startup handle exchange, the active C128 cache-payload
+  path must execute no `all_gather` or `all_to_all_single`, and must perform no
+  request-time VMM map/import operation or device-wide synchronization.
 - TTFT gate: 8K input, one output token, FusedMC2-on matched baseline; both
   median and p90 must regress by less than 5%.
 - TPOT gate: a separate multi-token run must regress by less than 5%.
 - Production claims are not valid for Pro until the Pro checkpoint is run.
+
+The current ordered milestones are:
+
+1. Integrate the startup V2 peer lease and stable peer tensor roots.
+2. Materialize selected historical rows into bounded local scratch and overlay
+   current rows on the producing stream.
+3. Prove lifecycle, mapping, cache/logit, and `5120 + 3080` continuation
+   correctness, including zero request-time C128 collectives.
+4. Re-run TP8 capacity/accounting and `8200/1` correctness on `.32`.
+5. Run matched TTFT only after the first four gates pass; then run multi-token
+   TPOT and SWE-bench.
+
+MoE, Mooncake, direct remote-pointer attention, local-compressor E3, and
+general dynamic VMM rebinding are outside this integration slice.
 
 ## C128 prefill contract
 
@@ -1674,3 +1694,150 @@ Raw evidence and exact source:
     artifact/run.log
     artifact/source/
 ```
+
+### G46: production-size V2 peer-mapped wide bucket — PASS
+
+Hypothesis: the complete packed `page_131072` arena can remain one physical
+allocation on its owner while another NPU maps the multi-GiB V2 handle and
+executes ordinary Torch-NPU reads from the first, middle, and final regions.
+This closes the size gap between G45's one-granule probe and the planned TP8
+peer lease.
+
+The `.32` run allocated the exact production wide-bucket size on NPU0:
+
+```text
+mapped_bytes=3,726,639,104
+mapped_gib=3.470703125
+allocation_granules=1777 x 2 MiB
+dtype=torch.bfloat16
+canary_elements=256
+canary_byte_offsets=[0, 1,863,319,552, 3,726,638,592]
+```
+
+NPU1 imported and mapped the same 128-byte V2 handle, bound the complete
+address range as non-owning Torch-NPU storage, and touched only the three
+bounded 512-byte canary views. Every initial read, importer `+3` update, and
+exporter reread matched exactly.
+
+```text
+status=PASS
+exporter aclrtMallocPhysical/importV2 calls=1/0
+importer aclrtMallocPhysical/importV2 calls=0/1
+exporter physical HBM delta=3,726,639,104 B
+importer advisory free-HBM delta=-110,592 B
+child_exitcodes=0/0
+terminated=[]
+killed=[]
+```
+
+The bridge call counts are the hard no-copy proof; allocator free-memory
+deltas remain advisory. A separate small 2-MiB regression also passed before
+the production-size run. The exact production-size configuration was then
+repeated with `aclrtMemSetAccess(...READWRITE)` enabled and passed with the
+same call counts, canary equality, and clean teardown. All eight logical NPUs
+were process-free after cleanup.
+
+Raw evidence:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/runs/032/
+  20260731_g46_vmm_full_wide_bucket/
+    small_regression/result.json
+    small_regression/run.log
+    production/result.json
+    production/run.log
+    production/source/
+    production_set_access/result.json
+    production_set_access/run.log
+```
+
+### G47: peer lease, certified materializer, and global-slot target suite — PASS
+
+The startup peer lease, collective-free materializer, and packed current-row
+global-slot seam were combined on the target image without enabling the model
+path. The suite covers:
+
+- startup-only handle exchange, peer access, import/map/bind counters, and
+  importer-first retryable teardown;
+- packed-global block ID to owner-local peer-root addressing;
+- duplicate/sentinel/padding/bounds and scratch-overflow rejection;
+- certified device current-row destinations that cannot be redirected by a
+  mutated device mapping;
+- `5120 + 3080` scratch poison/rematerialization against the replicated
+  continuation oracle;
+- local and remote current-row slot preservation with no D2H or collective.
+
+The first merged target run was `FAIL` at `BlockTable.clear()`: the established
+method called `fill_` on the `CpuGpuBuffer` wrapper instead of its `gpu`
+tensor. The new shorter-batch stale-tail test was the first test to exercise
+that method on the target vLLM version. Commit `d6efcc0f` corrects the existing
+clear path to `self.block_table.gpu.fill_(0)` while retaining the CPU clear.
+
+The matched rerun passed:
+
+```text
+83 passed
+request-path forbidden operations:
+  dist.all_gather = absent
+  dist.all_to_all_single = absent
+  torch.npu.synchronize = absent
+  Tensor.item / Tensor.tolist = absent
+```
+
+This is a target-image mechanism and continuation `PASS`. Production
+model-runner construction of peer roots and per-group compiled plans remains
+the next gate; no model service or TTFT run was performed.
+
+Raw evidence:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/runs/032/
+  20260731_g47_peer_materializer_slots/
+    target_pytest.log
+    target_pytest.exit_code
+    target_pytest_r2.log
+    target_pytest_r2.exit_code
+    overlay/
+    target/
+```
+
+### G48: production peer-read replacement — active
+
+Hypothesis: replacing the packed C128 request-time HCCL staging path with
+startup V2 peer aliases plus certified `index_select`/`index_copy_`
+materialization preserves the already-measured packed physical capacity and
+correctness while removing all request-time C128 payload collectives.
+
+Pinned candidate:
+
+```text
+model=/a3_inference/models/DeepSeek-V4-Flash-w8a8-mtp
+topology=TP8/EP8, single node, prefill only
+prompt/output=8200/1
+packed wide bucket=page_131072
+peer lifecycle=startup/shutdown only
+request materialization=ordinary NPU peer reads into 65-page local scratch
+current rows=same-stream certified local overlay
+```
+
+The causal variable relative to the valid packed-capacity configuration is
+only the C128 materialization transport. MoE/FusedMC2, B=4190, chunking,
+cache layout, sampling, and benchmark client remain fixed.
+
+Pass gates, in order:
+
+1. Target-image unit suite, including feature-off identity, startup rollback,
+   two consecutive materializations, and `5120 + 3080` scratch poison and
+   reconstruction.
+2. TP8 startup accounting retains the packed physical allocation and reports
+   no legacy replicated C128 root or full-B stage.
+3. After startup, two request materializations produce zero delta for VMM
+   import/map/bind and control collectives; the request stack contains no C128
+   `all_gather` or `all_to_all_single`, `.item()`, `.tolist()`, or
+   `torch.npu.synchronize`.
+4. Cache/logit continuation and exact `8200/1` model correctness pass.
+5. Matched candidate/control median and p90 TTFT regress by less than 5%.
+
+Kill criteria: any physical-capacity regression, request-time lifecycle or
+payload communication, cache/logit mismatch, unbounded scratch growth, or
+unsafe exporter-before-importer teardown stops performance measurement.
