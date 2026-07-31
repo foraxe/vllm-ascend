@@ -353,7 +353,7 @@ class BlockTable:
         self.block_table.copy_to_gpu(num_reqs)
 
     def clear(self) -> None:
-        self.block_table.fill_(0)
+        self.block_table.gpu.fill_(0)
         self.block_table.cpu.fill_(0)
         if self.packed_global_slot_mapping is not None:
             self.packed_global_slot_mapping.fill_(PAD_SLOT_ID)
