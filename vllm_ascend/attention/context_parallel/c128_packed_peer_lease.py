@@ -1147,7 +1147,6 @@ class PackedVmmPeerLease:
         self._fenced = False
         self._imports_released = False
         self._owner_export_pin_released = False
-        self._owner_arena_closed = False
         self._counter_values: dict[str, int] = {
             field_name: 0 for field_name in PackedVmmPeerCounters.__dataclass_fields__
         }
@@ -1620,13 +1619,48 @@ class PackedVmmPeerLease:
                 )
             ) from error
 
-    def _release_owner_after_ack(self) -> None:
+    def _release_export_pin_after_ack(self) -> None:
         if not self._owner_export_pin_released:
             self._owner_export_pin.release()
             self._owner_export_pin_released = True
-        if not self._owner_arena_closed:
-            self._owner_arena.close()
-            self._owner_arena_closed = True
+
+    def commit_consumer_views(
+        self,
+        error: BaseException | None = None,
+    ) -> None:
+        """Collectively commit or reject post-map consumer construction.
+
+        Every rank calls this exactly once after peer open.  A rank whose
+        local cache reshape/materializer construction failed reports that
+        failure here, ensuring peers do not publish while it enters teardown.
+        """
+        self._require_open()
+        local = PeerStartupStageResult(
+            stage="consumer_views",
+            rank=self.rank,
+            ok=error is None,
+            error_type="" if error is None else type(error).__name__,
+            error_message="" if error is None else str(error),
+        )
+        self._increment("startup_control_exchange_calls")
+        try:
+            gathered = self._control.all_gather_object(local)
+            reports = _validate_stage_exchange(
+                gathered,
+                stage="consumer_views",
+                world_size=self.world_size,
+            )
+        except BaseException as control_error:
+            raise _PackedVmmPeerControlError(
+                stage="consumer_views",
+                cause=control_error,
+            ) from control_error
+        failures = tuple(report for report in reports if not report.ok)
+        if failures:
+            raise PackedVmmPeerStartupError(
+                stage="consumer_views",
+                failures=failures,
+            )
 
     def _cleanup_after_lost_control(self) -> PackedVmmPeerCleanupError | None:
         try:
@@ -1695,7 +1729,7 @@ class PackedVmmPeerLease:
 
         self._imports_released = True
         try:
-            self._release_owner_after_ack()
+            self._release_export_pin_after_ack()
         except BaseException as owner_error:
             self._state = PackedVmmPeerLeaseState.CLEANUP_FAILED
             cleanup_error = PackedVmmPeerCleanupError(
@@ -1735,7 +1769,7 @@ class PackedVmmPeerLease:
                     )
                 ) from error
         try:
-            self._release_owner_after_ack()
+            self._release_export_pin_after_ack()
         except BaseException as error:
             self._state = PackedVmmPeerLeaseState.CLEANUP_FAILED
             raise PackedVmmPeerCleanupError(

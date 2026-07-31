@@ -718,7 +718,6 @@ def test_close_orders_fence_alias_drop_import_close_ack_then_owner_free() -> Non
         ("release_peer_access",),
         ("barrier", "peer_imports_released"),
         ("release_export_pin",),
-        ("release_owned",),
     ]
     assert lease.state is PackedVmmPeerLeaseState.CLOSED
     counters = lease.counters
@@ -726,7 +725,8 @@ def test_close_orders_fence_alias_drop_import_close_ack_then_owner_free() -> Non
     assert counters.teardown_close_import_calls == 1
     assert counters.teardown_release_alias_calls == 1
     assert counters.teardown_peer_access_release_calls == 1
-    assert owner_arena.closed
+    assert not owner_arena.closed
+    assert not owner_arena.pin_active
 
 
 def test_cleanup_failure_never_acknowledges_or_releases_owner_and_is_retryable() -> None:
@@ -751,7 +751,6 @@ def test_cleanup_failure_never_acknowledges_or_releases_owner_and_is_retryable()
         ("release_peer_access",),
         ("barrier", "peer_imports_released"),
         ("release_export_pin",),
-        ("release_owned",),
     ]
     assert lease.state is PackedVmmPeerLeaseState.CLOSED
 
@@ -769,8 +768,9 @@ def test_failed_import_release_ack_keeps_owner_pinned_until_retry() -> None:
     assert ("release_export_pin",) not in trace
 
     lease.close()
-    assert owner_arena.closed
-    assert trace[-2:] == [("release_export_pin",), ("release_owned",)]
+    assert not owner_arena.closed
+    assert not owner_arena.pin_active
+    assert trace[-1:] == [("release_export_pin",)]
 
 
 def test_startup_map_failure_is_globally_observed_then_fully_rolled_back() -> None:
@@ -783,7 +783,7 @@ def test_startup_map_failure_is_globally_observed_then_fully_rolled_back() -> No
     assert ("release_alias", _ALIAS_ADDRESS, _SIZE, _LOCAL_DEVICE) in trace
     assert ("release_peer_access",) in trace
     assert ("release_export_pin",) in trace
-    assert ("release_owned",) in trace
+    assert ("release_owned",) not in trace
     assert ("gather_stage", "startup_rollback", True) in trace
 
 
@@ -806,7 +806,7 @@ def test_set_access_and_immediate_unmap_failure_retains_retryable_mapping() -> N
         ("aclrtUnmapMem", _ALIAS_ADDRESS),
     ]
     assert ("release_export_pin",) in trace
-    assert ("release_owned",) in trace
+    assert ("release_owned",) not in trace
 
 
 def test_remote_startup_failure_rolls_back_local_alias_before_owner_close() -> None:
@@ -822,7 +822,7 @@ def test_remote_startup_failure_rolls_back_local_alias_before_owner_close() -> N
     assert trace.index(("drop_alias",)) < trace.index(("release_export_pin",))
     assert trace.index(("release_peer_access",)) < trace.index(("release_export_pin",))
     assert ("gather_stage", "startup_rollback", True) in trace
-    assert ("release_owned",) in trace
+    assert ("release_owned",) not in trace
 
 
 def test_mismatched_rank_schema_aborts_before_export_or_import() -> None:
@@ -838,7 +838,7 @@ def test_mismatched_rank_schema_aborts_before_export_or_import() -> None:
     assert not any(event[0] == "export" for event in trace)
     assert not any(event[0] == "import" for event in trace)
     assert ("gather_stage", "startup_rollback", True) in trace
-    assert ("release_owned",) in trace
+    assert ("release_owned",) not in trace
 
 
 def test_identical_independent_plans_have_same_metadata_fingerprint() -> None:
@@ -875,7 +875,7 @@ def test_mismatched_lease_or_plan_aborts_before_export_or_import(
 
     assert not any(event[0] == "export" for event in trace)
     assert not any(event[0] == "import" for event in trace)
-    assert ("release_owned",) in trace
+    assert ("release_owned",) not in trace
 
 
 def test_peer_access_refcounts_enable_once_and_disable_after_last_lease() -> None:

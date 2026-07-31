@@ -704,6 +704,72 @@ def test_close_quiesces_and_releases_views_before_lease() -> None:
         runtime.install_tensor_views(REPLICATED_VIEW_KEY, install_view)
 
 
+def test_composite_runtime_closes_views_then_peer_then_local_arena() -> None:
+    events: list[tuple[object, ...]] = []
+    runtime = _open_runtime(events)
+
+    class PeerLease:
+        def close(self) -> None:
+            events.append(("close_peer",))
+
+    peer = runtime.open_peer_lease(lambda _owner: PeerLease())
+    assert runtime.peer_lease is peer
+    for view_key in EXPECTED_VIEW_KEYS:
+        runtime.install_tensor_views(
+            view_key,
+            lambda _tensor, key=view_key: (
+                lambda: events.append(("release_view", key))
+            ),
+        )
+    runtime.seal_views()
+    runtime.publish()
+    events.clear()
+
+    runtime.close()
+
+    first_local_binding_close = events.index(("close_binding",))
+    assert events[0] == ("quiesce",)
+    assert max(
+        index
+        for index, event in enumerate(events)
+        if event[0] == "release_view"
+    ) < events.index(("close_peer",))
+    assert events.index(("close_peer",)) < first_local_binding_close
+    assert runtime.peer_lease is None
+    assert runtime.state is PackedArenaRuntimeState.CLOSED
+
+
+def test_composite_runtime_retains_failed_peer_before_local_close() -> None:
+    events: list[tuple[object, ...]] = []
+    runtime = _open_runtime(events)
+
+    class RetryPeerLease:
+        attempts = 0
+
+        def close(self) -> None:
+            self.attempts += 1
+            events.append(("close_peer", self.attempts))
+            if self.attempts == 1:
+                raise RuntimeError("peer cleanup failed once")
+
+    peer = runtime.open_peer_lease(lambda _owner: RetryPeerLease())
+    events.clear()
+
+    with pytest.raises(
+        PackedArenaRuntimeCleanupError,
+        match="peer cleanup failed once",
+    ):
+        runtime.close()
+    assert runtime.peer_lease is peer
+    assert not any(event[0] == "close_binding" for event in events)
+
+    runtime.close()
+
+    assert runtime.peer_lease is None
+    assert runtime.state is PackedArenaRuntimeState.CLOSED
+    assert events.index(("close_peer", 2)) < events.index(("close_binding",))
+
+
 def test_failed_view_install_does_not_publish_a_lease_pin() -> None:
     events: list[tuple[object, ...]] = []
     runtime = _open_runtime(events)

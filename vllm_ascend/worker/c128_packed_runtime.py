@@ -88,6 +88,7 @@ class PackedArenaRuntimeState(str, Enum):
     SEALED = "sealed"
     PUBLISHED = "published"
     CLOSING = "closing"
+    VIEWS_RELEASED = "views_released"
     CLEANUP_FAILED = "cleanup_failed"
     CLOSED = "closed"
 
@@ -891,6 +892,7 @@ class PackedArenaRuntime:
             raise ValueError(f"lease rank {lease.tp_rank} does not match runtime rank {tp_rank}")
         self.contract = contract
         self._lease: PackedArenaLease | None = lease
+        self._peer_lease: Any | None = None
         self.tp_rank = tp_rank
         self.device_index = lease.device_index
         self._quiesce = quiesce
@@ -965,6 +967,40 @@ class PackedArenaRuntime:
         if self._state is not PackedArenaRuntimeState.OPEN or self._lease is None:
             raise PackedArenaRuntimeClosedError(f"packed-arena runtime is {self._state.value}")
         return self._lease
+
+    def open_peer_lease(
+        self,
+        opener: Callable[[PackedArenaLease], Any],
+    ) -> Any:
+        """Attach one startup-only peer lease without transferring ownership.
+
+        ``PackedArenaRuntime`` remains the sole owner of the local arena. A
+        partially opened peer lease carried by a coordinated-open exception
+        is retained so :meth:`close` can retry its cleanup before the local
+        allocation is released.
+        """
+        lease = self._require_open()
+        if self._peer_lease is not None:
+            raise RuntimeError("packed-arena peer lease is already attached")
+        try:
+            peer_lease = opener(lease)
+        except BaseException as error:
+            retained = getattr(error, "lease", None)
+            if retained is not None:
+                self._peer_lease = retained
+            raise
+        if peer_lease is None or not callable(
+            getattr(peer_lease, "close", None)
+        ):
+            raise TypeError(
+                "packed-arena peer opener must return a closeable lease"
+            )
+        self._peer_lease = peer_lease
+        return peer_lease
+
+    @property
+    def peer_lease(self) -> Any | None:
+        return self._peer_lease
 
     def install_tensor_views(
         self,
@@ -1044,14 +1080,18 @@ class PackedArenaRuntime:
             raise RuntimeError("packed-arena runtime must be sealed before publication; " f"state={self._state.value}")
         self._state = PackedArenaRuntimeState.PUBLISHED
 
-    def close(self) -> None:
-        """Quiesce work, unregister/drop views, then close the owning lease.
+    def release_tensor_views(self) -> None:
+        """Quiesce work and drop every derived tensor view.
 
-        OPEN and SEALED runtimes may be closed to roll back construction.
-        PUBLISHED runtimes follow the same ordered teardown after their
-        model-runner owner has stopped making the aliases reachable.
+        This split teardown stage lets the production worker release imported
+        peer mappings after no materializer/local view can reach them, while
+        retaining the local owner allocation until every rank acknowledges
+        that its imports are gone.
         """
-        if self._state is PackedArenaRuntimeState.CLOSED:
+        if self._state in {
+            PackedArenaRuntimeState.VIEWS_RELEASED,
+            PackedArenaRuntimeState.CLOSED,
+        }:
             return
         self._state = PackedArenaRuntimeState.CLOSING
 
@@ -1076,8 +1116,31 @@ class PackedArenaRuntime:
                     f"release_view[{owner.token}:{owner.bucket}]",
                     error,
                 ) from error
-            # The runtime, not the consumer, releases the lease pin.
             self._view_owners.pop()
+        self._state = PackedArenaRuntimeState.VIEWS_RELEASED
+
+    def close(self) -> None:
+        """Drop views, then close the local owning lease exactly once.
+
+        OPEN and SEALED runtimes may be closed to roll back construction.
+        PUBLISHED runtimes follow the same ordered teardown after their
+        model-runner owner has stopped making the aliases reachable.
+        """
+        if self._state is PackedArenaRuntimeState.CLOSED:
+            return
+        self.release_tensor_views()
+
+        peer_lease = self._peer_lease
+        if peer_lease is not None:
+            try:
+                peer_lease.close()
+            except BaseException as error:
+                self._state = PackedArenaRuntimeState.CLEANUP_FAILED
+                raise PackedArenaRuntimeCleanupError(
+                    "close_peer_lease",
+                    error,
+                ) from error
+            self._peer_lease = None
 
         lease = self._lease
         if lease is None:
