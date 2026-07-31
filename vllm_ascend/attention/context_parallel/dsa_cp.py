@@ -1674,7 +1674,7 @@ class AscendDSACPImpl(DSAAttentionImpl):
                     group=self.tp_group.device_group,
                 )
                 trace_c128_stage("materialize_ready")
-                logger.info(
+                logger.debug(
                     "C128 owner sparse attention: rank=%d cache_shape=%s block_table_shape=%s",
                     self.tp_rank,
                     tuple(cmp_kv.shape),
@@ -1694,7 +1694,7 @@ class AscendDSACPImpl(DSAAttentionImpl):
             )[0]
             trace_c128_stage("sparse_attn_ready")
             if c128_owner_cache is not None:
-                logger.info("C128 owner sparse attention complete: rank=%d", self.tp_rank)
+                logger.debug("C128 owner sparse attention complete: rank=%d", self.tp_rank)
         return attn_output
 
     def _restore_tp_head_layout(
