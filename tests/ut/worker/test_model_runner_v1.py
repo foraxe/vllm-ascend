@@ -213,6 +213,7 @@ class TestNPUModelRunnerPackedArenaLifecycle(unittest.TestCase):
         runner = self._build_runner()
         runtime = PackedArenaRuntime.__new__(PackedArenaRuntime)
         runtime._state = PackedArenaRuntimeState.SEALED
+        runtime._peer_lease = None
         runtime.contract = SimpleNamespace(metadata_fingerprint="same")
         runtime.tp_rank = 3
         runtime.device_index = 3
@@ -246,6 +247,7 @@ class TestNPUModelRunnerPackedArenaLifecycle(unittest.TestCase):
         runner = self._build_runner()
         runtime = PackedArenaRuntime.__new__(PackedArenaRuntime)
         runtime._state = PackedArenaRuntimeState.SEALED
+        runtime._peer_lease = None
         runtime.contract = SimpleNamespace(metadata_fingerprint="same")
         runtime.tp_rank = 2
         runtime.device_index = 3
