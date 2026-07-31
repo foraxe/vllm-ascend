@@ -1634,3 +1634,43 @@ Raw evidence:
     b0_output_repeatability_g44.json
     npu_smi_g44_b0_healthy.txt
 ```
+
+### G45: V2 peer-mapped BF16 selected-row materialization — PASS
+
+Hypothesis: the C128 consumer can replace request-time HCCL staging with an
+ordinary NPU kernel that reads selected rows from a startup-imported V2 peer
+mapping into local memory.
+
+The `.32` pod used NPU0 as exporter and NPU1 as importer. NPU0 exported one
+128-byte V2 handle containing a BF16 C128 page (`[128,512]`, 131,072 payload
+bytes, rounded to one 2-MiB VMM mapping). NPU1 imported the handle, wrapped the
+remote address as a non-owning Torch-NPU tensor, and executed `index_select`
+for rows `[0,64,127]`.
+
+```text
+status=PASS
+can_access_peer=1/1
+selected_row_indices=[0,64,127]
+selected_row_checksum=112934.0
+child_exitcodes=0/0
+terminated=[]
+killed=[]
+cleanup=importer_unmap -> exporter_free
+```
+
+The selected BF16 rows matched the local reference exactly. No distributed
+process group or communication collective was created by the probe. This
+proves the peer-read materialization primitive, not the full TP8 integration
+or its TTFT. The production gate must still exchange and authorize all owner
+handles at startup, retain exporter lifetime, fence producer writes before
+peer reads, and prove zero request-time C128 map/import/collective calls.
+
+Raw evidence and exact source:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/runs/032/
+  20260731_g45_vmm_remote_bf16_index_select/
+    artifact/result.json
+    artifact/run.log
+    artifact/source/
+```

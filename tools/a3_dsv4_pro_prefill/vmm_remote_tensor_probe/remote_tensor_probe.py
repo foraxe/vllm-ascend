@@ -146,7 +146,31 @@ class Bridge:
             self._check(self.library.dsa_vmm_destroy_region(region))
 
 
-def _construct_tensor(pointer: int, mapped_size: int, device_id: int, elements: int) -> tuple[Any, Any]:
+def _torch_dtype(torch: Any, dtype_name: str) -> Any:
+    if dtype_name == "float32":
+        return torch.float32
+    if dtype_name == "bfloat16":
+        return torch.bfloat16
+    raise ValueError(f"unsupported dtype: {dtype_name}")
+
+
+def _element_size(dtype_name: str) -> int:
+    return 4 if dtype_name == "float32" else 2
+
+
+def _expected_values(torch: Any, elements: int, dtype_name: str, *, device: str | None = None) -> Any:
+    dtype = _torch_dtype(torch, dtype_name)
+    values = torch.arange(elements, dtype=torch.int32, device=device) % 127
+    return values.to(dtype) + INITIAL_OFFSET
+
+
+def _construct_tensor(
+    pointer: int,
+    mapped_size: int,
+    device_id: int,
+    elements: int,
+    dtype_name: str,
+) -> tuple[Any, Any]:
     import torch
     import torch_npu
 
@@ -156,7 +180,7 @@ def _construct_tensor(pointer: int, mapped_size: int, device_id: int, elements: 
         "data_ptr": pointer,
         "device": device,
         "nbytes": mapped_size,
-        "dtype": torch.float32,
+        "dtype": _torch_dtype(torch, dtype_name),
         "size": (elements,),
         "stride": (1,),
         "storage_offset": 0,
@@ -196,6 +220,8 @@ def _importer(
     device_id: int,
     peer_device_id: int,
     elements: int,
+    dtype_name: str,
+    row_width: int,
     set_access: bool,
 ) -> None:
     bridge: Bridge | None = None
@@ -227,15 +253,45 @@ def _importer(
             bridge.set_local_access(region)
         pointer = bridge.pointer(region)
         mapped_size = bridge.size(region)
-        storage, tensor = _construct_tensor(pointer, mapped_size, device_id, elements)
+        storage, tensor = _construct_tensor(
+            pointer,
+            mapped_size,
+            device_id,
+            elements,
+            dtype_name,
+        )
 
         observed = tensor.clone()
         torch.npu.synchronize()
         observed_cpu = observed.cpu()
-        expected = torch.arange(elements, dtype=torch.float32) + INITIAL_OFFSET
+        expected = _expected_values(torch, elements, dtype_name)
         if not torch.equal(observed_cpu, expected):
             mismatch = int((observed_cpu != expected).sum().item())
             raise ProbeFailure(f"remote clone mismatch_count={mismatch}")
+
+        selected_row_indices: list[int] = []
+        selected_row_checksum: float | None = None
+        if row_width:
+            if row_width <= 0 or elements % row_width:
+                raise ValueError("row_width must divide elements")
+            row_count = elements // row_width
+            selected_row_indices = sorted({0, row_count // 2, row_count - 1})
+            selected_index = torch.tensor(
+                selected_row_indices,
+                dtype=torch.int64,
+                device=f"npu:{device_id}",
+            )
+            selected_rows = tensor.view(row_count, row_width).index_select(
+                0,
+                selected_index,
+            )
+            torch.npu.synchronize()
+            selected_rows_cpu = selected_rows.cpu()
+            expected_selected = expected.view(row_count, row_width)[selected_row_indices]
+            if not torch.equal(selected_rows_cpu, expected_selected):
+                mismatch = int((selected_rows_cpu != expected_selected).sum().item())
+                raise ProbeFailure(f"remote selected-row mismatch_count={mismatch}")
+            selected_row_checksum = float(selected_rows_cpu.float().sum().item())
 
         tensor.fill_(WRITE_VALUE)
         torch.npu.synchronize()
@@ -244,7 +300,11 @@ def _importer(
         importer_after_write_cpu = importer_after_write.cpu()
         if not torch.equal(
             importer_after_write_cpu,
-            torch.full((elements,), WRITE_VALUE, dtype=torch.float32),
+            torch.full(
+                (elements,),
+                WRITE_VALUE,
+                dtype=_torch_dtype(torch, dtype_name),
+            ),
         ):
             raise ProbeFailure("importer fill_ self-read mismatch")
 
@@ -256,6 +316,8 @@ def _importer(
                 "read_checksum": float(observed_cpu.sum().item()),
                 "read_first": float(observed_cpu[0].item()),
                 "read_last": float(observed_cpu[-1].item()),
+                "selected_row_indices": selected_row_indices,
+                "selected_row_checksum": selected_row_checksum,
                 "write_value": WRITE_VALUE,
                 "set_access": set_access,
             }
@@ -268,6 +330,10 @@ def _importer(
         storage = None
         observed = None
         observed_cpu = None
+        selected_index = None
+        selected_rows = None
+        selected_rows_cpu = None
+        expected_selected = None
         importer_after_write = None
         importer_after_write_cpu = None
         gc.collect()
@@ -297,6 +363,7 @@ def _exporter(
     device_id: int,
     peer_device_id: int,
     elements: int,
+    dtype_name: str,
     set_access: bool,
 ) -> None:
     bridge: Bridge | None = None
@@ -321,7 +388,7 @@ def _exporter(
         command = connection.recv()
         if command.get("op") != "create":
             raise RuntimeError(f"unexpected exporter command: {command!r}")
-        requested_size = elements * 4
+        requested_size = elements * _element_size(dtype_name)
         region = bridge.create_local(device_id, requested_size)
         if set_access:
             bridge.set_local_access(region)
@@ -329,15 +396,26 @@ def _exporter(
         bridge.authorize_v2(shareable_handle, command["importer_bare_tgid"])
         pointer = bridge.pointer(region)
         mapped_size = bridge.size(region)
-        storage, tensor = _construct_tensor(pointer, mapped_size, device_id, elements)
+        storage, tensor = _construct_tensor(
+            pointer,
+            mapped_size,
+            device_id,
+            elements,
+            dtype_name,
+        )
 
-        source = torch.arange(elements, dtype=torch.float32, device=f"npu:{device_id}") + INITIAL_OFFSET
+        source = _expected_values(
+            torch,
+            elements,
+            dtype_name,
+            device=f"npu:{device_id}",
+        )
         tensor.copy_(source)
         torch.npu.synchronize()
         initialized = tensor.clone()
         torch.npu.synchronize()
         initialized_cpu = initialized.cpu()
-        expected = torch.arange(elements, dtype=torch.float32) + INITIAL_OFFSET
+        expected = _expected_values(torch, elements, dtype_name)
         if not torch.equal(initialized_cpu, expected):
             raise ProbeFailure("exporter copy_ initialization mismatch")
         connection.send(
@@ -359,7 +437,11 @@ def _exporter(
         after_remote_write = tensor.clone()
         torch.npu.synchronize()
         after_remote_write_cpu = after_remote_write.cpu()
-        expected_after_write = torch.full((elements,), WRITE_VALUE, dtype=torch.float32)
+        expected_after_write = torch.full(
+            (elements,),
+            WRITE_VALUE,
+            dtype=_torch_dtype(torch, dtype_name),
+        )
         if not torch.equal(after_remote_write_cpu, expected_after_write):
             mismatch = int((after_remote_write_cpu != expected_after_write).sum().item())
             raise ProbeFailure(f"exporter post-write mismatch_count={mismatch}")
@@ -448,6 +530,20 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--exporter-device", type=int, default=0)
     parser.add_argument("--importer-device", type=int, default=1)
     parser.add_argument("--elements", type=int, default=4096)
+    parser.add_argument(
+        "--dtype",
+        choices=("float32", "bfloat16"),
+        default="float32",
+    )
+    parser.add_argument(
+        "--row-width",
+        type=int,
+        default=0,
+        help=(
+            "When positive, view the remote tensor as rows of this width and "
+            "index_select representative rows before the write-back check."
+        ),
+    )
     parser.add_argument("--stage-timeout", type=float, default=60.0)
     parser.add_argument(
         "--set-access",
@@ -463,15 +559,16 @@ def main() -> int:
     result: dict[str, Any] = {
         "status": "BLOCKED",
         "hypothesis": (
-            "An NPU1 ordinary torch kernel can read and write an NPU0 V2 "
-            "imported/mapped VMM allocation through a non-owning torch_npu "
-            "tensor view."
+            "An importer-side ordinary torch NPU kernel can read an exporter "
+            "V2-mapped tensor and materialize selected rows locally without "
+            "a communication collective."
         ),
         "config": {
             "exporter_device": args.exporter_device,
             "importer_device": args.importer_device,
             "elements": args.elements,
-            "dtype": "torch.float32",
+            "dtype": f"torch.{args.dtype}",
+            "row_width": args.row_width,
             "initial_offset": INITIAL_OFFSET,
             "write_value": WRITE_VALUE,
             "set_access": args.set_access,
@@ -502,6 +599,8 @@ def main() -> int:
             args.importer_device,
             args.exporter_device,
             args.elements,
+            args.dtype,
+            args.row_width,
             args.set_access,
         ),
     )
@@ -514,6 +613,7 @@ def main() -> int:
             args.exporter_device,
             args.importer_device,
             args.elements,
+            args.dtype,
             args.set_access,
         ),
     )

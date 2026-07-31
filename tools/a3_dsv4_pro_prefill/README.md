@@ -15,6 +15,8 @@ synthetic 8K/one-output prefill and TTFT A/Bs:
 - `vmm_sparse_owner_probe.cpp` and `run_vmm_sparse_owner_probe.py`: standalone
   two-rank CANN VMM sparse-owner allocation/alias gate. See
   `VMM_SPARSE_OWNER_PROBE.md`.
+- `vmm_remote_tensor_probe/`: V2 shareable-handle peer-map gate for ordinary
+  Torch-NPU reads, writes, and optional BF16 selected-row materialization.
 
 The detailed topology, deployment, validity boundaries, results, and DSA-CP
 task map are in
@@ -27,12 +29,12 @@ benchmark does not save or restore external KV, so starting its master would
 introduce a separate process and port without exercising the measured path.
 Use `ENABLE_MOONCAKE_KV_CONNECTOR=1` only for an explicit KV-transfer test.
 
-`ENABLE_C128_OWNER_SHARD=1` is a separate, prefill-only DSA-CP experiment. It
-keeps compressor state production unchanged, stores each C128 page on one TP
-owner, and HCCL-stages only the block-table pages required by attention into a
-temporary local view. It requires TP > 1, forbids a KV-transfer connector, and
-keeps the replicated C128 path as the default. Do not combine it with an
-unrelated DSA overlap or Mooncake A/B.
+`ENABLE_C128_OWNER_SHARD=1` is the legacy, prefill-only HCCL-staged correctness
+experiment. It is not the final packed-owner transport and failed the TTFT
+gate. The target packed path keeps owner pages in startup-mapped V2 peer views,
+materializes selected remote rows locally with an ordinary NPU kernel, and
+does not execute request-time C128 payload collectives. Both paths remain
+default off.
 
 `ENABLE_DSA_CP_LOCAL_CURRENT_KV=1` is the default-off E3 path for a single,
 unpadded, C128-aligned prefill. It replaces the full-hidden AllGather with
@@ -215,6 +217,25 @@ raw results are under:
 ```text
 /a3_inference/nyx/dsv4_dsa_cp/runs/032/
   20260731_g42_same_b_schema_corrected/
+```
+
+The G45 microgate proves the replacement consumer primitive on the same `.32`
+image. It maps one NPU0 V2 handle into NPU1, wraps the remote address as a
+non-owning BF16 Torch-NPU tensor with C128 page shape `[128,512]`, and runs
+`index_select` for rows `[0,64,127]`. The selected rows matched exactly and
+cleanup completed importer-unmap before exporter-free:
+
+```bash
+bash ./vmm_remote_tensor_probe/run_probe.sh <artifact-dir> \
+  --exporter-device 0 --importer-device 1 \
+  --elements 65536 --dtype bfloat16 --row-width 512 --set-access
+```
+
+Raw G45 evidence:
+
+```text
+/a3_inference/nyx/dsv4_dsa_cp/runs/032/
+  20260731_g45_vmm_remote_bf16_index_select/artifact/
 ```
 
 Run the two existing multistream candidates as separate single-variable A/Bs:
