@@ -1,0 +1,5 @@
+PHASE_PASS initial_accuracy 6
+PHASE_PASS variable_serial 16
+PHASE_PASS short_concurrent 16
+PHASE_PASS after_idle_accuracy 6
+STABILITY_PASS 44

@@ -1,0 +1,11 @@
+ACCURACY {'prompt': 'Reply with exactly OK.', 'content': 'OK', 'finish_reason': 'stop', 'tokens': 12}
+ACCURACY {'prompt': 'What is 2+2? Answer with one number.', 'content': '4', 'finish_reason': 'stop', 'tokens': 20}
+ACCURACY {'prompt': 'Name the capital of France. Answer with one word.', 'content': 'Paris', 'finish_reason': 'stop', 'tokens': 21}
+ACCURACY {'prompt': 'Count from 1 to 5 separated by commas.', 'content': '1, 2, 3, 4, 5', 'finish_reason': 'stop', 'tokens': 51}
+ACCURACY {'prompt': "Translate 'good morning' into Chinese. Only the translation.", 'content': '早上好', 'finish_reason': 'stop', 'tokens': 49}
+ACCURACY {'prompt': 'Explain why the sky is blue in one short sentence.', 'content': 'The sky is blue because air molecules scatter shorter blue wavelengths of sunlight more strongly than longer red wavelengths.', 'finish_reason': 'stop', 'tokens': 68}
+ACCURACY_MATCHES [True, True, True, True, True, True]
+TOKEN_ID_MATCHES [True, True, True, True, True, True]
+BENCH {'input_text_target': 128, 'concurrency': 1, 'duration_s': 80.2478192942217, 'output_tokens_per_second': 51.04188544965153, 'median_ttft_ms': 227.6793192140758, 'median_tpot_ms': 15.991431062242816, 'median_e2e_s': 1.2462090868502855}
+BENCH {'input_text_target': 128, 'concurrency': 4, 'duration_s': 29.89104457013309, 'output_tokens_per_second': 137.03100908332567, 'median_ttft_ms': 290.02336598932743, 'median_tpot_ms': 24.652534556235114, 'median_e2e_s': 1.846939152572304}
+BENCH {'input_text_target': 128, 'concurrency': 8, 'duration_s': 19.970090239308774, 'output_tokens_per_second': 205.1067346675032, 'median_ttft_ms': 573.6067574471235, 'median_tpot_ms': 29.847534159050575, 'median_e2e_s': 2.4645806839689612}

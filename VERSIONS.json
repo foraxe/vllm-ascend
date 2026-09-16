@@ -1,0 +1,8 @@
+{
+  "vllm": "6e448d0ea9bf3d88d898b65449ca6dc2aec170ac",
+  "vllm_ascend_hbm_base": "e43cf1e9f5d9bead076853aa6bcacb671465de94",
+  "cpu_pr16544_measured": "ecb641ec3a47f74bf5173b88491a2aa65e0aec06",
+  "pr39_inspected_not_measured": "01c1cf7fbd0acce5df4b334fe23d24a621c33197",
+  "vmm_archive_sha256": "21d025812ab81a8abe3549dd769de032f37d1c9872dbd549c0f4b4d1357ffb5b",
+  "scope": "Tested source overlays and raw results, not complete framework checkouts. CPU is an Engram-only backport. Profile traces excluded; originals retained in workspace."
+}

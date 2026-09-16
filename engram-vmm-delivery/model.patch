@@ -1,0 +1,14 @@
+diff --git a/vllm_ascend/models/deepseek_v41/model.py b/vllm_ascend/models/deepseek_v41/model.py
+--- a/vllm_ascend/models/deepseek_v41/model.py
++++ b/vllm_ascend/models/deepseek_v41/model.py
+@@ -682,3 +682,10 @@
+         if engram_loaded != expected:
+             raise ValueError(f"Missing Engram weights: {expected - engram_loaded}")
+         return loaded | engram_loaded
++
++# Opt-in VMM Engram. No opt-in means the original HBM implementation.
++import os as _engram_vmm_os
++if _engram_vmm_os.environ.get('VLLM_ASCEND_ENGRAM_VMM_RUN'):
++    import sys as _engram_vmm_sys
++    from engram_vmm import install as _install_engram_vmm
++    _install_engram_vmm(_engram_vmm_sys.modules[__name__])

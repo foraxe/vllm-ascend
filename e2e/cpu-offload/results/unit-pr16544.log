@@ -1,0 +1,8 @@
+NATIVE_CPU_OFFLOAD rank=0 dtype=torch.int8 scales=torch.float32 threads=1 rows=4097 impl=pr16544-ecb641e-fused-cpu
+INFO 09-16 06:36:24 [__init__.py:52] Available plugins for group vllm.platform_plugins:
+INFO 09-16 06:36:24 [__init__.py:54] - ascend -> vllm_ascend:register
+INFO 09-16 06:36:24 [__init__.py:57] All plugins in this group will be loaded. Set `VLLM_PLUGINS` to control which plugins to load.
+INFO 09-16 06:36:24 [__init__.py:237] Platform plugin ascend is activated
+INFO 09-16 06:36:24 [platform.py:70] Breakable CUDAGraph on Ascend is opt-in; using VLLM_USE_BREAKABLE_CUDAGRAPH=0.
+[W916 06:36:24.846567110 NPUCachingAllocator.cpp:202] Warning: The current CANN and HDK(driver) versions require processing for 32 padding size, with memory allocation. (function operator())
+NATIVE_CPU_REFERENCE_PASS

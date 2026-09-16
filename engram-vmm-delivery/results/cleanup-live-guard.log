@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/a3_inference/itask/workdir/shared/ningyunxiao.nyx/dsv4_1/engram-delivery-20260916/cleanup_run.py", line 28, in <module>
+    if state!='Z':raise RuntimeError(f'Worker/library still active: PID{proc.name}')
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: Worker/library still active: PID1141
