@@ -38,21 +38,11 @@ class AscendEngram(nn.Module):
         token_mask: torch.Tensor,
         rotation: torch.Tensor | None,
     ) -> torch.Tensor:
-        return self.apply_gate(hidden_states, self.wkv(rows), token_mask, rotation)
+        return self.apply_gate(hidden_states, self.project(rows), token_mask, rotation)
 
-    def supports_windowed_projection(self) -> bool:
-        method = getattr(self.wkv, "quant_method", None)
-        return (
-            (method is None or type(method).__name__ in ("AscendUnquantizedLinearMethod", "UnquantizedLinearMethod"))
-            and self.wkv.weight.dtype == torch.bfloat16
-            and self.wkv.weight.ndim == 2
-            and self.wkv.weight.shape[0] == (self.hc_mult + 1) * self.dim
-            and self.wkv.bias is None
-        )
-
-    def project_chunk_into(self, rows: torch.Tensor, out: torch.Tensor, start: int, stop: int) -> None:
-        """Keep the reduction dimension intact; write one key/value group."""
-        torch.mm(rows, self.wkv.weight[start:stop].t(), out=out)
+    def project(self, rows: torch.Tensor) -> torch.Tensor:
+        """Use the original projection backend and precision unchanged."""
+        return self.wkv(rows)
 
     def apply_gate(
         self,

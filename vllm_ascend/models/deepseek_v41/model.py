@@ -98,7 +98,7 @@ from .engram.embedding import (
 )
 from .engram.layer import AscendEngram
 from .engram.parallel import gather_engram_hashes, resolve_dp_shared_memory
-from .engram.windowed import WindowedEngramProjection
+from .engram.windowed import EngramProjectionSchedule, router_projection_window, shard_engram_rows
 from .indexer import DeepseekV41Indexer
 
 
@@ -271,6 +271,7 @@ class DeepseekV41MoE(nn.Module):
         input_ids: torch.Tensor | None = None,
         hidden_states_fp32: torch.Tensor | None = None,
         already_sequence_parallel: bool = False,
+        engram_wkv_window: Callable[[], None] | None = None,
     ) -> torch.Tensor:
         num_tokens, hidden_dim = hidden_states.shape
         hidden_states = hidden_states.view(-1, hidden_dim)
@@ -288,15 +289,23 @@ class DeepseekV41MoE(nn.Module):
         if self.experts.is_internal_router:
             # In this case, the gate/router runs inside the FusedMoEFactory class
             router_input = hidden_states if hidden_states_fp32 is None else hidden_states_fp32
-            fused_moe_out = self.experts(
-                hidden_states=hidden_states,
-                router_logits=router_input,
-                input_ids=input_ids,
+            router_context = (
+                nullcontext()
+                if engram_wkv_window is None
+                else router_projection_window(self.experts, engram_wkv_window)
             )
+            with router_context:
+                fused_moe_out = self.experts(
+                    hidden_states=hidden_states,
+                    router_logits=router_input,
+                    input_ids=input_ids,
+                )
         else:
             # router_logits: (num_tokens, n_experts)
             router_input = hidden_states.float() if hidden_states_fp32 is None else hidden_states_fp32
             router_logits = F.linear(router_input, self.gate.weight)
+            if engram_wkv_window is not None:
+                engram_wkv_window()
             fused_moe_out = self.experts(
                 hidden_states=hidden_states,
                 router_logits=router_logits,
@@ -910,8 +919,6 @@ class DeepseekV41DecoderLayer(nn.Module):
         if use_sequence_parallel:
             x = sp_all_gather(x)[: positions.shape[0]]
         x = self.self_attn(positions, x, llama_4_scaling)
-        if engram_wkv_window is not None:
-            engram_wkv_window()
         if use_sequence_parallel:
             x = sp_reduce_scatter(x)
         hidden_states = self.hc_post(x, residual, attn_post, attn_comb)
@@ -925,12 +932,12 @@ class DeepseekV41DecoderLayer(nn.Module):
             attn_pre,
         )
         x, x_fp32 = self.rms_norm_cast(x)
-        x = self.mlp(
-            x,
-            input_ids=input_ids,
-            hidden_states_fp32=x_fp32,
-            already_sequence_parallel=use_sequence_parallel,
+        moe_args: dict[str, Any] = dict(
+            input_ids=input_ids, hidden_states_fp32=x_fp32, already_sequence_parallel=use_sequence_parallel
         )
+        if engram_wkv_window is not None:
+            moe_args["engram_wkv_window"] = engram_wkv_window
+        x = self.mlp(x, **moe_args)
         hidden_states = self.hc_post(x, residual, ffn_post, ffn_comb)
         return hidden_states, ffn_pre
 
@@ -1094,13 +1101,18 @@ class DeepseekV41Model(nn.Module, EagleModelMixin):
             self._engram_overlap_enabled
             and get_ascend_config().multistream_engram_wkv_overlap
             and vllm_config.lora_config is None
+            and not getattr(vllm_config.parallel_config, "enable_dbo", False)
         )
-        self._engram_wkv_output = None
+        self._engram_wkv_outputs = {}
         self._engram_wkv_stream = None
         self._engram_wkv_events = {}
         self._engram_max_tokens = max(
             vllm_config.scheduler_config.max_num_batched_tokens,
             vllm_config.compilation_config.max_cudagraph_capture_size or 0,
+        )
+        self._engram_wkv_max_tokens = min(
+            self._engram_max_tokens,
+            vllm_config.compilation_config.max_cudagraph_capture_size or self._engram_max_tokens,
         )
         rotation_path = get_rotation_path(vllm_config)
         self.engram_rotated = rotation_path is not None
@@ -1386,58 +1398,62 @@ class DeepseekV41Model(nn.Module, EagleModelMixin):
                 },
                 torch.zeros(capacity, dtype=torch.bool, device=device),
             )
-            if getattr(self, "_engram_windowed_wkv", False):
-                tp = get_tensor_model_parallel_world_size()
-                self._engram_wkv_output = torch.empty(
+        if getattr(self, "_engram_windowed_wkv", False) and self._engram_wkv_stream is None:
+            tp = get_tensor_model_parallel_world_size()
+            capacity = self._engram_wkv_max_tokens
+            device = self.engram_rotation.device
+            self._engram_wkv_outputs = {
+                layer: torch.empty(
                     ((capacity + tp - 1) // tp, (self.config.hc_mult + 1) * self.config.hidden_size),
                     dtype=torch.bfloat16,
                     device=device,
                 )
-                self._engram_wkv_stream = torch.npu.Stream(device=device)
+                for layer in self.config.engram_layer_ids
+                if layer > 0
+            }
+            self._engram_wkv_stream = torch.npu.Stream(device=device)
         return self._engram_input_buffers
 
     def _create_windowed_engram_projection(self, lookups, tokens, full_tokens, pending, external, use_sp):
-        """Only late BF16 WKV with SP communication windows is eligible."""
+        """Submit unchanged projections only in FULL/SP router windows."""
         if not (
             getattr(self, "_engram_windowed_wkv", False)
             and self.has_engram
             and tokens > 0
+            and not torch.compiler.is_compiling()
             and use_sp
             and self._can_overlap_engram_preparation()
             and is_forward_context_available()
             and get_forward_context().cudagraph_runtime_mode == CUDAGraphMode.FULL
-            and get_ascend_config().weight_nz_mode != 2
             and get_pp_group().world_size == 1
             and get_tensor_model_parallel_world_size() > 1
         ):
             return None
-        layers = self.config.engram_layer_ids
-        if len(layers) < 2:
-            return None
-        first, target = min(layers), max(layers)
-        layer = self.layers[target].engram
-        if target - first < self.config.hc_mult + 1 or not layer.supports_windowed_projection():
+        layers = [layer for layer in self.config.engram_layer_ids if layer > 0]
+        if not layers:
             return None
         self._get_engram_input_buffers()
-        logger.info_once("Windowed Engram WKV enabled for layer %d after SP token sharding", target)
-        return WindowedEngramProjection(
-            layer,
-            lookups[target],
-            self._engram_wkv_output,
+        logger.info_once("Engram WKV router-window schedule enabled for layers %s", tuple(layers))
+        return EngramProjectionSchedule(
+            {layer: self.layers[layer].engram for layer in layers},
+            lookups,
+            self._engram_wkv_outputs,
             self._engram_wkv_stream,
             self._get_engram_wkv_window_events(full_tokens),
-            first_layer=first,
-            consumer_layer=target,
             tokens=tokens,
-            shard=sp_shard,
-            lookup_ready=pending.get(target) if pending is not None else None,
+            shard=partial(
+                shard_engram_rows,
+                rank=get_tensor_model_parallel_rank(),
+                size=get_tensor_model_parallel_world_size(),
+            ),
+            lookup_ready=pending,
             external=external,
         )
 
     def _get_engram_wkv_window_events(self, full_tokens):
         if full_tokens not in self._engram_wkv_events:
-            events = tuple(torch.npu.Event() for _ in range(self.config.hc_mult + 1))
-            for event in events:
+            events = {layer: torch.npu.Event() for layer in self.config.engram_layer_ids if layer > 0}
+            for event in events.values():
                 event.record(torch.npu.current_stream())
             self._engram_wkv_events[full_tokens] = events
         return self._engram_wkv_events[full_tokens]
@@ -1674,9 +1690,7 @@ class DeepseekV41Model(nn.Module, EagleModelMixin):
                     if engram_mask_ready_event is not None:
                         AscendParallelEngramEmbedding.wait_lookup(engram_mask_ready_event, external=engram_graph_events)
                         engram_mask_ready_event = None
-                    projected = (
-                        projection is not None and layer.layer_idx == projection.consumer_layer and projection.started
-                    )
+                    projected = projection is not None and projection.ready_for(layer.layer_idx)
                     if not projected and engram_pending is not None and layer.layer_idx in engram_pending:
                         AscendParallelEngramEmbedding.wait_lookup(
                             engram_pending[layer.layer_idx],
@@ -1686,7 +1700,7 @@ class DeepseekV41Model(nn.Module, EagleModelMixin):
                     # Graph captures keep lookup buffers at static capacity; the
                     # model's actual token dimension remains scheduler-dynamic.
                     # SP can copy rows, so shard only after this table is ready.
-                    lookup = projection.finish() if projected else lookups[layer.layer_idx]
+                    lookup = projection.finish(layer.layer_idx) if projected else lookups[layer.layer_idx]
                     if use_sequence_parallel and not projected:
                         lookup = sp_shard(lookup)
                     lookup = lookup[:n]
@@ -1698,14 +1712,14 @@ class DeepseekV41Model(nn.Module, EagleModelMixin):
                         active_mask,
                         self.engram_rotation if self.engram_rotated else None,
                     )
-                if projection is not None and projection.first_layer <= layer.layer_idx < projection.consumer_layer:
+                if projection is not None and layer.layer_idx in projection.triggers:
                     hidden_states, pre_mix = layer(
                         positions,
                         hidden_states,
                         pre_mix,
                         None,
                         input_ids=input_ids,
-                        engram_wkv_window=partial(projection.submit_window, layer.layer_idx - projection.first_layer),
+                        engram_wkv_window=partial(projection.submit_router, layer.layer_idx),
                     )
                 else:
                     hidden_states, pre_mix = layer(positions, hidden_states, pre_mix, None, input_ids=input_ids)

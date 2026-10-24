@@ -572,7 +572,7 @@ class AscendConfig:
         default_factory=lambda: get_current_hardware_profile().device_adaptor_family
         == DeviceAdaptorFamily.FP8_OPTIMIZED
     )
-    # Experimental late-layer BF16 WKV pieces at SP attention/FFN boundaries.
+    # Experimental unchanged WKV projections in SP router/dispatch windows.
     multistream_engram_wkv_overlap: bool = False
     enable_prefill_mc2: bool = False
     multistream_overlap_shared_expert: bool = False

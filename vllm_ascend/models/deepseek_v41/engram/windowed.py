@@ -1,10 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
-"""Submit late-layer BF16 WKV pieces at attention/FFN boundaries."""
+"""Run original WKV projections in router/dispatch windows."""
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
+from contextlib import contextmanager
 
 import torch
 
@@ -12,79 +13,90 @@ from .embedding import AscendParallelEngramEmbedding
 from .layer import AscendEngram
 
 
-class WindowedEngramProjection:
-    """One forward's scheduling state; buffers/streams/events belong to the model.
+def shard_engram_rows(rows: torch.Tensor, *, rank: int, size: int) -> torch.Tensor:
+    """Freeze the model's TP rank outside a MoE parallel context."""
+    padding = (-rows.shape[0]) % size
+    if padding:
+        rows = torch.cat((rows, rows.new_zeros((padding, rows.shape[1]))))
+    count = rows.shape[0] // size
+    result = rows[rank * count : (rank + 1) * count]
+    return result if padding else result.clone()
 
-    Python counters are used while building eager work or capturing a graph.
-    Replay executes the captured pieces and dependencies at fixed addresses.
+
+@contextmanager
+def router_projection_window(experts, callback):
+    previous = getattr(experts, "_engram_wkv_window", None)
+    experts._engram_wkv_window = callback
+    try:
+        yield
+    finally:
+        experts._engram_wkv_window = previous
+
+
+class EngramProjectionSchedule:
+    """Per-forward state; the model owns persistent buffers, events and stream.
+
+    Router0 can prepare Engram1; the previous Engram layer's router prepares
+    the next one. Each job calls the original projection without weight
+    slicing. Replay uses captured dependencies and fixed addresses.
     """
 
     def __init__(
         self,
-        layer: AscendEngram,
-        rows: torch.Tensor,
-        output: torch.Tensor,
+        layers: dict[int, AscendEngram],
+        rows: dict[int, torch.Tensor],
+        outputs: dict[int, torch.Tensor],
         stream,
-        events: Sequence,
+        events: dict,
         *,
-        first_layer: int,
-        consumer_layer: int,
         tokens: int,
         shard: Callable[[torch.Tensor], torch.Tensor],
-        lookup_ready=None,
+        lookup_ready: dict | None = None,
         external: bool = False,
     ):
-        self.layer, self.rows, self.output = layer, rows, output
+        self.layers, self.rows, self.outputs = layers, rows, outputs
         self.stream, self.events = stream, events
-        self.first_layer, self.consumer_layer = first_layer, consumer_layer
         self.tokens, self.shard = tokens, shard
-        self.lookup_ready, self.external = lookup_ready, external
-        self.chunks = tuple(range(0, output.shape[1], layer.dim))
-        windows = consumer_layer - first_layer
-        if len(self.chunks) > windows or len(events) < len(self.chunks):
-            raise ValueError("Engram projection needs at least one window per key/value piece")
-        self.schedule = {i * windows // len(self.chunks): i for i in range(len(self.chunks))}
-        self.next_chunk = 0
-        self.joined = False
-        self.has_work = False
+        self.lookup_ready, self.external = lookup_ready or {}, external
+        consumers = sorted(layers)
+        self.triggers = {
+            (target - 1 if i == 0 else consumers[i - 1]): target for i, target in enumerate(consumers) if target > 0
+        }
+        self.started: set[int] = set()
+        self.pending = False
 
-    @property
-    def started(self) -> bool:
-        return self.next_chunk > 0
-
-    def submit_window(self, index: int) -> None:
-        """Offer one attention-output boundary; skipped windows are harmless."""
-        if self.schedule.get(index) == self.next_chunk:
-            self._submit(self.events[self.next_chunk])
-
-    def _submit(self, event) -> None:
-        self.has_work = True
-        main = torch.npu.current_stream()
-        event.record(main)
+    def submit_router(self, layer_id: int) -> None:
+        target = self.triggers.get(layer_id)
+        if target is None or target in self.started:
+            return
+        self.pending = True  # Join even if the first submission raises.
+        event = self.events[target]
+        event.record(torch.npu.current_stream())
         self.stream.wait_event(event)
         with torch.npu.stream(self.stream):
-            if not self.started:
-                if self.lookup_ready is not None:
-                    AscendParallelEngramEmbedding.wait_lookup(self.lookup_ready, external=self.external)
-                self.rows = self.shard(self.rows)[: self.tokens]
-                self.rows.record_stream(self.stream)
-                self.output.record_stream(self.stream)
-            start = self.chunks[self.next_chunk]
-            stop = min(start + self.layer.dim, self.output.shape[1])
-            self.layer.project_chunk_into(self.rows, self.output[: self.tokens, start:stop], start, stop)
-        self.next_chunk += 1
+            ready = self.lookup_ready.get(target)
+            if ready is not None:
+                AscendParallelEngramEmbedding.wait_lookup(ready, external=self.external)
+            local_rows = self.shard(self.rows[target])[: self.tokens]
+            local_rows.record_stream(self.stream)
+            output = self.outputs[target][: self.tokens]
+            output.record_stream(self.stream)
+            output.copy_(self.layers[target].project(local_rows))
+        self.started.add(target)
 
-    def finish(self) -> torch.Tensor:
-        """Complete any pieces whose windows were skipped before consuming KV."""
-        while self.next_chunk < len(self.chunks):
-            self._submit(self.events[self.next_chunk])
+    def ready_for(self, layer_id: int) -> bool:
+        return layer_id in self.started
+
+    def finish(self, layer_id: int) -> torch.Tensor:
+        if not self.ready_for(layer_id):
+            raise RuntimeError("Engram projection was not submitted")
         self.close()
-        return self.output[: self.tokens]
+        return self.outputs[layer_id][: self.tokens]
 
     def close(self) -> None:
-        if self.has_work and not self.joined:
+        if self.pending:
             torch.npu.current_stream().wait_stream(self.stream)
-            self.joined = True
+            self.pending = False
 
     def __enter__(self):
         return self
