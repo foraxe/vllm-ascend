@@ -34,7 +34,29 @@ from vllm_ascend.models.deepseek_v41.engram import embedding as embedding_mod
 from vllm_ascend.models.deepseek_v41.engram import npu
 from vllm_ascend.models.deepseek_v41.engram.common import engram_gate
 from vllm_ascend.models.deepseek_v41.engram.hash_state import DEAD_ID, AscendNgramHashState
+from vllm_ascend.models.deepseek_v41.engram.layer import AscendEngram
 from vllm_ascend.models.deepseek_v41.engram.parallel import resolve_dp_shared_memory
+
+
+@pytest.mark.parametrize("tokens", [0, 3])
+@pytest.mark.parametrize("rotated", [False, True])
+def test_precomputed_wkv_preserves_gate_result(tokens, rotated):
+    layer = object.__new__(AscendEngram)
+    torch.nn.Module.__init__(layer)
+    layer.dim, layer.hc_mult, layer.eps = 64, 4, 1e-6
+    layer.wkv = torch.nn.Linear(96, 320, bias=False, dtype=torch.bfloat16)
+    layer.q_weight = torch.nn.Parameter(torch.ones(4, 64))
+    layer.k_weight = torch.nn.Parameter(torch.ones(4, 64))
+    rows = torch.randn(tokens, 96, dtype=torch.bfloat16)
+    hidden = torch.randn(tokens, 4, 64, dtype=torch.bfloat16)
+    mask = torch.arange(tokens) % 2 == 0
+    rotation = torch.eye(32).roll(1, dims=0) if rotated else None
+    with torch.inference_mode():
+        expected = layer(hidden, rows, mask, rotation)
+        projected = layer.project(rows)
+        actual = layer.apply_gate(hidden, projected, mask, rotation)
+    torch.testing.assert_close(actual, expected, rtol=0, atol=0)
+    torch.testing.assert_close(actual[~mask], hidden[~mask], rtol=0, atol=0)
 
 
 def test_shared_memory_needs_a_local_dp_peer(monkeypatch):

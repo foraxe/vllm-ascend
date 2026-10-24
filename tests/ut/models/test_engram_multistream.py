@@ -196,9 +196,12 @@ def test_shared_direct_lookup_writes_contiguous_ids_and_clears_padding(runtime, 
 
 
 @pytest.mark.parametrize("idle", [False, True])
-def test_dp_alltoall_and_tp_gather_finish_before_each_table_is_published(runtime, monkeypatch, idle):
+@pytest.mark.parametrize("precompute", [False, True])
+def test_dp_alltoall_and_tp_gather_finish_before_each_table_is_published(runtime, monkeypatch, idle, precompute):
     calls, _, _ = runtime
     model = make_model()
+    model._engram_precompute_wkv = precompute
+    model.config.hc_mult, model.config.hidden_size = 4, 2
 
     class HashState:
         lookback_depth = 2
@@ -246,6 +249,13 @@ def test_dp_alltoall_and_tp_gather_finish_before_each_table_is_published(runtime
         table.dp_size, table.tp_size = 2, 2
         table.lookup = lambda ids, out, layer=layer: out.fill_(layer)
         model.layers[layer].engram.embed_tokens = table
+
+        def project(rows):
+            assert torch.npu.current_stream().name == "aux"
+            calls.append(("wkv",))
+            return rows[:, :1].expand(-1, 10).clone()
+
+        model.layers[layer].engram.project = project
     count = 1 if idle else 2
     result = model.prepare_engram_inputs(
         torch.ones(count, dtype=torch.int32),
@@ -257,9 +267,11 @@ def test_dp_alltoall_and_tp_gather_finish_before_each_table_is_published(runtime
     assert result["engram_mask"][:4].tolist() == [not idle] * count + [False] * (4 - count)
     work = [call[0] for call in calls if call[0] not in ("retain", "reuse")]
     prefix = ["dummy", "record"] if idle else ["record", "hash"]
-    assert work == prefix + ["dp_hash", "dp_rows", "tp_heads", "record", "dp_rows", "tp_heads", "record"]
+    one_layer = ["dp_rows", "tp_heads"] + (["wkv"] if precompute else []) + ["record"]
+    assert work == prefix + ["dp_hash"] + one_layer * 2
     for layer in (1, 2):
         rows = result["engram_lookups"][layer]
+        assert rows.shape == (8, 10 if precompute else 8)
         assert torch.all(rows[:count] == layer)
         assert not rows[count:4].any()
 

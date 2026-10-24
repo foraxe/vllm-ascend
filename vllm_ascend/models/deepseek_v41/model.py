@@ -1085,6 +1085,9 @@ class DeepseekV41Model(nn.Module, EagleModelMixin):
         self._engram_capture_stream = None
         self._engram_capture_events = None
         self._engram_overlap_enabled = get_ascend_config().multistream_engram_overlap
+        self._engram_precompute_wkv = (
+            self._engram_overlap_enabled and get_ascend_config().multistream_engram_wkv_overlap
+        )
         self._engram_max_tokens = max(
             vllm_config.scheduler_config.max_num_batched_tokens,
             vllm_config.compilation_config.max_cudagraph_capture_size or 0,
@@ -1226,7 +1229,8 @@ class DeepseekV41Model(nn.Module, EagleModelMixin):
             # One DP gather feeds every layer sharing the split table.
             gathered = gather_engram_hashes(hashes, dp_shared_memory=self.engram_dp_shared_memory)
             for slot, (layer_id, table) in enumerate(zip(config.engram_layer_ids, tables)):
-                direct = output_buffers is not None and table.dp_size == 1 and table.tp_size == 1
+                precompute_wkv = getattr(self, "_engram_precompute_wkv", False)
+                direct = output_buffers is not None and table.dp_size == 1 and table.tp_size == 1 and not precompute_wkv
                 if direct:
                     target = output_buffers[layer_id]
                     count = hashes.shape[0]
@@ -1237,6 +1241,8 @@ class DeepseekV41Model(nn.Module, EagleModelMixin):
                     lookups[layer_id] = target
                 else:
                     values = table.embed_gathered(gathered[:, slot], hashes.shape[0]).flatten(1)
+                    if precompute_wkv:
+                        values = self.layers[layer_id].engram.project(values)
                     if output_buffers is None:
                         lookups[layer_id] = values
                     else:
@@ -1244,7 +1250,7 @@ class DeepseekV41Model(nn.Module, EagleModelMixin):
                         output_buffers[layer_id][values.shape[0] : output_tokens].zero_()
                         lookups[layer_id] = output_buffers[layer_id]
                 if ready_events is not None:
-                    # Rows include DP AllToAll, TP head gather and padding.
+                    # Includes DP/TP, optional WKV, publication and padding.
                     ready_events[layer_id].record(torch.npu.current_stream())
         else:
             for layer_id, table in zip(config.engram_layer_ids, tables):
@@ -1361,7 +1367,9 @@ class DeepseekV41Model(nn.Module, EagleModelMixin):
                     layer: torch.zeros(
                         (
                             capacity,
-                            self.layers[layer].engram.embed_tokens.n_hash_cols
+                            (self.config.hc_mult + 1) * self.config.hidden_size
+                            if getattr(self, "_engram_precompute_wkv", False)
+                            else self.layers[layer].engram.embed_tokens.n_hash_cols
                             * self.layers[layer].engram.embed_tokens.dim,
                         ),
                         dtype=torch.bfloat16,
@@ -1612,7 +1620,8 @@ class DeepseekV41Model(nn.Module, EagleModelMixin):
                     lookup = sp_shard(lookup)
                 lookup = lookup[:n]
                 active_mask = token_mask[:n]
-                hidden_states[:n] = layer.engram(
+                consume = layer.engram.apply_gate if getattr(self, "_engram_precompute_wkv", False) else layer.engram
+                hidden_states[:n] = consume(
                     hidden_states[:n],
                     lookup,
                     active_mask,
