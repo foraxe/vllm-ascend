@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import typing
 from collections.abc import Callable, Iterable
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass
 from functools import partial
 from typing import Any
@@ -26,6 +26,7 @@ from vllm.distributed import (
     get_tensor_model_parallel_world_size,
 )
 from vllm.forward_context import get_forward_context, is_forward_context_available
+from vllm.logger import logger
 from vllm.model_executor.layers.activation import SiluAndMul, SiluAndMulWithClamp
 from vllm.model_executor.layers.fused_moe import FusedMoEFactory, fused_moe_make_expert_params_mapping
 from vllm.model_executor.layers.layernorm import RMSNorm
@@ -97,6 +98,7 @@ from .engram.embedding import (
 )
 from .engram.layer import AscendEngram
 from .engram.parallel import gather_engram_hashes, resolve_dp_shared_memory
+from .engram.windowed import WindowedEngramProjection
 from .indexer import DeepseekV41Indexer
 
 
@@ -893,6 +895,7 @@ class DeepseekV41DecoderLayer(nn.Module):
         pre_mix,
         llama_4_scaling=None,
         input_ids=None,
+        engram_wkv_window: Callable[[], None] | None = None,
     ):
         use_sequence_parallel = getattr(self, "use_sequence_parallel", False)
         residual = hidden_states
@@ -907,6 +910,8 @@ class DeepseekV41DecoderLayer(nn.Module):
         if use_sequence_parallel:
             x = sp_all_gather(x)[: positions.shape[0]]
         x = self.self_attn(positions, x, llama_4_scaling)
+        if engram_wkv_window is not None:
+            engram_wkv_window()
         if use_sequence_parallel:
             x = sp_reduce_scatter(x)
         hidden_states = self.hc_post(x, residual, attn_post, attn_comb)
@@ -1085,6 +1090,14 @@ class DeepseekV41Model(nn.Module, EagleModelMixin):
         self._engram_capture_stream = None
         self._engram_capture_events = None
         self._engram_overlap_enabled = get_ascend_config().multistream_engram_overlap
+        self._engram_windowed_wkv = (
+            self._engram_overlap_enabled
+            and get_ascend_config().multistream_engram_wkv_overlap
+            and vllm_config.lora_config is None
+        )
+        self._engram_wkv_output = None
+        self._engram_wkv_stream = None
+        self._engram_wkv_events = {}
         self._engram_max_tokens = max(
             vllm_config.scheduler_config.max_num_batched_tokens,
             vllm_config.compilation_config.max_cudagraph_capture_size or 0,
@@ -1344,6 +1357,8 @@ class DeepseekV41Model(nn.Module, EagleModelMixin):
             main = torch.npu.current_stream()
             if self._engram_prepare_stream is not None:
                 main.wait_stream(self._engram_prepare_stream)
+            if getattr(self, "_engram_wkv_stream", None) is not None:
+                main.wait_stream(self._engram_wkv_stream)
             if reset_events:
                 # A failed forward may skip a captured wait/reset. Clear old
                 # records after joining, before the next producer reuses them.
@@ -1371,7 +1386,61 @@ class DeepseekV41Model(nn.Module, EagleModelMixin):
                 },
                 torch.zeros(capacity, dtype=torch.bool, device=device),
             )
+            if getattr(self, "_engram_windowed_wkv", False):
+                tp = get_tensor_model_parallel_world_size()
+                self._engram_wkv_output = torch.empty(
+                    ((capacity + tp - 1) // tp, (self.config.hc_mult + 1) * self.config.hidden_size),
+                    dtype=torch.bfloat16,
+                    device=device,
+                )
+                self._engram_wkv_stream = torch.npu.Stream(device=device)
         return self._engram_input_buffers
+
+    def _create_windowed_engram_projection(self, lookups, tokens, full_tokens, pending, external, use_sp):
+        """Only late BF16 WKV with SP communication windows is eligible."""
+        if not (
+            getattr(self, "_engram_windowed_wkv", False)
+            and self.has_engram
+            and tokens > 0
+            and use_sp
+            and self._can_overlap_engram_preparation()
+            and is_forward_context_available()
+            and get_forward_context().cudagraph_runtime_mode == CUDAGraphMode.FULL
+            and get_ascend_config().weight_nz_mode != 2
+            and get_pp_group().world_size == 1
+            and get_tensor_model_parallel_world_size() > 1
+        ):
+            return None
+        layers = self.config.engram_layer_ids
+        if len(layers) < 2:
+            return None
+        first, target = min(layers), max(layers)
+        layer = self.layers[target].engram
+        if target - first < self.config.hc_mult + 1 or not layer.supports_windowed_projection():
+            return None
+        self._get_engram_input_buffers()
+        logger.info_once("Windowed Engram WKV enabled for layer %d after SP token sharding", target)
+        return WindowedEngramProjection(
+            layer,
+            lookups[target],
+            self._engram_wkv_output,
+            self._engram_wkv_stream,
+            self._get_engram_wkv_window_events(full_tokens),
+            first_layer=first,
+            consumer_layer=target,
+            tokens=tokens,
+            shard=sp_shard,
+            lookup_ready=pending.get(target) if pending is not None else None,
+            external=external,
+        )
+
+    def _get_engram_wkv_window_events(self, full_tokens):
+        if full_tokens not in self._engram_wkv_events:
+            events = tuple(torch.npu.Event() for _ in range(self.config.hc_mult + 1))
+            for event in events:
+                event.record(torch.npu.current_stream())
+            self._engram_wkv_events[full_tokens] = events
+        return self._engram_wkv_events[full_tokens]
 
     def _get_engram_external_events(self, key, *, prime):
         """ExternalEvent pair for one FULL graph capture, keyed per graph.
@@ -1516,6 +1585,8 @@ class DeepseekV41Model(nn.Module, EagleModelMixin):
         if padded_tokens is not None and not padded_tokens <= self._engram_max_tokens:
             raise ValueError("Engram token count exceeds the output buffer capacity")
         buffers, mask_buffer = self._get_engram_input_buffers()
+        if getattr(self, "_engram_windowed_wkv", False) and padded_tokens is not None:
+            self._get_engram_wkv_window_events(padded_tokens)
         result = {"engram_lookups": buffers, "engram_mask": mask_buffer}
         if self._can_overlap_engram_preparation() and is_forward_context_available():
             context = get_forward_context()
@@ -1575,50 +1646,69 @@ class DeepseekV41Model(nn.Module, EagleModelMixin):
         pre_mix[:, 0] = 1.0
         last_layer = None
         aux_hidden_states = []
-        for layer in self.layers:
-            if self.decoder_replay_layers is not None and layer.layer_idx == self.decoder_replay_start:
-                hidden_states, pre_mix, *late_aux = self.decoder_replay_layers(
-                    hidden_states, pre_mix, positions, input_ids
-                )
-                aux_hidden_states.extend(late_aux)
-                last_layer = self.layers[self.end_layer - 1]
-                break
-            last_layer = layer
-            # DSpark consumes the residual stream entering its configured
-            # target layers. The runner expresses checkpoint IDs as one-based.
-            if layer.layer_idx + 1 in self.aux_hidden_state_layers:
-                aux_hidden_state = hidden_states.mean(dim=1)
-                if use_sequence_parallel:
-                    aux_hidden_state = sp_all_gather(aux_hidden_state)[:full_num_tokens]
-                aux_hidden_states.append(aux_hidden_state)
-            if layer.engram is not None and token_mask.numel():
-                # Without SP the earlier mask slices are views. Delay the wait
-                # until the first actual consumer so early layers can overlap
-                # hash/lookup production, rather than blocking at graph entry.
-                if engram_mask_ready_event is not None:
-                    AscendParallelEngramEmbedding.wait_lookup(engram_mask_ready_event, external=engram_graph_events)
-                    engram_mask_ready_event = None
-                if engram_pending is not None and layer.layer_idx in engram_pending:
-                    AscendParallelEngramEmbedding.wait_lookup(
-                        engram_pending[layer.layer_idx],
-                        external=engram_graph_events,
+        projection = self._create_windowed_engram_projection(
+            lookups, hidden_states.shape[0], full_num_tokens, engram_pending, engram_graph_events, use_sequence_parallel
+        )
+        projection_context = nullcontext() if projection is None else projection
+        with projection_context:
+            for layer in self.layers:
+                if self.decoder_replay_layers is not None and layer.layer_idx == self.decoder_replay_start:
+                    hidden_states, pre_mix, *late_aux = self.decoder_replay_layers(
+                        hidden_states, pre_mix, positions, input_ids
                     )
-                n = hidden_states.shape[0]
-                # Graph captures keep lookup buffers at static capacity; the
-                # model's actual token dimension remains scheduler-dynamic.
-                # SP can copy rows, so shard only after this table is ready.
-                lookup = lookups[layer.layer_idx]
-                if use_sequence_parallel:
-                    lookup = sp_shard(lookup)
-                lookup = lookup[:n]
-                active_mask = token_mask[:n]
-                hidden_states[:n] = layer.engram(
-                    hidden_states[:n],
-                    lookup,
-                    active_mask,
-                    self.engram_rotation if self.engram_rotated else None,
-                )
-            hidden_states, pre_mix = layer(positions, hidden_states, pre_mix, None, input_ids=input_ids)
+                    aux_hidden_states.extend(late_aux)
+                    last_layer = self.layers[self.end_layer - 1]
+                    break
+                last_layer = layer
+                # DSpark consumes the residual stream entering its configured
+                # target layers. The runner expresses checkpoint IDs as one-based.
+                if layer.layer_idx + 1 in self.aux_hidden_state_layers:
+                    aux_hidden_state = hidden_states.mean(dim=1)
+                    if use_sequence_parallel:
+                        aux_hidden_state = sp_all_gather(aux_hidden_state)[:full_num_tokens]
+                    aux_hidden_states.append(aux_hidden_state)
+                if layer.engram is not None and token_mask.numel():
+                    # Without SP the earlier mask slices are views. Delay the wait
+                    # until the first actual consumer so early layers can overlap
+                    # hash/lookup production, rather than blocking at graph entry.
+                    if engram_mask_ready_event is not None:
+                        AscendParallelEngramEmbedding.wait_lookup(engram_mask_ready_event, external=engram_graph_events)
+                        engram_mask_ready_event = None
+                    projected = (
+                        projection is not None and layer.layer_idx == projection.consumer_layer and projection.started
+                    )
+                    if not projected and engram_pending is not None and layer.layer_idx in engram_pending:
+                        AscendParallelEngramEmbedding.wait_lookup(
+                            engram_pending[layer.layer_idx],
+                            external=engram_graph_events,
+                        )
+                    n = hidden_states.shape[0]
+                    # Graph captures keep lookup buffers at static capacity; the
+                    # model's actual token dimension remains scheduler-dynamic.
+                    # SP can copy rows, so shard only after this table is ready.
+                    lookup = projection.finish() if projected else lookups[layer.layer_idx]
+                    if use_sequence_parallel and not projected:
+                        lookup = sp_shard(lookup)
+                    lookup = lookup[:n]
+                    active_mask = token_mask[:n]
+                    consume = layer.engram.apply_gate if projected else layer.engram
+                    hidden_states[:n] = consume(
+                        hidden_states[:n],
+                        lookup,
+                        active_mask,
+                        self.engram_rotation if self.engram_rotated else None,
+                    )
+                if projection is not None and projection.first_layer <= layer.layer_idx < projection.consumer_layer:
+                    hidden_states, pre_mix = layer(
+                        positions,
+                        hidden_states,
+                        pre_mix,
+                        None,
+                        input_ids=input_ids,
+                        engram_wkv_window=partial(projection.submit_window, layer.layer_idx - projection.first_layer),
+                    )
+                else:
+                    hidden_states, pre_mix = layer(positions, hidden_states, pre_mix, None, input_ids=input_ids)
         assert last_layer is not None, "Hyper-connection collapse requires at least one decoder layer"
         # MTP needs full HC states
         if self._mtp_hidden_buffer is not None:
