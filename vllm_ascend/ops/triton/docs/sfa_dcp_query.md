@@ -32,9 +32,9 @@
 
 ## Test Cases
 
-`tests/ut/attention/a2/test_sfa_dcp_generalized_port.py` covers rank-ordered gathering, multiple local/gathered head counts, input column strides1/2 and changed-input graph replay, using bit-exact comparisons. Group sizes2/4/8 have distributed NPU execution evidence.
+`tests/e2e/nightly/single_node/ops/multicard_ops_a3/test_sfa_dcp.py` covers rank-ordered gathering, multiple local/gathered head counts, input column strides1/2 and changed-input graph replay, using bit-exact comparisons. Group sizes2/4/8 have distributed NPU execution evidence.
 
 ```bash
 torchrun --standalone --nproc-per-node=4 -m pytest --noconftest -sv \
-  tests/ut/attention/a2/test_sfa_dcp_generalized_port.py -k query
+  tests/e2e/nightly/single_node/ops/multicard_ops_a3/test_sfa_dcp.py -k query
 ```

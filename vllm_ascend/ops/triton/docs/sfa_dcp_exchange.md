@@ -37,5 +37,5 @@ The distributed tests cover T1/2/13/48/191/192, multiple head counts, head-major
 
 ```bash
 torchrun --standalone --nproc-per-node=8 -m pytest --noconftest -sv \
-  tests/ut/attention/a2/test_sfa_dcp_generalized_port.py -k exchange
+  tests/e2e/nightly/single_node/ops/multicard_ops_a3/test_sfa_dcp.py -k exchange
 ```
