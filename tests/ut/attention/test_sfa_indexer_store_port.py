@@ -74,11 +74,19 @@ def test_native_quantization_and_cache_pipeline_routing(variant, with_dependency
     exec(compile(ast.Module(body=[*future, *methods], type_ignores=[]), str(source), "exec"), namespace)
     state = OtherBackend() if variant == "subclass" else Backend()
     state._dcp_size = int(variant[-1]) if variant in ("dcp1", "dcp2", "dcp4") else 8
-    state._pcp_active, state._dsa_cp_active = variant == "pcp", variant == "dsa"
+    state.use_pcp, state._dsa_cp_active = variant == "pcp", variant == "dsa"
     state._is_pcp_decode_sharded = False
     state.enable_sparse_li_c8 = variant != "c4"
     state.enable_sparse_li_c4 = variant == "c4"
     state.enable_sparse_li_quant = True
+    init = next(n for n in cls.body if isinstance(n, ast.FunctionDef) and n.name == "__init__")
+    policy = next(
+        n
+        for n in ast.walk(init)
+        if isinstance(n, ast.Assign)
+        and any(isinstance(t, ast.Attribute) and t.attr == "_use_fused_cache_store" for t in n.targets)
+    )
+    exec(compile(ast.Module(body=[policy], type_ignores=[]), str(source), "exec"), {**namespace, "self": state})
     state.k_cache = SimpleNamespace(kv_cache=caches)
     projected = torch.arange(rows * 160).reshape(rows, 160).to(torch.bfloat16)
     state.wk_weights_proj = lambda x: (projected, None)

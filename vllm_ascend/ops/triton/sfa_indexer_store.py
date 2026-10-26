@@ -15,21 +15,21 @@ _MAX_DECODE_ROWS = 12
 
 @triton.jit(do_not_specialize=["capacity"])
 def _store_indexer_key_scale(
-    quant,
-    scales,
-    slots,
-    cache,
-    scale_cache,
+    quant_ptr,
+    scales_ptr,
+    slots_ptr,
+    cache_ptr,
+    scale_cache_ptr,
     capacity,
 ):
     row = tl.program_id(0)
     column = tl.arange(0, 128)
-    key = tl.load(quant + row * 128 + column)
-    scale = tl.load(scales + row)
-    slot = tl.load(slots + row).to(tl.int64)
+    key = tl.load(quant_ptr + row * 128 + column)
+    scale = tl.load(scales_ptr + row)
+    slot = tl.load(slots_ptr + row).to(tl.int64)
     valid = (slot >= 0) & (slot < capacity)
-    tl.store(cache + slot * 128 + column, key, valid)
-    tl.store(scale_cache + slot, scale, valid)
+    tl.store(cache_ptr + slot * 128 + column, key, valid)
+    tl.store(scale_cache_ptr + slot, scale, valid)
 
 
 def can_fuse_store(cache: torch.Tensor, scale_cache: torch.Tensor, slots: torch.Tensor, rows: int) -> bool:

@@ -15,21 +15,21 @@ _MAX_DECODE_TOKENS = 192
 
 
 @triton.jit
-def _pack_t1_peer(output_words, lse, send, LOCAL_HEADS: tl.constexpr):
+def _pack_t1_peer(output_words_ptr, lse_ptr, send_ptr, LOCAL_HEADS: tl.constexpr):
     peer = tl.program_id(0)
     OUTPUT_WORDS: tl.constexpr = LOCAL_HEADS * 256
     PEER_WORDS: tl.constexpr = OUTPUT_WORDS + LOCAL_HEADS
     word = tl.arange(0, OUTPUT_WORDS)
-    values = tl.load(output_words + peer * OUTPUT_WORDS + word, mask=word < OUTPUT_WORDS, other=0)
-    tl.store(send + peer * PEER_WORDS + word, values, mask=word < OUTPUT_WORDS)
+    values = tl.load(output_words_ptr + peer * OUTPUT_WORDS + word, mask=word < OUTPUT_WORDS, other=0)
+    tl.store(send_ptr + peer * PEER_WORDS + word, values, mask=word < OUTPUT_WORDS)
     local_head = tl.arange(0, LOCAL_HEADS)
     stats = tl.load(
-        lse + peer * LOCAL_HEADS + local_head,
+        lse_ptr + peer * LOCAL_HEADS + local_head,
         mask=local_head < LOCAL_HEADS,
         other=0.0,
     )
     tl.store(
-        send + peer * PEER_WORDS + OUTPUT_WORDS + local_head,
+        send_ptr + peer * PEER_WORDS + OUTPUT_WORDS + local_head,
         stats.to(tl.int32, bitcast=True),
         mask=local_head < LOCAL_HEADS,
     )
@@ -37,13 +37,13 @@ def _pack_t1_peer(output_words, lse, send, LOCAL_HEADS: tl.constexpr):
 
 @triton.jit(do_not_specialize=["tokens"])
 def _pack_token_peer(
-    output,
-    lse,
-    send,
-    output_s0,
-    output_s1,
-    lse_s0,
-    lse_s1,
+    output_words_ptr,
+    lse_ptr,
+    send_ptr,
+    output_stride_token_words,
+    output_stride_head_words,
+    lse_stride_token,
+    lse_stride_head,
     tokens,
     LOCAL_HEADS: tl.constexpr,
     HEAD_WORDS: tl.constexpr,
@@ -57,17 +57,22 @@ def _pack_token_peer(
     dim_word = word % HEAD_WORDS
     peer_base = peer * peer_words
     for token in range(tokens):
-        values = tl.load(output + token * output_s0 + (peer * LOCAL_HEADS + local_head) * output_s1 + dim_word)
-        tl.store(send + peer_base + token * OUTPUT_WORDS + word, values)
+        values = tl.load(
+            output_words_ptr
+            + token * output_stride_token_words
+            + (peer * LOCAL_HEADS + local_head) * output_stride_head_words
+            + dim_word
+        )
+        tl.store(send_ptr + peer_base + token * OUTPUT_WORDS + word, values)
     index = tl.arange(0, STATS_TILE)
     token, head = index // LOCAL_HEADS, index % LOCAL_HEADS
     stats = tl.load(
-        lse + token * lse_s0 + (peer * LOCAL_HEADS + head) * lse_s1,
+        lse_ptr + token * lse_stride_token + (peer * LOCAL_HEADS + head) * lse_stride_head,
         mask=index < tokens * LOCAL_HEADS,
         other=0.0,
     )
     tl.store(
-        send + peer_base + tokens * OUTPUT_WORDS + index,
+        send_ptr + peer_base + tokens * OUTPUT_WORDS + index,
         stats.to(tl.int32, bitcast=True),
         mask=index < tokens * LOCAL_HEADS,
     )
@@ -109,8 +114,10 @@ def _exchange_tokens(output: torch.Tensor, lse: torch.Tensor, group, ranks: int)
         words,
         lse,
         send,
-        *words.stride()[:2],
-        *lse.stride()[:2],
+        words.stride(0),
+        words.stride(1),
+        lse.stride(0),
+        lse.stride(1),
         tokens,
         local_heads,
         _HEAD_DIM // 2,

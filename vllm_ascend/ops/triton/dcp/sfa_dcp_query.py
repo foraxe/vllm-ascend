@@ -14,15 +14,15 @@ _MAX_DECODE_TOKENS = 12
 
 @triton.jit(do_not_specialize=["tokens", "programs", "heads"])
 def _prepare_query_head_major(
-    qn,
-    qr,
-    out,
-    ns0,
-    ns1,
-    ns2,
-    rs0,
-    rs1,
-    rs2,
+    nope_ptr,
+    rope_ptr,
+    packed_ptr,
+    nope_stride_token,
+    nope_stride_head,
+    nope_stride_feature,
+    rope_stride_token,
+    rope_stride_head,
+    rope_stride_feature,
     tokens,
     programs,
     heads,
@@ -33,17 +33,17 @@ def _prepare_query_head_major(
     r = tl.arange(0, ROPE_DIM)
     for row in tl.range(tl.program_id(0), heads * tokens, programs):
         head, token = row // tokens, row % tokens
-        a = tl.load(qn + token * ns0 + head * ns1 + n * ns2)
-        b = tl.load(qr + token * rs0 + head * rs1 + r * rs2)
-        tl.store(out + row * (NOPE_DIM + ROPE_DIM) + n, a)
-        tl.store(out + row * (NOPE_DIM + ROPE_DIM) + NOPE_DIM + r, b)
+        a = tl.load(nope_ptr + token * nope_stride_token + head * nope_stride_head + n * nope_stride_feature)
+        b = tl.load(rope_ptr + token * rope_stride_token + head * rope_stride_head + r * rope_stride_feature)
+        tl.store(packed_ptr + row * (NOPE_DIM + ROPE_DIM) + n, a)
+        tl.store(packed_ptr + row * (NOPE_DIM + ROPE_DIM) + NOPE_DIM + r, b)
 
 
 @triton.jit(do_not_specialize=["tokens", "programs", "heads"])
 def _unpack_query_fragments(
-    gathered,
-    qn,
-    qr,
+    gathered_ptr,
+    nope_ptr,
+    rope_ptr,
     tokens,
     programs,
     heads,
@@ -55,10 +55,10 @@ def _unpack_query_fragments(
     for row in tl.range(tl.program_id(0), tokens * heads, programs):
         token, head = row // heads, row % heads
         base = (head * tokens + token) * (NOPE_DIM + ROPE_DIM)
-        a = tl.load(gathered + base + n)
-        b = tl.load(gathered + base + NOPE_DIM + r)
-        tl.store(qn + row * NOPE_DIM + n, a)
-        tl.store(qr + row * ROPE_DIM + r, b)
+        a = tl.load(gathered_ptr + base + n)
+        b = tl.load(gathered_ptr + base + NOPE_DIM + r)
+        tl.store(nope_ptr + row * NOPE_DIM + n, a)
+        tl.store(rope_ptr + row * ROPE_DIM + r, b)
 
 
 def can_prepare_query(qn: torch.Tensor, qr: torch.Tensor) -> bool:
@@ -82,8 +82,12 @@ def prepare_query_head_major(qn: torch.Tensor, qr: torch.Tensor) -> torch.Tensor
         qn,
         qr,
         result,
-        *qn.stride(),
-        *qr.stride(),
+        qn.stride(0),
+        qn.stride(1),
+        qn.stride(2),
+        qr.stride(0),
+        qr.stride(1),
+        qr.stride(2),
         tokens,
         programs,
         local_heads,

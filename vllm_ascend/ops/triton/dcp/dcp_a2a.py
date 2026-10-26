@@ -489,13 +489,14 @@ def dcp_a2a_fused_combine(
     stacking PCP and DCP. Use 1 when Q heads were not gathered over TP.
     """
     # Keep PCP composition and token-scatter paths on the upstream implementation.
-    if (
+    fuse_output_only = (
         pcp_group is None
         and not return_lse
         and not defer_combine
         and scatter_dim == 1
         and can_exchange(partial_output, softmax_lse, scatter_size)
-    ):
+    )
+    if fuse_output_only:
         if scatter_group is None:
             raise ValueError("SFA output scatter requires an explicit All2All group.")
         return exchange(partial_output, softmax_lse, scatter_group).to(partial_output.dtype)

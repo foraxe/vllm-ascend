@@ -10,14 +10,15 @@ from vllm_ascend.ops.triton.sfa_indexer_store import can_fuse_store, store_index
 
 
 @pytest.mark.parametrize("capacity", [256, 512])
-def test_native_quantized_cache_bytes_and_changing_graph_slots(capacity):
+@pytest.mark.parametrize("slot_dtype", [torch.int32, torch.int64])
+def test_native_quantized_cache_bytes_and_changing_graph_slots(capacity, slot_dtype):
     torch.npu.set_device(0)
     retained = []
     width = 128
     for rows in (1, 6, 12):
         x = torch.randn(rows, width, dtype=torch.bfloat16, device="npu")
         keys, scales = torch_npu.npu_dynamic_quant(x, dst_type=torch.int8)
-        slots = torch.arange(rows, dtype=torch.int64, device="npu") + 7
+        slots = torch.arange(rows, dtype=slot_dtype, device="npu") + 7
         backing = torch.full((capacity * (width + 2) + 64,), 19, dtype=torch.int8, device="npu")
         cache = backing[: capacity * width].view(capacity // 128, 128, 1, width)
         scale_cache = backing[capacity * width : -64].view(torch.float16).view(capacity // 128, 128, 1, 1)

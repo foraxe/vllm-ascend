@@ -224,6 +224,12 @@ class AscendSFAIndexerBackend(nn.Module, AttentionBackend):
         self.use_pcp = parallel_config.prefill_context_parallel_size > 1
         self._is_pcp_decode_sharded = is_pcp_decode_sharding_enabled(get_current_vllm_config())
         self._dsa_cp_active = enable_dsa_cp()
+        self._use_fused_cache_store = (
+            type(self) is AscendSFAIndexerBackend
+            and not self.use_pcp
+            and not self._dsa_cp_active
+            and self.enable_sparse_li_c8
+        )
 
         # The LI C8 Hadamard matrices are created while the sleep-mode weights
         # mem-pool is active and are read by every forward, so they must survive
@@ -437,10 +443,7 @@ class AscendSFAIndexerBackend(nn.Module, AttentionBackend):
         # Only the native backend may bypass its ordinary write_cache method.
         # PCP/DSA-CP and custom cache subclasses keep their established layout.
         fuse_store = (
-            type(self) is AscendSFAIndexerBackend
-            and not self.use_pcp
-            and not self._dsa_cp_active
-            and self.enable_sparse_li_c8
+            self._use_fused_cache_store
             and indexer_metadata.num_actual_tokens > 0
             and indexer_metadata.num_decode_tokens == indexer_metadata.num_actual_tokens
             and can_fuse_store(

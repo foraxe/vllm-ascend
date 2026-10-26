@@ -10,9 +10,21 @@ ROOT = Path(__file__).resolve().parents[3] / "vllm_ascend/ops/triton"
 # Ordinary runtime arguments can retain Triton's unit/divisibility metadata.
 # Exact workload values must not become constexpr specialization keys.
 ALIGNMENT_METADATA = {
-    "_pack_token_peer": {"output_s0", "output_s1", "lse_s0", "lse_s1"},
-    "_fused_merge_kernel": {"out_s0", "out_s1", "out_s2", "head_dim"},
-    "_prepare_query_head_major": {"ns0", "ns1", "ns2", "rs0", "rs1", "rs2"},
+    "_pack_token_peer": {
+        "output_stride_token_words",
+        "output_stride_head_words",
+        "lse_stride_token",
+        "lse_stride_head",
+    },
+    "_fused_merge_kernel": {"out_stride_rank", "out_stride_axis1", "out_stride_axis2", "head_dim"},
+    "_prepare_query_head_major": {
+        "nope_stride_token",
+        "nope_stride_head",
+        "nope_stride_feature",
+        "rope_stride_token",
+        "rope_stride_head",
+        "rope_stride_feature",
+    },
 }
 CASES: list[tuple[str, str, set[str], set[str]]] = [
     ("dcp/sfa_dcp_exchange.py", "_pack_t1_peer", {"LOCAL_HEADS"}, set()),
@@ -20,17 +32,17 @@ CASES: list[tuple[str, str, set[str], set[str]]] = [
         "dcp/sfa_dcp_exchange.py",
         "_pack_token_peer",
         {"LOCAL_HEADS", "HEAD_WORDS", "STATS_TILE"},
-        {"output_s0", "output_s1", "lse_s0", "lse_s1", "tokens"},
+        {"output_stride_token_words", "output_stride_head_words", "lse_stride_token", "lse_stride_head", "tokens"},
     ),
     (
         "dcp/sfa_dcp_merge.py",
         "_fused_merge_kernel",
         {"RANKS", "NATIVE_LAYOUT", "BLOCK_D", "LSE_RANK_STRIDE"},
         {
-            "out_s0",
-            "out_s1",
-            "out_s2",
-            "lse_s1",
+            "out_stride_rank",
+            "out_stride_axis1",
+            "out_stride_axis2",
+            "lse_stride_axis1",
             "head_count",
             "head_dim",
             "total_tiles",
@@ -41,7 +53,17 @@ CASES: list[tuple[str, str, set[str], set[str]]] = [
         "dcp/sfa_dcp_query.py",
         "_prepare_query_head_major",
         {"NOPE_DIM", "ROPE_DIM"},
-        {"ns0", "ns1", "ns2", "rs0", "rs1", "rs2", "tokens", "programs", "heads"},
+        {
+            "nope_stride_token",
+            "nope_stride_head",
+            "nope_stride_feature",
+            "rope_stride_token",
+            "rope_stride_head",
+            "rope_stride_feature",
+            "tokens",
+            "programs",
+            "heads",
+        },
     ),
     ("dcp/sfa_dcp_query.py", "_unpack_query_fragments", {"NOPE_DIM", "ROPE_DIM"}, {"tokens", "programs", "heads"}),
     ("sfa_indexer_store.py", "_store_indexer_key_scale", set(), {"capacity"}),

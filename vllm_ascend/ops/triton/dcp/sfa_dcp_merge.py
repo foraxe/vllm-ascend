@@ -13,7 +13,7 @@ from vllm_ascend.ops.triton.triton_utils import get_element, get_vectorcore_num,
 
 @triton.jit(
     do_not_specialize=[
-        "lse_s1",
+        "lse_stride_axis1",
         "head_count",
         "total_tiles",
         "num_programs",
@@ -23,11 +23,11 @@ def _fused_merge_kernel(
     out_ptr,
     lse_ptr,
     result_ptr,
-    out_s0,
-    out_s1,
-    out_s2,
+    out_stride_rank,
+    out_stride_axis1,
+    out_stride_axis2,
     LSE_RANK_STRIDE: tl.constexpr,
-    lse_s1,
+    lse_stride_axis1,
     head_count,
     head_dim,
     total_tiles,
@@ -45,9 +45,9 @@ def _fused_merge_kernel(
         token = row // head_count
         head = row % head_count
         if NATIVE_LAYOUT:
-            lse_offsets = rank_ids * LSE_RANK_STRIDE + head * lse_s1 + token
+            lse_offsets = rank_ids * LSE_RANK_STRIDE + head * lse_stride_axis1 + token
         else:
-            lse_offsets = rank_ids * LSE_RANK_STRIDE + token * lse_s1 + head
+            lse_offsets = rank_ids * LSE_RANK_STRIDE + token * lse_stride_axis1 + head
         raw_lse = tl.load(lse_ptr + lse_offsets).to(tl.float32)
         finite = (raw_lse == raw_lse) & (raw_lse > float("-inf")) & (raw_lse < float("inf"))
         safe_lse = tl.where(finite, raw_lse, float("-inf"))
@@ -64,9 +64,9 @@ def _fused_merge_kernel(
         for rank in tl.static_range(0, RANKS):
             weight = get_element(weights, (rank,))
             if NATIVE_LAYOUT:
-                out_offsets = rank * out_s0 + head * out_s1 + token * out_s2 + dim
+                out_offsets = rank * out_stride_rank + head * out_stride_axis1 + token * out_stride_axis2 + dim
             else:
-                out_offsets = rank * out_s0 + token * out_s1 + head * out_s2 + dim
+                out_offsets = rank * out_stride_rank + token * out_stride_axis1 + head * out_stride_axis2 + dim
             values = tl.load(out_ptr + out_offsets, mask=mask, other=0.0).to(tl.float32)
             # Match upstream: invalid-rank NaN/Inf outputs must not leak
             # through a zero LSE weight (NaN * 0 is still NaN).
@@ -85,8 +85,7 @@ def fused_merge(out_recv: torch.Tensor, lse_recv: torch.Tensor, token_dim: int) 
         _, tokens, heads, head_dim = out_recv.shape
         native_layout = False
     result = torch.empty((tokens, heads, head_dim), dtype=torch.float32, device=out_recv.device)
-    # Rank-wise accumulation avoids the failed R×D materialization. D512 now
-    # holds one FP32 accumulator plus one rank vector; retry verifies compiler UB.
+    # Bound each program to one feature accumulator and a rank-weight vector.
     block_d = min(triton.next_power_of_2(head_dim), 512)
     tiles = tokens * heads * math.ceil(head_dim / block_d)
     init_device_properties_triton()
@@ -97,8 +96,11 @@ def fused_merge(out_recv: torch.Tensor, lse_recv: torch.Tensor, token_dim: int) 
         result,
         # Eligibility guarantees unit innermost strides. The result is always
         # allocated contiguous, so those strides need no kernel arguments.
-        *out_recv.stride()[:3],
-        *lse_recv.stride()[:2],
+        out_recv.stride(0),
+        out_recv.stride(1),
+        out_recv.stride(2),
+        lse_recv.stride(0),
+        lse_recv.stride(1),
         heads,
         head_dim,
         total_tiles=tiles,
