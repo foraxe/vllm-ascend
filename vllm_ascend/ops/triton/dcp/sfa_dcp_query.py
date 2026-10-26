@@ -6,10 +6,6 @@ from vllm.triton_utils import tl, triton
 
 from vllm_ascend.ops.triton.triton_utils import get_vectorcore_num, init_device_properties_triton
 
-_NOPE_DIM = 512
-_ROPE_DIM = 64
-_PACKED_DIM = _NOPE_DIM + _ROPE_DIM
-
 
 @triton.jit(do_not_specialize=["tokens", "programs", "heads"])
 def _prepare_query_head_major(
@@ -63,7 +59,8 @@ def _unpack_query_fragments(
 def prepare_query_head_major(qn: torch.Tensor, qr: torch.Tensor) -> torch.Tensor:
     tokens = qn.shape[0]
     local_heads = qn.shape[1]
-    result = torch.empty((local_heads, tokens, _PACKED_DIM), dtype=qn.dtype, device=qn.device)
+    nope_dim, rope_dim = qn.shape[-1], qr.shape[-1]
+    result = torch.empty((local_heads, tokens, nope_dim + rope_dim), dtype=qn.dtype, device=qn.device)
     init_device_properties_triton()
     cores = get_vectorcore_num()
     programs = min(local_heads * tokens, cores)
@@ -80,17 +77,18 @@ def prepare_query_head_major(qn: torch.Tensor, qr: torch.Tensor) -> torch.Tensor
         tokens,
         programs,
         local_heads,
-        _NOPE_DIM,
-        _ROPE_DIM,
+        nope_dim,
+        rope_dim,
     )
     return result
 
 
-def unpack_query(gathered: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+def unpack_query(gathered: torch.Tensor, split_sizes: tuple[int, ...]) -> tuple[torch.Tensor, torch.Tensor]:
     tokens = gathered.shape[1]
     heads = gathered.shape[0]
-    qn = torch.empty((tokens, heads, _NOPE_DIM), dtype=gathered.dtype, device=gathered.device)
-    qr = torch.empty((tokens, heads, _ROPE_DIM), dtype=gathered.dtype, device=gathered.device)
+    nope_dim, rope_dim = split_sizes
+    qn = torch.empty((tokens, heads, nope_dim), dtype=gathered.dtype, device=gathered.device)
+    qr = torch.empty((tokens, heads, rope_dim), dtype=gathered.dtype, device=gathered.device)
     init_device_properties_triton()
     cores = get_vectorcore_num()
     programs = min(tokens * heads, cores)
@@ -101,7 +99,7 @@ def unpack_query(gathered: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         tokens,
         programs,
         heads,
-        _NOPE_DIM,
-        _ROPE_DIM,
+        nope_dim,
+        rope_dim,
     )
     return qn, qr

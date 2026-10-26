@@ -339,7 +339,7 @@ def test_query_group_sizes_and_head_counts(context, local_heads, column_stride):
             send = prepare_query_head_major(qn, qr)
             gathered = torch.empty((RANKS * local_heads, tokens, 576), dtype=qn.dtype, device=qn.device)
             dist.all_gather_into_tensor(gathered, send, group=group.device_group)
-            return unpack_query(gathered)
+            return unpack_query(gathered, (512, 64))
 
         for _ in range(5):
             invoke()

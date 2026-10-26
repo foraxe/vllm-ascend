@@ -224,20 +224,21 @@ def test_attention_forwards_its_group_without_scheduler_config():
 @pytest.mark.parametrize(
     "tokens,decode,dsa,prepared,pcp_size",
     [
-        (1, True, False, False, 1),
+        (1, True, False, True, 1),
         (6, True, False, True, 1),
         (12, True, False, True, 1),
-        (13, True, False, False, 1),
+        (13, True, False, True, 1),
         (6, False, False, False, 1),
         (6, True, True, False, 1),
         (6, True, False, False, 2),
         (6, True, False, False, 8),
     ],
 )
-@pytest.mark.parametrize("layout", ["native", "fp16", "other_width"])
+@pytest.mark.parametrize("keep_view", [False, True])
+@pytest.mark.parametrize("layout", ["native", "fp16", "fp32", "other_width", "non_power_two"])
 @pytest.mark.parametrize("ranks", [2, 4, 8, 16])
 def test_query_gather_waits_before_final_unpack_and_preserves_fallback(
-    tokens, decode, dsa, prepared, pcp_size, ranks, layout
+    tokens, decode, dsa, prepared, pcp_size, ranks, layout, keep_view
 ):
     if pcp_size > ranks:
         pytest.skip("PCP must divide the DCP group")
@@ -268,10 +269,10 @@ def test_query_gather_waits_before_final_unpack_and_preserves_fallback(
         events.append("prepare")
         return torch.cat((qn, qr), dim=-1).permute(1, 0, 2).contiguous()
 
-    def unpack(value):
+    def unpack(value, split_sizes):
         assert events[-1] == "wait"
         events.append("unpack")
-        return tuple(part.contiguous() for part in value.permute(1, 0, 2).split((512, 64), dim=-1))
+        return tuple(part.contiguous() for part in value.permute(1, 0, 2).split(split_sizes, dim=-1))
 
     namespace = {
         "torch": torch,
@@ -302,9 +303,9 @@ def test_query_gather_waits_before_final_unpack_and_preserves_fallback(
         _has_prefill=lambda metadata: metadata.num_prefills > 0,
     )
     state._start_dcp_query_gather = lambda *args, **kwargs: namespace["_start_dcp_query_gather"](state, *args, **kwargs)
-    dtype = torch.float16 if layout == "fp16" else torch.bfloat16
-    nope_dim = 256 if layout == "other_width" else 512
-    prepared = prepared and layout == "native"
+    dtype = {"fp16": torch.float16, "fp32": torch.float32}.get(layout, torch.bfloat16)
+    nope_dim = {"other_width": 256, "non_power_two": 496}.get(layout, 512)
+    prepared = prepared and layout != "non_power_two"
     qn = torch.arange(tokens * 8 * nope_dim).to(dtype).view(8, tokens, nope_dim).transpose(0, 1)
     qr = torch.ones(tokens, 8, 64, dtype=dtype)
     metadata = SimpleNamespace(num_prefills=0 if decode else 1, dcp_context=SimpleNamespace(gather_context=None))
@@ -315,14 +316,18 @@ def test_query_gather_waits_before_final_unpack_and_preserves_fallback(
         return
     assert context.query_prepared is prepared
     assert "wait" not in events
-    result = namespace["_finish_dcp_gather"](context)
+    result = namespace["_finish_dcp_gather"](context, keep_view=keep_view)
     dim = 0 if dsa else 1
     assert torch.equal(result[0], torch.cat([qn] * replicas, dim=dim))
     assert torch.equal(result[1], torch.cat([qr] * replicas, dim=dim))
     assert events.count("gather") == events.count("wait") == (0 if pcp_size == ranks else 1)
-    assert ("unpack" in events) is prepared
-    if prepared:
+    assert ("unpack" in events) is (prepared and not keep_view)
+    if prepared and not keep_view:
         assert all(part.is_contiguous() for part in result)
+    elif prepared:
+        assert all(
+            part.untyped_storage().data_ptr() == context.gathered.untyped_storage().data_ptr() for part in result
+        )
 
 
 @pytest.mark.parametrize(

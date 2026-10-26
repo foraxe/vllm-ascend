@@ -12,9 +12,9 @@ from vllm_ascend.ops.triton.sfa_indexer_store import store_indexer_key_scale  # 
 from vllm_ascend.ops.triton.sparse_index_remap import remap_sparse_indices_triton  # noqa: E402
 
 
-@pytest.mark.parametrize("widths", [(512, 64)])
-@pytest.mark.parametrize("tokens,heads", [(2, 3), (6, 8), (12, 1)])
-@pytest.mark.parametrize("dtype", [torch.float16, torch.bfloat16])
+@pytest.mark.parametrize("widths", [(512, 64), (256, 128), (64, 512)])
+@pytest.mark.parametrize("tokens,heads", [(1, 3), (6, 8), (13, 1), (192, 1)])
+@pytest.mark.parametrize("dtype", [torch.float16, torch.bfloat16, torch.float32])
 @pytest.mark.parametrize("column_stride", [1, 2])
 def test_query_bytes_and_changing_graph_inputs(widths, tokens, heads, dtype, column_stride):
     torch.npu.set_device(0)
@@ -23,7 +23,7 @@ def test_query_bytes_and_changing_graph_inputs(widths, tokens, heads, dtype, col
 
     def invoke():
         packed = prepare_query_head_major(qn, qr)
-        return packed, unpack_query(packed)
+        return packed, unpack_query(packed, widths)
 
     for _ in range(3):
         invoke()
@@ -31,16 +31,21 @@ def test_query_bytes_and_changing_graph_inputs(widths, tokens, heads, dtype, col
     graph = torch.npu.NPUGraph()
     with torch.npu.graph(graph):
         packed, fragments = invoke()
+    bit_dtype = torch.int32 if dtype == torch.float32 else torch.int16
     for step in range(3):
         for owner in owners:
-            bits = torch.arange(owner.numel()).mul(17).add(step * 4099).to(torch.int16).reshape(owner.shape)
+            bits = torch.arange(owner.numel()).mul(17).add(step * 4099).to(bit_dtype).reshape(owner.shape)
+            patterns = (
+                [0, -2147483648, 2139095040, 2143289345] if bit_dtype == torch.int32 else [0, -32768, 32640, 32705]
+            )
+            bits.view(-1)[:4] = torch.tensor(patterns, dtype=bit_dtype)
             owner.copy_(bits.view(dtype))
         graph.replay()
         expected = torch.cat((qn.cpu(), qr.cpu()), dim=-1).transpose(0, 1).contiguous()
-        assert torch.equal(packed.cpu().view(torch.int16), expected.view(torch.int16))
+        assert torch.equal(packed.cpu().view(bit_dtype), expected.view(bit_dtype))
         for actual, source in zip(fragments, (qn, qr)):
             assert actual.is_contiguous()
-            assert torch.equal(actual.cpu().view(torch.int16), source.cpu().view(torch.int16))
+            assert torch.equal(actual.cpu().view(bit_dtype), source.cpu().view(bit_dtype))
     torch.npu.synchronize()
 
 
@@ -169,7 +174,7 @@ def test_remap_integer_layout_boundaries_and_graph(ranks, interleave, dtype):
 def test_native_quantized_cache_bytes_and_changing_graph_slots(capacity, slot_dtype, width):
     torch.npu.set_device(0)
     retained = []
-    for rows in (1, 6, 12, 13, 48):
+    for rows in (1, 6, 12, 13, 48, 192):
         x = torch.randn(rows, width, dtype=torch.bfloat16, device="npu")
         keys, scales = torch_npu.npu_dynamic_quant(x, dst_type=torch.int8)
         slots = torch.arange(rows, dtype=slot_dtype, device="npu") + 7

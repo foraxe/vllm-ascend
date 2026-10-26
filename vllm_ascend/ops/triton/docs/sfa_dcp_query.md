@@ -2,26 +2,28 @@
 
 ## Description
 
-- **Function**: Packs the nope/rope query fragments into head-major storage before DCP AllGather, then unpacks the gathered buffer directly into the contiguous fragments consumed by SFA. This avoids materializing a token-major concatenation and copying its two slices afterwards.
-- **Formula**: `packed[h, t] = concat(q_nope[t, h], q_rope[t, h])`; after gathering rank-ordered head shards, `out_nope[t, h] = gathered[h, t, :512]` and `out_rope[t, h] = gathered[h, t, 512:]`.
-- **Algorithm flow**: Prepare one query row per grid-stride iteration; let the attention caller issue AllGather and wait for its dependency; unpack one token/head row per iteration. Neither kernel performs communication.
+- **Function**: Packs the nope/rope query fragments into head-major storage before DCP AllGather. After waiting for communication, the caller either retains views or unpacks directly into contiguous fragments, according to `keep_view`.
+- **Formula**: `packed[h, t] = concat(q_nope[t, h], q_rope[t, h])`; split the gathered result using the original nope/rope widths retained in the gather context.
+- **Algorithm flow**: Prepare one query row per grid-stride iteration, with vector loads/stores across its features; let the attention caller issue AllGather and wait for its dependency. With `keep_view=True`, return permuted/split views without an unpack launch; otherwise unpack one token/head row per iteration. Neither kernel performs communication or a reduction.
 - **Supported modes**: NPU eager execution and ACLGraph capture/replay. The API is hardware-generation independent; execution has been verified on Atlas A3.
 
 ## Parameters
 
 | Parameter | Input/Output/Attribute | Description | Data type | Data format |
 | --- | --- | --- | --- | --- |
-| `qn` | Input | Nope query, `[T, local_heads, 512]` | BF16 | ND, strided |
-| `qr` | Input | Rope query, `[T, local_heads, 64]` | BF16 | ND, strided |
-| prepared query | Output | AllGather input, `[local_heads, T, 576]` | BF16 | ND, contiguous |
-| `gathered` | Input | Rank-ordered AllGather output, `[gathered_heads, T, 576]` | BF16 | ND, contiguous |
-| unpacked queries | Output | `[T, gathered_heads, 512]` and `[T, gathered_heads, 64]` | BF16 | ND, contiguous |
+| `qn` | Input | Nope query, `[T, local_heads, N]` | BF16, FP16 or FP32 | ND, strided |
+| `qr` | Input | Rope query, `[T, local_heads, P]` | Same as `qn` | ND, strided |
+| prepared query | Output | AllGather input, `[local_heads, T, N + P]` | Same as `qn` | ND, contiguous |
+| `gathered` | Input | Rank-ordered AllGather output, `[gathered_heads, T, N + P]` | Same as `qn` | ND, contiguous |
+| `split_sizes` | Attribute | Original `(N, P)` for unpacking | Integer pair | N/A |
+| unpacked queries | Output | `[T, gathered_heads, N]` and `[T, gathered_heads, P]` | Same as `qn` | ND, contiguous |
 
 ## Constraints
 
 - These are NPU-only internal kernel entry points. The attention backend owns input compatibility and communication ordering; the kernel wrappers do not implement a CPU execution mode or repeat those checks.
 - Local and gathered head counts are derived from the tensors, not fixed to 8/64 or a particular DCP size.
-- The attention backend selects this small-decode layout for BF16, feature widths512/64 and `2 <= T <= 12`. This framework routing policy is kept at the call site, not in a Triton `can_*` helper; it is not a theoretical token limit of the kernels. Other shapes use the existing query path.
+- Fragment widths come from the input tensors, without fixed512/64 dimensions or a T2–12 whitelist. Each fragment must have positive power-of-two width for its full `tl.arange` vector. Empty and non-power-of-two layouts retain the existing query path.
+- The context retains both fragment widths: their sum alone cannot recover the split. `keep_view` selects the consumer's storage layout rather than using token count as a proxy.
 - Native head gathering and token-scattered DSA-CP are different layouts. Physical PCP composition retains its TP-head gather path.
 - Payload movement is bit-preserving, including BF16 NaN/Inf encodings. The caller must wait for asynchronous communication before unpacking.
 
