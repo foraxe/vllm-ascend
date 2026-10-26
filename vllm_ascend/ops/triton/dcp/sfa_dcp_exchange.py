@@ -7,9 +7,6 @@ from vllm.triton_utils import tl, triton
 
 from vllm_ascend.ops.triton.dcp.sfa_dcp_merge import fused_merge
 
-_HEAD_DIM = 512
-_MAX_LOCAL_HEADS = 32  # Current local-head validation scope.
-
 
 @triton.jit
 def _pack_t1_peer(output_words_ptr, lse_ptr, send_ptr, LOCAL_HEADS: tl.constexpr, HEAD_WORDS: tl.constexpr):
@@ -78,20 +75,24 @@ def _pack_token_peer(
 def can_exchange(output: torch.Tensor, lse: torch.Tensor, ranks: int = 8) -> bool:
     # These properties are uniform within a valid DCP group. Do not choose
     # different collective counts based on rank-local allocation/stride state.
+    if output.dtype != torch.bfloat16 or output.ndim != 3 or ranks <= 1:
+        return False
+    tokens, heads, head_dim = output.shape
+    local_heads = heads // ranks
+    head_words = head_dim // 2
     return (
-        output.dtype == torch.bfloat16
-        and output.ndim == 3
-        and ranks > 1
-        and ranks & (ranks - 1) == 0  # Merge's tl.arange(0, RANKS) requires a power-of-two length.
-        and output.shape[0] > 0  # Tests configured at most 192 tokens; this is not a kernel limit.
-        and output.shape[2] == _HEAD_DIM
-        and output.shape[1] % ranks == 0
-        and 0 < output.shape[1] // ranks <= _MAX_LOCAL_HEADS
+        ranks & (ranks - 1) == 0  # Merge's tl.arange(0, RANKS) requires a power-of-two length.
+        and tokens > 0  # Tests configured at most 192 tokens; this is not a kernel limit.
+        and head_dim > 0
+        and head_dim % 2 == 0  # Each INT32 word holds two BF16 values.
+        and head_words & (head_words - 1) == 0  # Full-word tl.arange vector length.
+        and heads % ranks == 0
+        and local_heads > 0
         # Full vectors preserve the unmasked copy lowering. Other head counts
         # retain upstream packing rather than scalarizing a masked token loop.
-        and ((output.shape[1] // ranks) & ((output.shape[1] // ranks) - 1)) == 0
+        and local_heads & (local_heads - 1) == 0
         and lse.dtype == torch.float32
-        and tuple(lse.shape) == (output.shape[0], output.shape[1], 1)
+        and tuple(lse.shape) == (tokens, heads, 1)
     )
 
 

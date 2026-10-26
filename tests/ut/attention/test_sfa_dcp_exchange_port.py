@@ -86,15 +86,7 @@ def test_registered_op_keeps_upstream_fallback_and_output_dtype(tokens, ranks, s
     "tokens,expected", [(0, False), (1, True), (6, True), (12, True), (13, True), (48, True), (192, True), (193, True)]
 )
 def test_exchange_gate(tokens, expected):
-    source = ROOT / "vllm_ascend/ops/triton/dcp/sfa_dcp_exchange.py"
-    constants = {
-        node.targets[0].id: ast.literal_eval(node.value)
-        for node in ast.parse(source.read_text()).body
-        if isinstance(node, ast.Assign)
-        and isinstance(node.targets[0], ast.Name)
-        and node.targets[0].id in ("_SUPPORTED_RANKS", "_HEAD_DIM", "_MAX_LOCAL_HEADS")
-    }
-    namespace = {"torch": torch, "triton": object(), **constants}
+    namespace = {"torch": torch}
     run = load_function("vllm_ascend/ops/triton/dcp/sfa_dcp_exchange.py", "can_exchange", namespace)
     device = SimpleNamespace(type="npu")
     output = SimpleNamespace(device=device, dtype=torch.bfloat16, ndim=3, shape=(tokens, 64, 512))
@@ -103,22 +95,20 @@ def test_exchange_gate(tokens, expected):
 
 
 @pytest.mark.parametrize("ranks", [2, 4, 8, 16, 32])
-@pytest.mark.parametrize("local_heads", [1, 3, 8, 16, 32, 33])
-def test_exchange_gate_derives_head_shards_from_group(ranks, local_heads):
-    namespace = dict(
-        torch=torch,
-        triton=object(),
-        _SUPPORTED_RANKS=(2, 4, 8),
-        _HEAD_DIM=512,
-        _MAX_LOCAL_HEADS=32,
-    )
+@pytest.mark.parametrize("local_heads", [1, 3, 8, 16, 32, 33, 64])
+@pytest.mark.parametrize(
+    "head_dim,vector_compatible",
+    [(0, False), (1, False), (2, True), (128, True), (496, False), (512, True), (513, False), (1024, True)],
+)
+def test_exchange_gate_derives_head_shards_from_group(ranks, local_heads, head_dim, vector_compatible):
+    namespace = {"torch": torch}
     run = load_function("vllm_ascend/ops/triton/dcp/sfa_dcp_exchange.py", "can_exchange", namespace)
     device = SimpleNamespace(type="npu")
     heads = ranks * local_heads
-    output = SimpleNamespace(device=device, dtype=torch.bfloat16, ndim=3, shape=(13, heads, 512))
+    output = SimpleNamespace(device=device, dtype=torch.bfloat16, ndim=3, shape=(13, heads, head_dim))
     lse = SimpleNamespace(device=device, dtype=torch.float32, shape=(13, heads, 1))
-    assert run(output, lse, ranks) is (local_heads <= 32 and local_heads & (local_heads - 1) == 0)
-    output.shape = (13, heads + 1, 512)
+    assert run(output, lse, ranks) is (vector_compatible and local_heads & (local_heads - 1) == 0)
+    output.shape = (13, heads + 1, head_dim)
     assert not run(output, lse, ranks)
 
 
