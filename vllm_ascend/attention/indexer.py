@@ -226,7 +226,7 @@ class AscendSFAIndexerBackend(nn.Module, AttentionBackend):
         self._dsa_cp_active = enable_dsa_cp()
         self._use_fused_cache_store = (
             type(self) is AscendSFAIndexerBackend
-            and not self.use_pcp
+            and not self.use_pcp  # Keep PCP cache gathering and slot remapping on the existing path.
             and not self._dsa_cp_active
             and self.enable_sparse_li_c8
         )

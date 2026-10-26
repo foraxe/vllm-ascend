@@ -8,16 +8,14 @@ from vllm.triton_utils import tl, triton
 from vllm_ascend.ops.triton.dcp.sfa_dcp_merge import fused_merge
 
 _HEAD_DIM = 512
-_MAX_LOCAL_HEADS = 32
-# Manually chosen conservative cap, not a demonstrated kernel limit.
-# Inputs above 192 have not been tested and retain the upstream path.
-_MAX_DECODE_TOKENS = 192
+_MAX_LOCAL_HEADS = 32  # Current local-head validation scope.
+_MAX_DECODE_TOKENS = 192  # Manually chosen validation cap, not a demonstrated kernel limit.
 
 
 @triton.jit
 def _pack_t1_peer(output_words_ptr, lse_ptr, send_ptr, LOCAL_HEADS: tl.constexpr):
     peer = tl.program_id(0)
-    OUTPUT_WORDS: tl.constexpr = LOCAL_HEADS * 256
+    OUTPUT_WORDS: tl.constexpr = LOCAL_HEADS * 256  # D512 BF16: two values per INT32 word.
     PEER_WORDS: tl.constexpr = OUTPUT_WORDS + LOCAL_HEADS
     word = tl.arange(0, OUTPUT_WORDS)
     values = tl.load(output_words_ptr + peer * OUTPUT_WORDS + word, mask=word < OUTPUT_WORDS, other=0)
@@ -85,8 +83,8 @@ def can_exchange(output: torch.Tensor, lse: torch.Tensor, ranks: int = 8) -> boo
         output.dtype == torch.bfloat16
         and output.ndim == 3
         and ranks > 1
-        and ranks & (ranks - 1) == 0
-        and 0 < output.shape[0] <= _MAX_DECODE_TOKENS
+        and ranks & (ranks - 1) == 0  # Merge's tl.arange(0, RANKS) requires a power-of-two length.
+        and 0 < output.shape[0] <= _MAX_DECODE_TOKENS  # Empty input would give merge a zero-size grid.
         and output.shape[2] == _HEAD_DIM
         and output.shape[1] % ranks == 0
         and 0 < output.shape[1] // ranks <= _MAX_LOCAL_HEADS
@@ -121,7 +119,7 @@ def _exchange_tokens(output: torch.Tensor, lse: torch.Tensor, group, ranks: int)
         tokens,
         local_heads,
         _HEAD_DIM // 2,
-        triton.next_power_of_2(tokens * local_heads),
+        triton.next_power_of_2(tokens * local_heads),  # Power-of-two LSE vector; this constexpr varies with T.
     )
     recv = torch.empty_like(send)
     dist.all_to_all_single(recv, send, group=group)
