@@ -9,13 +9,12 @@ from vllm_ascend.ops.triton.dcp.sfa_dcp_merge import fused_merge
 
 _HEAD_DIM = 512
 _MAX_LOCAL_HEADS = 32  # Current local-head validation scope.
-_MAX_DECODE_TOKENS = 192  # Manually chosen validation cap, not a demonstrated kernel limit.
 
 
 @triton.jit
-def _pack_t1_peer(output_words_ptr, lse_ptr, send_ptr, LOCAL_HEADS: tl.constexpr):
+def _pack_t1_peer(output_words_ptr, lse_ptr, send_ptr, LOCAL_HEADS: tl.constexpr, HEAD_WORDS: tl.constexpr):
     peer = tl.program_id(0)
-    OUTPUT_WORDS: tl.constexpr = LOCAL_HEADS * 256  # D512 BF16: two values per INT32 word.
+    OUTPUT_WORDS: tl.constexpr = LOCAL_HEADS * HEAD_WORDS
     PEER_WORDS: tl.constexpr = OUTPUT_WORDS + LOCAL_HEADS
     word = tl.arange(0, OUTPUT_WORDS)
     values = tl.load(output_words_ptr + peer * OUTPUT_WORDS + word, mask=word < OUTPUT_WORDS, other=0)
@@ -84,7 +83,7 @@ def can_exchange(output: torch.Tensor, lse: torch.Tensor, ranks: int = 8) -> boo
         and output.ndim == 3
         and ranks > 1
         and ranks & (ranks - 1) == 0  # Merge's tl.arange(0, RANKS) requires a power-of-two length.
-        and 0 < output.shape[0] <= _MAX_DECODE_TOKENS  # Empty input would give merge a zero-size grid.
+        and output.shape[0] > 0  # Tests configured at most 192 tokens; this is not a kernel limit.
         and output.shape[2] == _HEAD_DIM
         and output.shape[1] % ranks == 0
         and 0 < output.shape[1] // ranks <= _MAX_LOCAL_HEADS
@@ -98,8 +97,10 @@ def can_exchange(output: torch.Tensor, lse: torch.Tensor, ranks: int = 8) -> boo
 
 def _exchange_tokens(output: torch.Tensor, lse: torch.Tensor, group, ranks: int) -> torch.Tensor:
     tokens = output.shape[0]
+    head_dim = output.shape[-1]
     local_heads = output.shape[1] // ranks
-    output_words = local_heads * (_HEAD_DIM // 2)
+    head_words = head_dim // 2  # Two BF16 values per INT32 word.
+    output_words = local_heads * head_words
     # Stride-dependent normalization stays inside the one-collective path.
     if output.stride(-1) != 1 or any(stride % 2 for stride in output.stride()[:2]):
         output = output.contiguous()
@@ -118,15 +119,15 @@ def _exchange_tokens(output: torch.Tensor, lse: torch.Tensor, group, ranks: int)
         lse.stride(1),
         tokens,
         local_heads,
-        _HEAD_DIM // 2,
+        head_words,
         triton.next_power_of_2(tokens * local_heads),  # Power-of-two LSE vector; this constexpr varies with T.
     )
     recv = torch.empty_like(send)
     dist.all_to_all_single(recv, send, group=group)
     # Final receiver layout is token-major: no transpose or receive-side copy.
     parts = recv.view(output.dtype).as_strided(
-        (ranks, tokens, local_heads, _HEAD_DIM),
-        (peer_words * 2, local_heads * _HEAD_DIM, _HEAD_DIM, 1),
+        (ranks, tokens, local_heads, head_dim),
+        (peer_words * 2, local_heads * head_dim, head_dim, 1),
     )
     stats = recv.view(torch.float32).as_strided(
         (ranks, tokens, local_heads),
@@ -141,8 +142,10 @@ def exchange(output: torch.Tensor, lse: torch.Tensor, group) -> torch.Tensor:
     ranks = dist.get_world_size(group)
     if output.shape[0] != 1:
         return _exchange_tokens(output, lse, group, ranks)
+    head_dim = output.shape[-1]
     local_heads = output.shape[1] // ranks
-    output_words = local_heads * (_HEAD_DIM // 2)
+    head_words = head_dim // 2  # Two BF16 values per INT32 word.
+    output_words = local_heads * head_words
     peer_words = output_words + local_heads
     output = output.contiguous()
     if output.storage_offset() % 2:
@@ -151,12 +154,12 @@ def exchange(output: torch.Tensor, lse: torch.Tensor, group) -> torch.Tensor:
     words = output.view(torch.int32)
     send = torch.empty((ranks, peer_words), dtype=torch.int32, device=output.device)
     # T1 normalizes LSE to contiguous [1, heads, 1], so the head stride is one.
-    _pack_t1_peer[(ranks,)](words, lse, send, local_heads)
+    _pack_t1_peer[(ranks,)](words, lse, send, local_heads, head_words)
     recv = torch.empty_like(send)
     dist.all_to_all_single(recv, send, group=group)
     parts = recv.view(output.dtype).as_strided(
-        (ranks, local_heads, 1, _HEAD_DIM),
-        (peer_words * 2, _HEAD_DIM, _HEAD_DIM, 1),
+        (ranks, local_heads, 1, head_dim),
+        (peer_words * 2, head_dim, head_dim, 1),
     )
     stats = recv.view(torch.float32).as_strided(
         (ranks, local_heads, 1),

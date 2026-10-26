@@ -30,7 +30,7 @@ def load_function(path, name, namespace):
         (13, 8, 1, True, False),
         (48, 8, 1, True, False),
         (192, 8, 1, True, False),
-        (193, 8, 1, False, False),
+        (193, 8, 1, True, False),
         (6, 2, 1, True, False),
         (6, 4, 1, True, False),
         (6, 16, 1, True, False),
@@ -83,7 +83,7 @@ def test_registered_op_keeps_upstream_fallback_and_output_dtype(tokens, ranks, s
 
 
 @pytest.mark.parametrize(
-    "tokens,expected", [(0, False), (1, True), (6, True), (12, True), (13, True), (48, True), (192, True), (193, False)]
+    "tokens,expected", [(0, False), (1, True), (6, True), (12, True), (13, True), (48, True), (192, True), (193, True)]
 )
 def test_exchange_gate(tokens, expected):
     source = ROOT / "vllm_ascend/ops/triton/dcp/sfa_dcp_exchange.py"
@@ -92,7 +92,7 @@ def test_exchange_gate(tokens, expected):
         for node in ast.parse(source.read_text()).body
         if isinstance(node, ast.Assign)
         and isinstance(node.targets[0], ast.Name)
-        and node.targets[0].id in ("_MAX_DECODE_TOKENS", "_SUPPORTED_RANKS", "_HEAD_DIM", "_MAX_LOCAL_HEADS")
+        and node.targets[0].id in ("_SUPPORTED_RANKS", "_HEAD_DIM", "_MAX_LOCAL_HEADS")
     }
     namespace = {"torch": torch, "triton": object(), **constants}
     run = load_function("vllm_ascend/ops/triton/dcp/sfa_dcp_exchange.py", "can_exchange", namespace)
@@ -111,7 +111,6 @@ def test_exchange_gate_derives_head_shards_from_group(ranks, local_heads):
         _SUPPORTED_RANKS=(2, 4, 8),
         _HEAD_DIM=512,
         _MAX_LOCAL_HEADS=32,
-        _MAX_DECODE_TOKENS=192,
     )
     run = load_function("vllm_ascend/ops/triton/dcp/sfa_dcp_exchange.py", "can_exchange", namespace)
     device = SimpleNamespace(type="npu")

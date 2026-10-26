@@ -21,7 +21,7 @@
 - Group size must divide `H`. The local merge's reduction vector requires a power-of-two rank dimension.
 - The current fast packing layout requires BF16/D512 and a power-of-two local head count no larger than32. Complete vectors deliberately use unmasked copies: masked copies in the token loop can lower poorly. Other head counts retain upstream packing.
 - `LOCAL_HEADS` is static vector configuration because it determines `tl.arange` widths, including the T1 pack. Token counts and ordinary strides remain runtime values, not exact-value constexpr keys.
-- Current routing caps this layout at192 decode tokens. This is a conservative policy, not a demonstrated maximum supported token count. The kernel has no dependency on scheduler configuration.
+- Tests configured a maximum of192 decode tokens; this is not enforced as a routing limit. Empty inputs are excluded. The kernel has no dependency on scheduler configuration.
 - Output feature storage must permit INT32 reinterpretation. The exchange normalizes non-unit features, odd outer strides or odd BF16 storage offsets inside the one-collective path; it does not change collective counts based on rank-local storage.
 - PCP composition, token scatter, returned-LSE and deferred-combine requests retain their existing implementations and semantics.
 - Eligibility is selected once at the registered operator. The internal exchange and merge wrappers trust that contract rather than repeat defensive shape/dtype checks.

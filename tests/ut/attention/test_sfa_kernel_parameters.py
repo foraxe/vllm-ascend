@@ -27,7 +27,7 @@ ALIGNMENT_METADATA = {
     },
 }
 CASES: list[tuple[str, str, set[str], set[str]]] = [
-    ("dcp/sfa_dcp_exchange.py", "_pack_t1_peer", {"LOCAL_HEADS"}, set()),
+    ("dcp/sfa_dcp_exchange.py", "_pack_t1_peer", {"LOCAL_HEADS", "HEAD_WORDS"}, set()),
     (
         "dcp/sfa_dcp_exchange.py",
         "_pack_token_peer",
