@@ -19,7 +19,50 @@ def test_empty_remap_preserves_shape_dtype_and_avoids_launch(shape):
     assert namespace["remap_sparse_indices_triton"](value, 8, 0, 128) is value
 
 
-@pytest.mark.parametrize("ranks,interleave", [(1, 1), (3, 128), (8, 64), (2, 1), (3, 127), (5, 129)])
+@pytest.mark.parametrize("ranks", [1, 2, 4, 8, 16])
+@pytest.mark.parametrize("interleave", [1, 2, 64, 128, 256])
+def test_bitwise_mapping_matches_python_integer_contract(ranks, interleave):
+    source = Path(__file__).resolve().parents[3] / "vllm_ascend/ops/triton/sparse_index_remap.py"
+    function = next(
+        n
+        for n in ast.walk(ast.parse(source.read_text()))
+        if isinstance(n, ast.FunctionDef) and n.name == "remap_sparse_indices_fused_kernel"
+    )
+    statements = [
+        n
+        for n in function.body
+        if isinstance(n, ast.Assign)
+        and isinstance(n.targets[0], ast.Name)
+        and n.targets[0].id in ("owner", "remapped", "valid")
+    ]
+    indices = [
+        -1,
+        0,
+        interleave - 1,
+        interleave,
+        ranks * interleave - 1,
+        ranks * interleave,
+        2**24 - 1,
+        2**24 + 127,
+        2**31 - 1,
+        2**40 + 255,
+        2**62 - 1,
+    ]
+    for rank in range(ranks):
+        namespace = dict(
+            idx=torch.tensor(indices, dtype=torch.int64),
+            dcp_rank=rank,
+            DCP_BITS=ranks.bit_length() - 1,
+            INTERLEAVE_BITS=interleave.bit_length() - 1,
+        )
+        exec(compile(ast.Module(body=statements, type_ignores=[]), str(source), "exec"), namespace)
+        valid = [i >= 0 and (i // interleave) % ranks == rank for i in indices]
+        mapped = [(i // (ranks * interleave)) * interleave + i % interleave for i in indices]
+        assert namespace["valid"].tolist() == valid
+        assert namespace["remapped"][valid].tolist() == [m for m, v in zip(mapped, valid) if v]
+
+
+@pytest.mark.parametrize("ranks,interleave", [(1, 3), (3, 128), (8, 65), (2, 3), (3, 127), (5, 129)])
 @pytest.mark.parametrize("dtype", [torch.int32, torch.int64])
 def test_generic_wrapper_routes_to_exact_integer_fallback(ranks, interleave, dtype):
     source = Path(__file__).resolve().parents[3] / "vllm_ascend/ops/triton/sparse_index_remap.py"

@@ -22,12 +22,24 @@ def oracle(indices, rank, ranks=8, interleave=128):
 @pytest.mark.parametrize("rows", [1, 6, 12])
 @pytest.mark.parametrize("ranks,rank", [(ranks, rank) for ranks in (2, 4, 8) for rank in range(ranks)])
 @pytest.mark.parametrize("dtype", [torch.int32, torch.int64])
-def test_exact_integer_boundaries_and_changed_graph_inputs(rows, ranks, rank, dtype):
+@pytest.mark.parametrize("interleave", [1, 64, 128, 256])
+def test_exact_integer_boundaries_and_changed_graph_inputs(rows, ranks, rank, dtype, interleave):
     torch.npu.set_device(0)
-    rng = torch.Generator().manual_seed(20260911 + rows + rank)
+    rng = torch.Generator().manual_seed(20260911 + rows + rank + interleave)
     base = torch.randint(0, 2**31 - 1, (rows, 2048), generator=rng, dtype=dtype)
     boundaries = torch.tensor(
-        [-1, 0, 127, 128, 1023, 1024, 2**24 - 1, 2**24, 2**24 + 127, 2**31 - 1],
+        [
+            -1,
+            0,
+            interleave - 1,
+            interleave,
+            ranks * interleave - 1,
+            ranks * interleave,
+            2**24 - 1,
+            2**24,
+            2**24 + interleave - 1,
+            2**31 - 1,
+        ],
         dtype=dtype,
     )
     if dtype == torch.int64:
@@ -35,10 +47,10 @@ def test_exact_integer_boundaries_and_changed_graph_inputs(rows, ranks, rank, dt
         boundaries = torch.cat((boundaries, torch.tensor([2**31, 2**40, 2**62 - 1], dtype=dtype)))
     device_input = base.npu()
     for _ in range(5):
-        remap_sparse_indices_triton(device_input, ranks, rank, 128)
+        remap_sparse_indices_triton(device_input, ranks, rank, interleave)
     graph = torch.npu.NPUGraph()
     with torch.npu.graph(graph):
-        output = remap_sparse_indices_triton(device_input, ranks, rank, 128)
+        output = remap_sparse_indices_triton(device_input, ranks, rank, interleave)
     for step in range(8):
         current = torch.roll(base, step, dims=-1)
         current[:, : boundaries.numel()] = boundaries
@@ -46,7 +58,7 @@ def test_exact_integer_boundaries_and_changed_graph_inputs(rows, ranks, rank, dt
             current.fill_(-1)
         device_input.copy_(current)
         graph.replay()
-        assert torch.equal(output.cpu(), oracle(current, rank, ranks))
+        assert torch.equal(output.cpu(), oracle(current, rank, ranks, interleave))
     torch.npu.synchronize()
 
 
@@ -58,7 +70,7 @@ def test_empty_input(shape):
 
 @pytest.mark.parametrize("ranks,interleave", [(4, 128), (8, 64), (2, 1), (3, 127)])
 @pytest.mark.parametrize("dtype", [torch.int32, torch.int64])
-def test_generic_integer_fallback_boundaries_and_graph(ranks, interleave, dtype):
+def test_integer_layout_boundaries_and_graph(ranks, interleave, dtype):
     torch.npu.set_device(0)
     rng = torch.Generator().manual_seed(16350)
     base = torch.randint(0, 2**31 - 1, (2, 3, 257), generator=rng, dtype=dtype)

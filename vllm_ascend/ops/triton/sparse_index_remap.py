@@ -32,6 +32,7 @@ def remap_sparse_indices_fused_kernel(
     topk_count,
     dcp_rank,
     DCP_BITS: tl.constexpr,
+    INTERLEAVE_BITS: tl.constexpr,
     BLOCK: tl.constexpr,
     NUM_CHUNKS: tl.constexpr,
 ):
@@ -52,9 +53,9 @@ def remap_sparse_indices_fused_kernel(
 
     idx = tl.load(indices_ptr + row * topk_count + offsets, mask=in_bounds, other=-1)
     # This backend's vector divsi loses integer boundaries above 2**24.
-    # Power-of-two DCP/interleave128 stays entirely in exact bit operations.
-    owner = (idx >> 7) & ((1 << DCP_BITS) - 1)
-    remapped = ((idx >> (7 + DCP_BITS)) << 7) + (idx & 127)
+    # Power-of-two topology uses exact shifts, never rounded vector division.
+    owner = (idx >> INTERLEAVE_BITS) & ((1 << DCP_BITS) - 1)
+    remapped = ((idx >> (INTERLEAVE_BITS + DCP_BITS)) << INTERLEAVE_BITS) + (idx & ((1 << INTERLEAVE_BITS) - 1))
     valid = (idx >= 0) & (owner == dcp_rank)
 
     valid_i32 = valid.to(tl.int32)
@@ -101,7 +102,7 @@ def _remap_sparse_indices_integer(
     """Exact fallback; do not reintroduce FP32 index arithmetic above 2**24.
 
     Integer sorting may use AICPU on Ascend. This fallback favors correctness
-    outside the power-of-two DCP/interleave128 two-kernel fast path.
+    outside the power-of-two DCP/interleave two-kernel fast path.
     """
     integer = indices.to(torch.int64)
     blocks = torch.div(integer, interleave_size, rounding_mode="floor")
@@ -147,7 +148,7 @@ def remap_sparse_indices_triton(
     """
     if topk_indices.numel() == 0:
         return topk_indices
-    if dcp_size <= 0 or dcp_size & (dcp_size - 1) or interleave_size != 128:
+    if dcp_size <= 0 or dcp_size & (dcp_size - 1) or interleave_size <= 0 or interleave_size & (interleave_size - 1):
         return _remap_sparse_indices_integer(topk_indices, dcp_size, dcp_rank, interleave_size)
     orig_dtype = topk_indices.dtype
     orig_shape = topk_indices.shape
@@ -175,6 +176,7 @@ def remap_sparse_indices_triton(
         topk_count,
         dcp_rank,
         DCP_BITS=dcp_size.bit_length() - 1,
+        INTERLEAVE_BITS=interleave_size.bit_length() - 1,
         BLOCK=block,
         NUM_CHUNKS=num_chunks,
         multibuffer=False,

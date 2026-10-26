@@ -2,7 +2,7 @@
 
 ## Description
 
-- **Function**: Remaps DCP sparse-attention top-k indices from the replicated view to DCP-local KV positions, retains entries owned by the current rank, compacts them in top-k order and pads the tail with `-1`. The current power-of-two DCP/interleave128 route uses two Triton kernels; other configurations use exact INT64 Torch arithmetic and order-preserving compaction.
+- **Function**: Remaps DCP sparse-attention top-k indices from the replicated view to DCP-local KV positions, retains entries owned by the current rank, compacts them in top-k order and pads the tail with `-1`. The current power-of-two DCP/interleave route uses two Triton kernels; other configurations use exact INT64 Torch arithmetic and order-preserving compaction.
 - **Formula** (per row, all integer arithmetic; `idx >= 0` marks valid lanes):
     - `block_idx = idx // interleave_size`
     - `owner = block_idx % dcp_size`
@@ -29,7 +29,7 @@
 
 - `topk_count` must not exceed the configured `index_topk` (checked by the caller).
 - Index values are logical KV positions, not bounded by top-k count. Nonnegative values within the input dtype's range must retain exact integer boundaries, including values above `2**24` and INT64 values above `2**31`. Do not use FP32 division as an oracle or a fallback.
-- For power-of-two DCP and interleave128, `owner = (idx >> 7) & (dcp_size - 1)` and `local = ((idx >> (7 + log2(dcp_size))) << 7) + (idx & 127)`. The topology bit count is static configuration; the current rank and top-k work count remain runtime parameters.
+- For power-of-two DCP and interleave, let `b = log2(interleave_size)` and `r = log2(dcp_size)`: `owner = (idx >> b) & (dcp_size - 1)` and `local = ((idx >> (b + r)) << b) + (idx & (interleave_size - 1))`. Both bit counts are static configuration; the current rank and top-k work count remain runtime parameters.
 - Other layouts use INT64 quotient/remainder and unique order keys for compaction. Integer argsort may use AICPU; this path prioritizes correctness, not a generic-path speedup claim.
 - `BLOCK` is capped at 128 and the compaction is deliberately serial: a `tl.cumsum` prefix-sum compaction produces nondeterministic garbage on A2 and traps the vector core under repeated launches on A3 (triton-ascend 3.2.0 / CANN 9.1, re-verified 2026-08). Re-validate if the compiler is upgraded.
 - Two kernels are required: cross-program ordering (top-k order across chunks) cannot be expressed inside a single kernel without a global barrier, and an atomic-based reservation would make the output order nondeterministic.
@@ -44,7 +44,7 @@
 
 ## Test Cases
 
-The current integer-repair tests cover top-k2048, rows1/6/12, every logical DCP2/4/8 rank, INT32/INT64, large integer boundaries, all-invalid rows and changing-input graph replay. Strided tensors, arbitrary leading dimensions and other DCP/interleave configurations are checked against an independent CPU integer oracle. As an index-only operator, the precision requirement is bit-exact (`rtol=0, atol=0`). Historical FP32-reference timing is not evidence for the corrected large-index implementation.
+The current integer-repair tests cover top-k2048, rows1/6/12, every logical DCP2/4/8 rank, INT32/INT64, interleaves1/64/128/256, large integer boundaries, all-invalid rows and changing-input graph replay. Strided tensors, arbitrary leading dimensions and other DCP/interleave configurations are checked against an independent CPU integer oracle. As an index-only operator, the precision requirement is bit-exact (`rtol=0, atol=0`). Historical FP32-reference timing is not evidence for the corrected large-index implementation.
 
 ```bash
 pytest -sv tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_sfa_dcp_remap.py
