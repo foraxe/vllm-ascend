@@ -9,9 +9,6 @@ by decode slot mapping; padded negative slots are skipped.
 import torch
 from vllm.triton_utils import tl, triton
 
-_KEY_WIDTH = 128
-_MAX_DECODE_ROWS = 12
-
 
 @triton.jit(do_not_specialize=["capacity"])
 def _store_indexer_key_scale(
@@ -21,33 +18,16 @@ def _store_indexer_key_scale(
     cache_ptr,
     scale_cache_ptr,
     capacity,
+    KEY_WIDTH: tl.constexpr,
 ):
     row = tl.program_id(0)
-    column = tl.arange(0, 128)
-    key = tl.load(quant_ptr + row * 128 + column)
+    column = tl.arange(0, KEY_WIDTH)
+    key = tl.load(quant_ptr + row * KEY_WIDTH + column)
     scale = tl.load(scales_ptr + row)
     slot = tl.load(slots_ptr + row).to(tl.int64)
     valid = (slot >= 0) & (slot < capacity)
-    tl.store(cache_ptr + slot * 128 + column, key, valid)
+    tl.store(cache_ptr + slot * KEY_WIDTH + column, key, valid)
     tl.store(scale_cache_ptr + slot, scale, valid)
-
-
-def can_fuse_store(cache: torch.Tensor, scale_cache: torch.Tensor, slots: torch.Tensor, rows: int) -> bool:
-    return (
-        cache.dtype == torch.int8
-        and scale_cache.dtype == torch.float16
-        and slots.dtype in (torch.int32, torch.int64)
-        and cache.ndim > 0
-        and cache.shape[-1] == _KEY_WIDTH
-        and cache.numel() // _KEY_WIDTH == scale_cache.numel()
-        and cache.numel() > 0
-        and cache.is_contiguous()
-        and scale_cache.is_contiguous()
-        and slots.is_contiguous()
-        and slots.ndim == 1
-        and slots.numel() == rows
-        and 0 < rows <= _MAX_DECODE_ROWS
-    )
 
 
 def store_indexer_key_scale(
@@ -59,4 +39,6 @@ def store_indexer_key_scale(
 ) -> None:
     """Publish at the existing cache-write point, after the connector wait."""
     rows = slots.numel()
-    _store_indexer_key_scale[(rows,)](quant, scales, slots, cache, scale_cache, cache.numel() // _KEY_WIDTH)
+    key_width = quant.shape[-1]
+    # Rows only set the launch grid; 12 was a test setting, not a kernel limit.
+    _store_indexer_key_scale[(rows,)](quant, scales, slots, cache, scale_cache, cache.numel() // key_width, key_width)

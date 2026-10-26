@@ -9,7 +9,6 @@ from vllm_ascend.ops.triton.triton_utils import get_vectorcore_num, init_device_
 _NOPE_DIM = 512
 _ROPE_DIM = 64
 _PACKED_DIM = _NOPE_DIM + _ROPE_DIM
-_MAX_DECODE_TOKENS = 12
 
 
 @triton.jit(do_not_specialize=["tokens", "programs", "heads"])
@@ -59,16 +58,6 @@ def _unpack_query_fragments(
         b = tl.load(gathered_ptr + base + NOPE_DIM + r)
         tl.store(nope_ptr + row * NOPE_DIM + n, a)
         tl.store(rope_ptr + row * ROPE_DIM + r, b)
-
-
-def can_prepare_query(qn: torch.Tensor, qr: torch.Tensor) -> bool:
-    """Select the small BF16 query layout; the attention caller owns input validation."""
-    return (
-        qn.dtype == torch.bfloat16
-        and qn.shape[-1] == _NOPE_DIM
-        and qr.shape[-1] == _ROPE_DIM
-        and 1 < qn.shape[0] <= _MAX_DECODE_TOKENS
-    )
 
 
 def prepare_query_head_major(qn: torch.Tensor, qr: torch.Tensor) -> torch.Tensor:

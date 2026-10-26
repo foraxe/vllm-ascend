@@ -118,7 +118,7 @@ def test_large_batch_registered_graph_matches_exact_uniform_merge(monkeypatch):
         base = (torch.arange(tokens * 64 * 512).reshape(tokens, 64, 512) % 31 - 15).float() / 32
         output = (base + rank / 16).to(torch.bfloat16).npu()
         lse = torch.zeros((tokens, 64, 1), device="npu", dtype=torch.float32)
-        assert can_exchange(output, lse)
+        assert can_exchange(output, lse, group.world_size)
 
         def invoke(output=output, lse=lse):
             return torch.ops.vllm.dcp_a2a_fused(output, lse, 8, 1, group.unique_name)

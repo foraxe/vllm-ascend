@@ -91,7 +91,7 @@ def test_exchange_gate(tokens, expected):
     device = SimpleNamespace(type="npu")
     output = SimpleNamespace(device=device, dtype=torch.bfloat16, ndim=3, shape=(tokens, 64, 512))
     lse = SimpleNamespace(device=device, dtype=torch.float32, shape=(tokens, 64, 1))
-    assert run(output, lse) is expected
+    assert run(output, lse, 8) is expected
 
 
 @pytest.mark.parametrize("ranks", [2, 4, 8, 16, 32])

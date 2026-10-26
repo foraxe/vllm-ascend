@@ -10,7 +10,6 @@ import torch.distributed as dist
 pytest.importorskip("torch_npu")
 
 from vllm_ascend.ops.triton.dcp.sfa_dcp_query import (  # noqa: E402
-    can_prepare_query,
     prepare_query_head_major,
     unpack_query,
 )
@@ -60,7 +59,6 @@ def test_query_gather_raw_bits_and_changed_input_graphs(column_stride, dcp_conte
         n_owner = bits(rank, tokens, 512 * column_stride, 0).transpose(0, 1).contiguous().view(torch.bfloat16).npu()
         r_owner = bits(rank, tokens, 64 * column_stride, 0).view(torch.bfloat16).npu()
         qn, qr = n_owner.transpose(0, 1)[..., ::column_stride], r_owner[..., ::column_stride]
-        assert can_prepare_query(qn, qr)
 
         def invoke(qn=qn, qr=qr, tokens=tokens):
             send = prepare_query_head_major(qn, qr)

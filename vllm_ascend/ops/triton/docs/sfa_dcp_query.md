@@ -21,7 +21,7 @@
 
 - These are NPU-only internal kernel entry points. The attention backend owns input compatibility and communication ordering; the kernel wrappers do not implement a CPU execution mode or repeat those checks.
 - Local and gathered head counts are derived from the tensors, not fixed to 8/64 or a particular DCP size.
-- Current backend routing selects this small-decode layout for BF16, feature widths512/64 and `2 <= T <= 12`. This is a routing policy, not a theoretical token limit of the kernels. Other shapes use the existing query path.
+- The attention backend selects this small-decode layout for BF16, feature widths512/64 and `2 <= T <= 12`. This framework routing policy is kept at the call site, not in a Triton `can_*` helper; it is not a theoretical token limit of the kernels. Other shapes use the existing query path.
 - Native head gathering and token-scattered DSA-CP are different layouts. Physical PCP composition retains its TP-head gather path.
 - Payload movement is bit-preserving, including BF16 NaN/Inf encodings. The caller must wait for asynchronous communication before unpacking.
 

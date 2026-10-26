@@ -72,7 +72,8 @@ def _pack_token_peer(
     )
 
 
-def can_exchange(output: torch.Tensor, lse: torch.Tensor, ranks: int = 8) -> bool:
+def can_exchange(output: torch.Tensor, lse: torch.Tensor, ranks: int) -> bool:
+    """Kernel layout constraints shared by registered-operator callers."""
     # These properties are uniform within a valid DCP group. Do not choose
     # different collective counts based on rank-local allocation/stride state.
     if output.dtype != torch.bfloat16 or output.ndim != 3 or ranks <= 1:

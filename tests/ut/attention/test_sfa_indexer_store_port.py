@@ -12,6 +12,42 @@ ROOT = Path(__file__).resolve().parents[3]
 
 
 @pytest.mark.parametrize(
+    "key_dtype,width,expected",
+    [
+        (torch.int8, 128, True),
+        (torch.float8_e4m3fn, 128, False),
+        (torch.int8, 64, True),
+        (torch.int8, 256, True),
+        (torch.int8, 127, False),
+    ],
+)
+def test_static_store_selection_respects_native_cache_format(key_dtype, width, expected):
+    source = ROOT / "vllm_ascend/attention/indexer.py"
+    cls = next(
+        n
+        for n in ast.parse(source.read_text()).body
+        if isinstance(n, ast.ClassDef) and n.name == "AscendSFAIndexerBackend"
+    )
+    init = next(n for n in cls.body if isinstance(n, ast.FunctionDef) and n.name == "__init__")
+    policy = next(
+        n
+        for n in ast.walk(init)
+        if isinstance(n, ast.Assign)
+        and any(isinstance(t, ast.Attribute) and t.attr == "_use_fused_cache_store" for t in n.targets)
+    )
+    state = SimpleNamespace(
+        use_pcp=False,
+        _dsa_cp_active=False,
+        enable_sparse_li_c8=True,
+        c8_k_cache_dtype=key_dtype,
+        head_dim=width,
+    )
+    namespace = {"torch": torch, "self": state, "AscendSFAIndexerBackend": SimpleNamespace}
+    exec(compile(ast.Module(body=[policy], type_ignores=[]), str(source), "exec"), namespace)
+    assert state._use_fused_cache_store is expected
+
+
+@pytest.mark.parametrize(
     "variant", ["native", "prefill", "mixed", "pcp", "dsa", "dcp1", "dcp2", "dcp4", "large", "subclass", "c4"]
 )
 @pytest.mark.parametrize("with_dependency", [False, True])
@@ -61,7 +97,6 @@ def test_native_quantization_and_cache_pipeline_routing(variant, with_dependency
         "AscendSFAIndexerBackend": Backend,
         "torch_npu": SimpleNamespace(npu_dynamic_quant=native_quant, npu_dynamic_mx_quant=native_quant),
         "rope_forward_triton_siso": lambda x, *args, **kwargs: x,
-        "can_fuse_store": lambda k, s, slots, n: 0 < n <= 12,
         "store_indexer_key_scale": store,
         "INDEXER_K_CACHE_SLOT": 0,
         "INDEXER_SCALE_CACHE_SLOT": 1,
@@ -86,13 +121,13 @@ def test_native_quantization_and_cache_pipeline_routing(variant, with_dependency
         if isinstance(n, ast.Assign)
         and any(isinstance(t, ast.Attribute) and t.attr == "_use_fused_cache_store" for t in n.targets)
     )
-    exec(compile(ast.Module(body=[policy], type_ignores=[]), str(source), "exec"), {**namespace, "self": state})
     state.k_cache = SimpleNamespace(kv_cache=caches)
     projected = torch.arange(rows * 160).reshape(rows, 160).to(torch.bfloat16)
     state.wk_weights_proj = lambda x: (projected, None)
     state.k_norm = lambda x: x
     state.head_dim, state.qk_rope_head_dim, state.is_rope_neox_style = 128, 64, False
     state.c8_k_cache_dtype, state.c8_k_scale_cache_dtype = torch.int8, torch.float16
+    exec(compile(ast.Module(body=[policy], type_ignores=[]), str(source), "exec"), {**namespace, "self": state})
     state.c4_k_op_dtype, state.c4_k_scale_cache_dtype = torch.uint8, torch.uint8
     state._quantize_li_tensor = MethodType(namespace["_quantize_li_tensor"], state)
     state.forward_k = MethodType(namespace["forward_k"], state)
@@ -123,7 +158,7 @@ def test_native_quantization_and_cache_pipeline_routing(variant, with_dependency
     assert result is None and events == (
         ["quant"]
         + (["wait_q"] if with_dependency else [])
-        + ["gather_done", "fused" if variant in ("native", "dcp1", "dcp2", "dcp4") else "legacy"]
+        + ["gather_done", "fused" if variant in ("native", "dcp1", "dcp2", "dcp4", "large") else "legacy"]
     )
     assert torch.equal(caches[0][metadata.slot_mapping], quant)
     expected_scales = scales.view(rows, 1, 2, 2) if variant == "c4" else scales.to(torch.float16).view(rows, 1)

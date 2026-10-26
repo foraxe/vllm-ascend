@@ -6,23 +6,22 @@ import torch
 
 torch_npu = pytest.importorskip("torch_npu")
 
-from vllm_ascend.ops.triton.sfa_indexer_store import can_fuse_store, store_indexer_key_scale  # noqa: E402
+from vllm_ascend.ops.triton.sfa_indexer_store import store_indexer_key_scale  # noqa: E402
 
 
 @pytest.mark.parametrize("capacity", [256, 512])
 @pytest.mark.parametrize("slot_dtype", [torch.int32, torch.int64])
-def test_native_quantized_cache_bytes_and_changing_graph_slots(capacity, slot_dtype):
+@pytest.mark.parametrize("width", [64, 128, 256])
+def test_native_quantized_cache_bytes_and_changing_graph_slots(capacity, slot_dtype, width):
     torch.npu.set_device(0)
     retained = []
-    width = 128
-    for rows in (1, 6, 12):
+    for rows in (1, 6, 12, 13, 48):
         x = torch.randn(rows, width, dtype=torch.bfloat16, device="npu")
         keys, scales = torch_npu.npu_dynamic_quant(x, dst_type=torch.int8)
         slots = torch.arange(rows, dtype=slot_dtype, device="npu") + 7
         backing = torch.full((capacity * (width + 2) + 64,), 19, dtype=torch.int8, device="npu")
         cache = backing[: capacity * width].view(capacity // 128, 128, 1, width)
         scale_cache = backing[capacity * width : -64].view(torch.float16).view(capacity // 128, 128, 1, 1)
-        assert can_fuse_store(cache, scale_cache, slots, rows)
         for _ in range(5):
             store_indexer_key_scale(keys, scales, slots, cache, scale_cache)
         torch.npu.synchronize()

@@ -41,7 +41,7 @@ from vllm_ascend.device.device_op import DeviceOperator
 from vllm_ascend.distributed.utils import all_gather_async
 from vllm_ascend.ops.rotary_embedding import get_cos_and_sin_mla
 from vllm_ascend.ops.triton.rope import rope_forward_triton_siso
-from vllm_ascend.ops.triton.sfa_indexer_store import can_fuse_store, store_indexer_key_scale
+from vllm_ascend.ops.triton.sfa_indexer_store import store_indexer_key_scale
 from vllm_ascend.utils import (
     _round_up,
     enable_dsa_cp,
@@ -229,6 +229,8 @@ class AscendSFAIndexerBackend(nn.Module, AttentionBackend):
             and not self.use_pcp  # Keep PCP cache gathering and slot remapping on the existing path.
             and not self._dsa_cp_active
             and self.enable_sparse_li_c8
+            and self.c8_k_cache_dtype == torch.int8  # INT8 config uses FP16 scales; C8 may also be FP8.
+            and self.head_dim & (self.head_dim - 1) == 0  # Full-row tl.arange requires a power-of-two width.
         )
 
         # The LI C8 Hadamard matrices are created while the sleep-mode weights
@@ -446,12 +448,6 @@ class AscendSFAIndexerBackend(nn.Module, AttentionBackend):
             self._use_fused_cache_store
             and indexer_metadata.num_actual_tokens > 0
             and indexer_metadata.num_decode_tokens == indexer_metadata.num_actual_tokens
-            and can_fuse_store(
-                self.k_cache.kv_cache[INDEXER_K_CACHE_SLOT],
-                self.k_cache.kv_cache[INDEXER_SCALE_CACHE_SLOT],
-                indexer_metadata.slot_mapping,
-                k_hidden_states.shape[0],
-            )
         )
         if fuse_store:
             k_li, k_li_scale, indexer_weights = self.forward_k(k_hidden_states, cos, sin, defer_scale_cast=True)
