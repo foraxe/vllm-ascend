@@ -486,6 +486,7 @@ def test_indexer_orders_cache_gathers_after_query_dependency(with_dependency, qu
         return tensor, SimpleNamespace(wait=lambda: events.append("wait_" + label))
 
     indexer.forward_k = forward_k
+    indexer._use_fused_cache_store = False
     indexer._gather_cache_inputs = lambda *args: AscendSFAIndexerBackend._gather_cache_inputs(indexer, *args)
     indexer.write_cache = lambda *args, **kwargs: events.append("write_cache")
     dependency = SimpleNamespace(wait=lambda: events.append("wait_q")) if with_dependency else None
