@@ -596,7 +596,7 @@ def test_bitwise_mapping_matches_python_integer_contract(ranks, interleave):
         for n in ast.walk(ast.parse(source.read_text()))
         if isinstance(n, ast.FunctionDef) and n.name == "remap_sparse_indices_fused_kernel"
     )
-    statements = [
+    statements: list[ast.stmt] = [
         n
         for n in function.body
         if isinstance(n, ast.Assign)
