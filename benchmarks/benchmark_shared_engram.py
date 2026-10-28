@@ -54,9 +54,10 @@ def main(args):
     generation = root / "pool"
     if args.role == "owner":
         owner = pool.SharedPoolOwner(
-            generation, "probe-model", device=f"npu:{args.device}", host=args.host, world_size=65
+            generation, "probe-model", device=f"npu:{args.device}", host=args.host, world_size=args.consumers + 1
         )
         try:
+            owner.initialize(2 * ROWS * (WIDTH + 8 * 4))
             for layer in (1, 14):
                 for key, values in zip(("codes", "scales"), source_tables(layer)):
                     buffer = owner.add(f"{layer}.{key}", ROWS, values.shape[1], values.dtype)
@@ -80,12 +81,9 @@ def main(args):
             for key, width, dtype in (("codes", WIDTH, torch.int8), ("scales", 8, torch.float32)):
                 views[layer, key] = client.view(f"{layer}.{key}", 0, ROWS, rows=ROWS, width=width, dtype=dtype)
         runtime = clients[0].runtime
-        assert runtime is not None and runtime is clients[1].runtime, "layers must share the BM singleton"
+        assert runtime is not None and runtime is clients[1].runtime, "layers must share the Offload singleton"
         assert runtime.references == 2
-        for client in clients:
-            for buffer in client.buffers.values():
-                assert buffer.handle.local_mem_size(buffer.runtime.bm.BmMemType.HOST) == 0
-                assert buffer.handle.local_mem_size(buffer.runtime.bm.BmMemType.DEVICE) == 0
+        assert runtime.alloc_size == 0, "consumers must not allocate table DRAM"
         result = dict(
             tag=args.tag,
             consumer_pool_hbm_bytes=0,
@@ -135,5 +133,6 @@ if __name__ == "__main__":
     parser.add_argument("--root", required=True)
     parser.add_argument("--device", type=int, default=0)
     parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--consumers", type=int, default=1)
     parser.add_argument("--tag", default="consumer")
     main(parser.parse_args())

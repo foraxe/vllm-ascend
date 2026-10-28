@@ -572,8 +572,9 @@ class AscendConfig:
     # FULL graphs wait on descriptor-specific external events at consumers.
     # Default to overlap on A5 only; explicit settings override this policy.
     multistream_engram_overlap: bool = dataclasses.field(
-        default_factory=lambda: get_current_hardware_profile().device_adaptor_family
-        == DeviceAdaptorFamily.FP8_OPTIMIZED
+        default_factory=lambda: (
+            get_current_hardware_profile().device_adaptor_family == DeviceAdaptorFamily.FP8_OPTIMIZED
+        )
     )
     enable_prefill_mc2: bool = False
     multistream_overlap_shared_expert: bool = False
@@ -1032,6 +1033,8 @@ class AscendConfig:
             )
 
     def _validate_sparse_packed_kv_offload_compatibility(self) -> None:
+        if self.engram_shared_host_dir is not None and self.sparse_kv_offload_config.enabled:
+            raise ValueError("Shared Engram Offload and sparse KV Offload cannot own separate pools in one process")
         if self.sparse_kv_offload_config.enabled and self.uses_packed_sfa_main_cache:
             raise NotImplementedError(
                 "Sparse KV offload does not support packed SFA main caches (C8 or TQ4). "
