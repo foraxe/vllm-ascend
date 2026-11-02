@@ -1,0 +1,14 @@
+tests/ut/models/test_engram_shared_rdma.py
+  h_02e4646417b93d 22-24,27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "2b472303bcb68832e156a2667f86326010d7e7b7",
+  "prompts": {},
+  "humans": {
+    "h_02e4646417b93d": {
+      "author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}
