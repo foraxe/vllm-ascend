@@ -233,3 +233,54 @@ def test_consumer_launcher_bootstraps_in_separate_process(owner, launcher, tmp_p
     )
     assert result.stdout.strip() == "service-started"
     assert json.loads((local / "manifest.json").read_text())["identity"] == owner.manifest["identity"]
+
+
+def test_owner_launcher_forwards_fixed_store_and_capacity(launcher, monkeypatch, tmp_path):
+    commands = []
+
+    class Process:
+        def __init__(self, command, **kwargs):
+            commands.append(command)
+            self.owner = len(commands) == 1
+            self.returncode = None if self.owner else 0
+
+        def poll(self):
+            return self.returncode
+
+        def terminate(self):
+            self.returncode = 0
+
+        def wait(self):
+            return self.returncode
+
+    monkeypatch.setattr(launcher.subprocess, "Popen", Process)
+    monkeypatch.setattr(launcher, "model_identity", lambda _: "model-a")
+    monkeypatch.setattr(launcher, "wait_ready", lambda *args: None)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "launcher",
+            "--role",
+            "owner",
+            "--model",
+            "model",
+            "--pool-dir",
+            str(tmp_path / "pool"),
+            "--listen-host",
+            "127.0.0.1",
+            "--owner-port",
+            "29699",
+            "--store-url",
+            "tcp://127.0.0.1:29700",
+            "--max-consumers",
+            "96",
+            "--",
+            "service",
+        ],
+    )
+    assert launcher.main() == 0
+    owner_command = commands[0]
+    assert owner_command[owner_command.index("--store-url") + 1] == "tcp://127.0.0.1:29700"
+    assert owner_command[owner_command.index("--max-consumers") + 1] == "96"
+    assert commands[1] == ["service"]

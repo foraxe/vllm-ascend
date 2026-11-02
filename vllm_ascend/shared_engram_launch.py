@@ -107,6 +107,8 @@ def main():
     parser.add_argument("--listen-host", help="Reachable owner address; required for the owner role")
     parser.add_argument("--owner-host", help="Owner address for network bootstrap")
     parser.add_argument("--owner-port", type=int, help="Fixed owner port for network bootstrap")
+    parser.add_argument("--store-url", help="Fixed MemFabric BM store URL for the owner")
+    parser.add_argument("--max-consumers", type=int, help="Maximum simultaneous consumer workers")
     parser.add_argument("--device", type=int, default=0)
     parser.add_argument("--timeout", type=int, default=1800)
     parser.add_argument("command", nargs=argparse.REMAINDER, help="Service command after --")
@@ -119,6 +121,10 @@ def main():
         parser.error("Network bootstrap requires an owner port, plus owner host on consumers")
     if args.owner_port is not None and not 1 <= args.owner_port <= 65535:
         parser.error("Owner port must be between 1 and 65535")
+    if args.max_consumers is not None and args.max_consumers < 1:
+        parser.error("max-consumers must be positive")
+    if args.role != "owner" and (args.store_url is not None or args.max_consumers is not None):
+        parser.error("store-url and max-consumers are owner options")
 
     owner = None
     service = None
@@ -153,6 +159,10 @@ def main():
             ]
             if network:
                 owner_command += ["--port", str(args.owner_port), "--network-bootstrap"]
+            if args.store_url is not None:
+                owner_command += ["--store-url", args.store_url]
+            if args.max_consumers is not None:
+                owner_command += ["--max-consumers", str(args.max_consumers)]
             owner = subprocess.Popen(owner_command)
         if network and args.role == "consumer":
             bootstrap_local(args.pool_dir, identity, args.owner_host, args.owner_port, args.timeout, lambda: stop)

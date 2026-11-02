@@ -45,7 +45,8 @@ model service together:
 ```bash
 python -m vllm_ascend.shared_engram_launch --role owner \
   --model /models/immutable-checkpoint --pool-dir /private/engram-generation \
-  --listen-host OWNER_ADDRESS --owner-port 29699 -- vllm serve ...
+  --listen-host OWNER_ADDRESS --owner-port 29699 \
+  --store-url tcp://OWNER_ADDRESS:29700 -- vllm serve ...
 ```
 
 Each consumer uses its own new local directory at the configured path:
@@ -57,7 +58,9 @@ python -m vllm_ascend.shared_engram_launch --role consumer \
 ```
 
 Both service commands must pass the Engram options shown below. The owner port
-must be reachable from consumers. Network bootstrap is opt-in and returns the
+and BM store port must be reachable from consumers. Without `--store-url`, the
+owner chooses a store port dynamically; use the option to fix it. Network
+bootstrap is opt-in and returns the
 manifest capability to peers that know the model identity; restrict access to
 trusted peers. It does not encrypt traffic or authenticate those peers.
 
