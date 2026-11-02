@@ -254,6 +254,7 @@ def test_owner_launcher_forwards_fixed_store_and_capacity(launcher, monkeypatch,
             return self.returncode
 
     monkeypatch.setattr(launcher.subprocess, "Popen", Process)
+    monkeypatch.setattr(launcher.signal, "signal", lambda *args: None)
     monkeypatch.setattr(launcher, "model_identity", lambda _: "model-a")
     monkeypatch.setattr(launcher, "wait_ready", lambda *args: None)
     monkeypatch.setattr(
