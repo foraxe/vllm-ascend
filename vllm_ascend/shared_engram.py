@@ -61,6 +61,7 @@ def main():
     parser.add_argument("--max-consumers", type=int, default=64, help="Maximum simultaneous consumer workers")
     parser.add_argument("--listen-host", default="127.0.0.1", help="Reachable owner address for cross-node consumers")
     parser.add_argument("--port", type=int, default=0)
+    parser.add_argument("--network-bootstrap", action="store_true", help="Allow bootstrap over a trusted network")
     args = parser.parse_args()
     torch.npu.set_device(args.device)
     stop = threading.Event()
@@ -74,6 +75,7 @@ def main():
         port=args.port,
         store_url=args.store_url,
         world_size=args.max_consumers + 1,
+        network_bootstrap=args.network_bootstrap,
     )
     try:
         load_tables(owner, args.model, stop)

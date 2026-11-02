@@ -73,13 +73,25 @@ def owner_alive(root):
 
 
 class SharedPoolOwner:
-    def __init__(self, root, identity, *, device, host="127.0.0.1", port=0, store_url=None, world_size=65):
+    def __init__(
+        self,
+        root,
+        identity,
+        *,
+        device,
+        host="127.0.0.1",
+        port=0,
+        store_url=None,
+        world_size=65,
+        network_bootstrap=False,
+    ):
         if not 2 <= world_size <= 1024:
             raise ValueError("MemFabric world size must include the owner and consumers")
         self.root = Path(root)
         self.root.mkdir(mode=0o700)
         _private(self.root)
         self.device = device
+        self.network_bootstrap = network_bootstrap
         self.runtime = None
         if store_url is None:
             with socket.socket() as reservation:
@@ -133,10 +145,21 @@ class SharedPoolOwner:
                 with conn.makefile("rwb", buffering=0) as wire:
                     request = _receive(wire)
                     token = request.get("token")
-                    if not isinstance(token, str) or not hmac.compare_digest(token, self.manifest["token"]):
+                    bootstrap = request.get("op") == "bootstrap" and self.network_bootstrap
+                    if not bootstrap and (
+                        not isinstance(token, str) or not hmac.compare_digest(token, self.manifest["token"])
+                    ):
                         _send(wire, dict(error="Invalid Engram capability"))
                         return
                     with self._condition:
+                        if bootstrap:
+                            if request.get("identity") != self.manifest["identity"]:
+                                _send(wire, dict(error="Engram checkpoint identity mismatch"))
+                            elif self.manifest["state"] != "ready":
+                                _send(wire, dict(error="Engram pool is not ready"))
+                            else:
+                                _send(wire, dict(manifest=self.manifest))
+                            return
                         if request.get("op") == "ping":
                             _send(wire, dict(alive=not self.closed))
                             return

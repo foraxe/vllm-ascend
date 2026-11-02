@@ -2,6 +2,9 @@
 """Real TCP lifecycle tests with a fake allocation backend; no NPU needed."""
 
 import importlib
+import importlib.util
+import json
+import subprocess
 import sys
 import types
 from pathlib import Path
@@ -135,3 +138,98 @@ def test_invalid_bm_object_rejected_before_mapping(pool_module, owner):
         assert client.runtime is None
     finally:
         client.close()
+
+
+@pytest.fixture
+def launcher():
+    path = Path(__file__).resolve().parents[3] / "vllm_ascend/shared_engram_launch.py"
+    spec = importlib.util.spec_from_file_location("_engram_launcher_ut", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_network_bootstrap_local_directory_attaches(pool_module, owner, launcher, tmp_path):
+    owner.network_bootstrap = True
+    local = tmp_path / "consumer-local"
+    host, port = owner.manifest["endpoint"]
+    launcher.bootstrap_local(local, "model-a", host, port, 5)
+    assert local.stat().st_mode & 0o777 == 0o700
+    assert json.loads((local / "manifest.json").read_text())["backend"] == "memfabric_bm"
+    client = pool_module.SharedPoolClient(local, "model-a", device="npu:0")
+    try:
+        client.view("codes", 0, 16, rows=32, width=256, dtype=torch.int8)
+        with pytest.raises(TimeoutError):
+            owner.close()
+    finally:
+        client.close()
+
+
+def test_network_bootstrap_requires_opt_in_and_matching_identity(owner, launcher, tmp_path):
+    host, port = owner.manifest["endpoint"]
+    local = tmp_path / "consumer-local"
+    with pytest.raises(ValueError, match="rejected bootstrap"):
+        launcher.bootstrap_local(local, "model-a", host, port, 5)
+    assert not local.exists()
+    owner.network_bootstrap = True
+    with pytest.raises(ValueError, match="rejected bootstrap"):
+        launcher.bootstrap_local(local, "wrong-model", host, port, 5)
+    assert not local.exists()
+
+
+def test_old_network_capability_is_rejected(pool_module, owner, launcher, tmp_path):
+    owner.network_bootstrap = True
+    local = tmp_path / "consumer-local"
+    host, port = owner.manifest["endpoint"]
+    launcher.bootstrap_local(local, "model-a", host, port, 5)
+    replacement = pool_module.SharedPoolOwner(tmp_path / "replacement", "model-a", device="npu:0")
+    replacement.add("codes", 32, 256, torch.int8)
+    replacement.ready()
+    try:
+        stale = json.loads((local / "manifest.json").read_text())
+        stale["endpoint"] = replacement.manifest["endpoint"]
+        (local / "manifest.json").write_text(json.dumps(stale))
+        with pytest.raises(ValueError, match="Invalid Engram capability"):
+            pool_module.SharedPoolClient(local, "model-a", device="npu:0")
+        assert not replacement._leases
+    finally:
+        replacement.close(timeout=1)
+
+
+def test_consumer_launcher_bootstraps_in_separate_process(owner, launcher, tmp_path):
+    owner.network_bootstrap = True
+    model = tmp_path / "model"
+    model.mkdir()
+    for name in ("config.json", "quant_model_weights.safetensors.index.json"):
+        (model / name).write_text("{}")
+    owner.manifest["identity"] = launcher.model_identity(model)
+    owner._publish_manifest()
+    local = tmp_path / "consumer-local"
+    host, port = owner.manifest["endpoint"]
+    result = subprocess.run(
+        [
+            sys.executable,
+            launcher.__file__,
+            "--role",
+            "consumer",
+            "--model",
+            str(model),
+            "--pool-dir",
+            str(local),
+            "--owner-host",
+            host,
+            "--owner-port",
+            str(port),
+            "--",
+            sys.executable,
+            "-c",
+            "print('service-started')",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    assert result.stdout.strip() == "service-started"
+    assert json.loads((local / "manifest.json").read_text())["identity"] == owner.manifest["identity"]

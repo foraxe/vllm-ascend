@@ -35,6 +35,34 @@ not encrypted; it carries no table rows.
 
 ## Start and attach
 
+### Network bootstrap without a shared filesystem
+
+On a trusted serving network, the launcher can fetch the owner's small BM
+manifest into a new private local directory on each consumer. The table remains
+in owner DRAM; the launcher does not transfer table rows. Start the owner and its
+model service together:
+
+```bash
+python -m vllm_ascend.shared_engram_launch --role owner \
+  --model /models/immutable-checkpoint --pool-dir /private/engram-generation \
+  --listen-host OWNER_ADDRESS --owner-port 29699 -- vllm serve ...
+```
+
+Each consumer uses its own new local directory at the configured path:
+
+```bash
+python -m vllm_ascend.shared_engram_launch --role consumer \
+  --model /models/immutable-checkpoint --pool-dir /private/engram-generation \
+  --owner-host OWNER_ADDRESS --owner-port 29699 -- vllm serve ...
+```
+
+Both service commands must pass the Engram options shown below. The owner port
+must be reachable from consumers. Network bootstrap is opt-in and returns the
+manifest capability to peers that know the model identity; restrict access to
+trusted peers. It does not encrypt traffic or authenticate those peers.
+
+### Shared filesystem bootstrap
+
 Choose a new, nonexistent generation directory on the private shared mount.
 Start the owner in a supervised process, using an address reachable from every
 consumer:
