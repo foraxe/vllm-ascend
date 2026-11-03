@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""MemFabric BM storage; consumers retain metadata and NPU pointers only."""
+"""MemFabric SHARED Offload storage; consumers retain metadata and NPU pointers only."""
 
 from __future__ import annotations
 
@@ -12,20 +12,20 @@ import torch
 
 GIB = 1 << 30
 CHUNK_ROWS = 1 << 22
-DRAM_MAP_HOST_VA = 1 << 9  # SMEM_BM_FLAG_DRAM_MAP_HOST_VA
+ALLOCATION_ALIGNMENT = 64
 
 
 class MemfabricRuntime:
-    """Share BM's process-wide session between this worker's Engram layers.
+    """One fixed-rank Offload session shared by all Engram layers.
 
-    All references must name the same generation and device. TransferEngine
-    uses a separate API; another subsystem must not initialize the BM singleton.
+    The process must not also initialize sparse KV Offload: the native Offload
+    manager is a singleton and silently ignores a second initialization.
     """
 
     _lock = threading.RLock()
     _active: ClassVar[MemfabricRuntime | None] = None
     mf: Any
-    bm: Any
+    offload: Any
     spec: tuple
     device: torch.device
     references: int
@@ -33,11 +33,13 @@ class MemfabricRuntime:
     rank: int
 
     @classmethod
-    def acquire(cls, generation, store_url, world_size, device, *, owner):
+    def acquire(cls, generation, store_url, world_size, device, *, owner, capacity, rank):
         device = torch.device(device)
         if device.type != "npu" or device.index is None:
             raise ValueError("An explicit NPU device index is required")
-        spec = (str(generation), store_url, world_size, device, owner)
+        if capacity <= 0 or capacity % GIB or not 0 <= rank < world_size or owner != (rank == 0):
+            raise ValueError("Invalid fixed-rank Offload pool configuration")
+        spec = (str(generation), store_url, world_size, device, owner, capacity, rank)
         with cls._lock:
             if cls._active is not None:
                 if cls._active.spec != spec:
@@ -45,19 +47,28 @@ class MemfabricRuntime:
                 cls._active.references += 1
                 return cls._active
             import memfabric_hybrid as mf
-            from memfabric_hybrid import bm
+            from memfabric_hybrid import offload
 
             runtime = cls()
-            runtime.mf, runtime.bm, runtime.spec = mf, bm, spec
+            runtime.mf, runtime.offload, runtime.spec = mf, offload, spec
             runtime.device, runtime.references = device, 1
             runtime.objects = set()
             runtime.check(mf.initialize(), "initialize")
-            config = bm.BmConfig()
-            config.dynamic_world_size = True
-            config.start_store = owner
+            config = offload.OffloadConfig()
+            config.device_id = device.index
+            config.reserve_size = capacity
+            config.alloc_size = capacity if owner else 0
+            config.world_size = world_size
+            config.rank_id = rank
+            config.scene = offload.Scene.SHARED
+            config.store_url = store_url
+            # This adapter currently supports a single host, like sparse KV.
+            config.local_world_size = world_size
             with torch.npu.device(device):
-                runtime.check(bm.initialize(store_url, world_size, device.index, config), "BM initialize")
-            runtime.rank = bm.bm_rank_id()
+                runtime.check(offload.initialize(config), "Offload initialize")
+            runtime.rank = rank
+            runtime.capacity = capacity
+            runtime.alloc_size = config.alloc_size
             cls._active = runtime
             return runtime
 
@@ -73,7 +84,7 @@ class MemfabricRuntime:
             if self.objects:
                 raise RuntimeError("Close Engram mappings before their MemFabric session")
             with torch.npu.device(self.device):
-                self.bm.uninitialize()
+                self.offload.uninitialize()
             self.references = 0
             type(self)._active = None
             # mf.uninitialize() is not refcounted and would also disable other
@@ -81,63 +92,44 @@ class MemfabricRuntime:
 
 
 class MappedHostBuffer:
-    """One BM object: only the owner contributes physical DRAM.
+    """A suballocation of rank 0's DRAM, mapped at a shared VMM address.
 
-    Consumers join with zero local DRAM/HBM and resolve their own NPU address
-    once at attachment. No copy API is used on lookup or publication paths.
+    Only the owner calls malloc/free. Consumers keep metadata and NPU pointer
+    tensors. SHARED's native pool fingerprint validates identical GVA bases.
     """
 
-    def __init__(self, runtime, object_id, rows, width, dtype, *, owner, owner_rank=None):
+    def __init__(self, runtime, object_id, rows, width, dtype, *, owner, address=None):
         if rows <= 0 or width <= 0 or dtype not in (torch.int8, torch.float32):
             raise ValueError("Shared Engram requires positive INT8/FP32 dimensions")
-        if not 0 <= object_id < 64 or object_id in runtime.objects:
+        if object_id < 0 or object_id in runtime.objects:
             raise ValueError("Duplicate or invalid MemFabric Engram object id")
         self.runtime, self.object_id = runtime, object_id
         self.rows, self.width, self.dtype = rows, width, dtype
         self.owner, self.device = owner, runtime.device
         self.row_bytes = width * torch.empty((), dtype=dtype).element_size()
-        self.size = ((rows * self.row_bytes + GIB - 1) // GIB) * GIB
+        self.size = ((rows * self.row_bytes + ALLOCATION_ALIGNMENT - 1) // ALLOCATION_ALIGNMENT) * ALLOCATION_ALIGNMENT
         self.closed = False
         self._views: weakref.WeakSet[HostTableSlice] = weakref.WeakSet()
-        self.handle: Any = None
-        joined = False
         with torch.npu.device(self.device):
-            try:
-                self.handle = runtime.bm.create2(
-                    object_id,
-                    self.size if owner else 0,
-                    self.size,
-                    data_op_type=runtime.bm.BmDataOpType.SDMA,
-                    flags=DRAM_MAP_HOST_VA,
-                )
-                runtime.check(self.handle.join(), "join")
-                joined = True
-                rank = runtime.rank if owner else owner_rank
-                self.gva = self.handle.peer_rank_ptr(rank, runtime.bm.BmMemType.HOST)
-                self.device_pointer(0)
-                if owner:
-                    self.host_ptr = self.handle.gva_to_va(self.gva, runtime.bm.BmMemType.LOCAL_HOST)
-                    if not self.host_ptr:
-                        raise RuntimeError("MemFabric did not map owner DRAM for CPU publication")
-                elif self.handle.local_mem_size(runtime.bm.BmMemType.HOST) != 0:
-                    raise RuntimeError("An Engram consumer must not allocate a local table replica")
-            except BaseException:
-                if self.handle is not None:
-                    if joined:
-                        self.handle.leave()
-                    self.handle.destroy()
-                raise
+            if owner:
+                self.gva = runtime.offload.malloc(self.size)
+                if not self.gva:
+                    raise RuntimeError("Engram Offload pool allocation failed")
+                # get_dva accepts local allocations only. SHARED VMM must be
+                # identity-mapped for the same address to reach the native op.
+                if runtime.offload.get_dva(self.gva) != self.gva:
+                    runtime.offload.free(self.gva)
+                    raise RuntimeError("Engram requires identity-mapped SHARED VMM DRAM")
+            else:
+                if not isinstance(address, int) or address <= 0 or address % ALLOCATION_ALIGNMENT:
+                    raise ValueError("Invalid shared Offload address")
+                self.gva = address
         runtime.objects.add(object_id)
 
     def device_pointer(self, offset, size=1):
-        pointer = self.handle.gva_to_va(self.gva + offset, self.runtime.bm.BmMemType.LOCAL_DEVICE)
-        if not pointer:
-            raise RuntimeError("MemFabric DRAM is not directly NPU-addressable; use a reachable A3 supernode")
-        if size > 1:
-            last = self.handle.gva_to_va(self.gva + offset + size - 1, self.runtime.bm.BmMemType.LOCAL_DEVICE)
-            if last != pointer + size - 1:
-                raise RuntimeError("MemFabric NPU range is not contiguous within an Engram lookup chunk")
-        return pointer
+        if self.closed or offset < 0 or size <= 0 or offset + size > self.rows * self.row_bytes:
+            raise ValueError("Engram pointer is outside the live table")
+        return self.gva + offset
 
     def publish(self, start, source):
         if self.closed or not self.owner:
@@ -147,19 +139,7 @@ class MappedHostBuffer:
         if source.ndim != 2 or source.shape[1] != self.width or start < 0 or start + len(source) > self.rows:
             raise ValueError("Publication is outside the table shape")
         source = source.contiguous()
-        offset = start * self.row_bytes
-        remaining = source.numel() * source.element_size()
-        consumed = 0
-        # A large BM GVA can have independently mapped physical slices.
-        while remaining:
-            count = min(remaining, GIB - offset % GIB)
-            host = self.handle.gva_to_va(self.gva + offset, self.runtime.bm.BmMemType.LOCAL_HOST)
-            if not host:
-                raise RuntimeError("MemFabric owner publication range is not CPU-addressable")
-            ctypes.memmove(host, source.data_ptr() + consumed, count)
-            offset += count
-            consumed += count
-            remaining -= count
+        ctypes.memmove(self.gva + start * self.row_bytes, source.data_ptr(), source.numel() * source.element_size())
 
     def view(self, start=0, end=None):
         end = self.rows if end is None else end
@@ -176,8 +156,8 @@ class MappedHostBuffer:
             raise RuntimeError("Release all Engram slices before closing their mapping")
         with torch.npu.device(self.device):
             torch.npu.synchronize()
-            self.runtime.check(self.handle.leave(), "leave")
-            self.handle.destroy()
+            if self.owner:
+                self.runtime.offload.free(self.gva)
         self.runtime.objects.remove(self.object_id)
         self.closed = True
 

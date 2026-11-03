@@ -17,9 +17,9 @@ from pathlib import Path
 
 import torch
 
-from .shared_host import MappedHostBuffer, MemfabricRuntime
+from .shared_host import GIB, MappedHostBuffer, MemfabricRuntime
 
-SCHEMA = 2
+SCHEMA = 3
 DTYPES = {"int8": torch.int8, "float32": torch.float32}
 MAX_CONTROL_BYTES = 1 << 20
 
@@ -73,7 +73,7 @@ def owner_alive(root):
 
 
 class SharedPoolOwner:
-    def __init__(self, root, identity, *, device, host="127.0.0.1", port=0, store_url=None, world_size=65):
+    def __init__(self, root, identity, *, device, host="127.0.0.1", port=0, store_url=None, world_size=2):
         if not 2 <= world_size <= 1024:
             raise ValueError("MemFabric world size must include the owner and consumers")
         self.root = Path(root)
@@ -89,6 +89,8 @@ class SharedPoolOwner:
         self.closed = False
         self._condition = threading.Condition()
         self._leases = set()
+        self._ranks = {}
+        self._retired = set()
         self._listener = socket.socket()
         self._listener.bind((host, port))
         self._listener.listen(128)
@@ -98,7 +100,7 @@ class SharedPoolOwner:
             identity=identity,
             state="loading",
             tensors={},
-            backend="memfabric_bm",
+            backend="memfabric_offload_shared",
             memfabric=dict(store_url=store_url, world_size=world_size),
             endpoint=[host, self._listener.getsockname()[1]],
             token=secrets.token_hex(32),
@@ -142,18 +144,38 @@ class SharedPoolOwner:
                             return
                         if (
                             request.get("op") != "attach"
-                            or self.manifest["state"] != "ready"
+                            or self.manifest["state"] not in ("joining", "loading", "ready")
+                            or "capacity" not in self.manifest["memfabric"]
                             or request.get("identity") != self.manifest["identity"]
                         ):
                             _send(wire, dict(error="Engram pool is not ready or model-compatible"))
                             return
+                        worker = request.get("worker")
+                        if not isinstance(worker, str) or worker in self._retired:
+                            _send(wire, dict(error="Offload rank cannot rejoin; start a new generation"))
+                            return
+                        if worker not in self._ranks:
+                            rank = len(self._ranks) + 1
+                            if rank >= self.manifest["memfabric"]["world_size"]:
+                                _send(wire, dict(error="All fixed Offload consumer ranks are assigned"))
+                                return
+                            self._ranks[worker] = rank
                         self._leases.add(conn)
                         acquired = True
-                        _send(wire, dict(manifest=self.manifest))
+                        _send(wire, dict(manifest=self.manifest, rank=self._ranks[worker]))
                     conn.settimeout(None)
-                    if _receive(wire) != {"op": "release"}:
+                    command = _receive(wire)
+                    if command == {"op": "wait_ready"}:
+                        with self._condition:
+                            while self.manifest["state"] in ("joining", "loading"):
+                                self._condition.wait()
+                            _send(wire, dict(manifest=self.manifest))
+                        command = _receive(wire)
+                    if command.get("op") != "release":
                         raise ValueError("Expected mapping-release acknowledgement")
                     with self._condition:
+                        if command.get("retire"):
+                            self._retired.add(worker)
                         self._leases.remove(conn)
                         acquired = False
                         _send(wire, dict(released=True))
@@ -165,6 +187,29 @@ class SharedPoolOwner:
                 # all consumers before terminating the owner generation.
                 print("ENGRAM_ORPHANED_LEASE owner memory retained", flush=True)
 
+    def initialize(self, required_bytes):
+        """Publish rendezvous before blocking until every fixed rank joins."""
+        if self.runtime is not None or self.manifest["state"] != "loading" or required_bytes <= 0:
+            raise ValueError("Initialize an empty pool once with its total capacity")
+        settings = self.manifest["memfabric"]
+        settings["capacity"] = ((required_bytes + GIB - 1) // GIB) * GIB
+        with self._condition:
+            self.manifest["state"] = "joining"
+            self._publish_manifest()
+        print("POOL_JOINING start all configured consumer workers", flush=True)
+        self.runtime = MemfabricRuntime.acquire(
+            self.root,
+            settings["store_url"],
+            settings["world_size"],
+            self.device,
+            owner=True,
+            capacity=settings["capacity"],
+            rank=0,
+        )
+        with self._condition:
+            self.manifest["state"] = "loading"
+            self._publish_manifest()
+
     def add(self, key, rows, width, dtype):
         if self.manifest["state"] != "loading" or key in self.buffers:
             raise ValueError("Cannot add to a published pool or duplicate a tensor")
@@ -172,15 +217,12 @@ class SharedPoolOwner:
         if name not in DTYPES:
             raise ValueError("Only INT8 codes and FP32 scales are supported")
         if self.runtime is None:
-            settings = self.manifest["memfabric"]
-            self.runtime = MemfabricRuntime.acquire(
-                self.root, settings["store_url"], settings["world_size"], self.device, owner=True
-            )
+            raise RuntimeError("Initialize the complete Offload pool before adding tables")
         object_id = len(self.buffers)
         buffer = MappedHostBuffer(self.runtime, object_id, rows, width, dtype, owner=True)
         self.buffers[key] = buffer
         self.manifest["tensors"][key] = dict(
-            rows=rows, width=width, dtype=name, object_id=object_id, owner_rank=self.runtime.rank
+            rows=rows, width=width, dtype=name, object_id=object_id, address=buffer.gva
         )
         return buffer
 
@@ -190,6 +232,7 @@ class SharedPoolOwner:
                 raise ValueError("Only a populated loading pool can be published")
             self.manifest["state"] = "ready"
             self._publish_manifest()
+            self._condition.notify_all()
 
     def close(self, timeout=0):
         if self.closed:
@@ -197,6 +240,7 @@ class SharedPoolOwner:
         with self._condition:
             self.manifest["state"] = "draining"
             self._publish_manifest()
+            self._condition.notify_all()
             deadline = time.monotonic() + timeout
             while self._leases:
                 remaining = deadline - time.monotonic()
@@ -224,10 +268,11 @@ class SharedPoolClient:
         self.closed = False
         self.device = device
         self.runtime = None
+        self.worker = f"{socket.gethostname()}:{os.getpid()}:{device}"
         self._conn = socket.create_connection(tuple(discovery["endpoint"]), timeout=30)
         self._wire = self._conn.makefile("rwb", buffering=0)
         try:
-            _send(self._wire, dict(op="attach", token=discovery["token"], identity=identity))
+            _send(self._wire, dict(op="attach", token=discovery["token"], identity=identity, worker=self.worker))
             response = _receive(self._wire)
             if "error" in response:
                 raise ValueError(response["error"])
@@ -235,11 +280,27 @@ class SharedPoolClient:
             if (
                 self.manifest.get("schema") != SCHEMA
                 or self.manifest.get("identity") != identity
-                or self.manifest.get("backend") != "memfabric_bm"
+                or self.manifest.get("backend") != "memfabric_offload_shared"
             ):
                 _send(self._wire, dict(op="release"))
                 _receive(self._wire)
                 raise ValueError("Incompatible shared Engram manifest")
+            self._conn.settimeout(None)
+            settings = self.manifest["memfabric"]
+            self.runtime = MemfabricRuntime.acquire(
+                self.root,
+                settings["store_url"],
+                settings["world_size"],
+                self.device,
+                owner=False,
+                capacity=settings["capacity"],
+                rank=response["rank"],
+            )
+            _send(self._wire, dict(op="wait_ready"))
+            self.manifest = _receive(self._wire)["manifest"]
+            if self.manifest["state"] != "ready":
+                self.close()
+                raise RuntimeError("Engram owner stopped before publishing its tables")
         except BaseException:
             self._wire.close()
             self._conn.close()
@@ -251,13 +312,8 @@ class SharedPoolClient:
         metadata = self.manifest["tensors"][key]
         if (metadata["rows"], metadata["width"], metadata["dtype"]) != (rows, width, str(dtype).removeprefix("torch.")):
             raise ValueError("Shared Engram tensor layout mismatch")
-        if not isinstance(metadata["object_id"], int) or not 0 <= metadata["object_id"] < 64:
+        if not isinstance(metadata["object_id"], int) or metadata["object_id"] < 0:
             raise ValueError("Invalid MemFabric Engram object id")
-        if self.runtime is None:
-            settings = self.manifest["memfabric"]
-            self.runtime = MemfabricRuntime.acquire(
-                self.root, settings["store_url"], settings["world_size"], self.device, owner=False
-            )
         if key not in self.buffers:
             self.buffers[key] = MappedHostBuffer(
                 self.runtime,
@@ -266,7 +322,7 @@ class SharedPoolClient:
                 width,
                 dtype,
                 owner=False,
-                owner_rank=metadata["owner_rank"],
+                address=metadata["address"],
             )
         view = self.buffers[key].view(start, end)
         self.views.append(view)
@@ -279,10 +335,11 @@ class SharedPoolClient:
             view.close()
         for buffer in reversed(list(self.buffers.values())):
             buffer.close()
+        retire = self.runtime is not None and self.runtime.references == 1
         if self.runtime is not None:
             self.runtime.close()
             self.runtime = None
-        _send(self._wire, dict(op="release"))
+        _send(self._wire, dict(op="release", retire=retire))
         if _receive(self._wire) != {"released": True}:
             raise RuntimeError("Shared Engram release was not acknowledged")
         self._wire.close()

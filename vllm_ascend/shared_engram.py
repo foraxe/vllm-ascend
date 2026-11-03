@@ -32,6 +32,13 @@ def load_tables(owner, model, stop):
                 source = file.get_slice(key)
                 if source.get_shape() != [rows, columns] or source.get_dtype() not in allowed:
                     raise ValueError(f"Unsupported shared Engram checkpoint layout: {key}")
+    # Plan all table allocations before entering the fixed-rank rendezvous.
+    required_bytes = sum(
+        ((rows * columns * size + 63) // 64) * 64
+        for _, rows in shapes
+        for columns, size in ((width, 1), (width // 32, 4))
+    )
+    owner.initialize(required_bytes)
     for layer, rows in shapes:
         weight_key = f"layers.{layer}.engram.embed.weight"
         scale_key = f"layers.{layer}.engram.embed.scale"
@@ -57,8 +64,10 @@ def main():
     parser.add_argument("--model", required=True)
     parser.add_argument("--pool-dir", required=True)
     parser.add_argument("--device", type=int, default=0)
-    parser.add_argument("--store-url", help="MemFabric BM store URL; default: an available port on listen-host")
-    parser.add_argument("--max-consumers", type=int, default=64, help="Maximum simultaneous consumer workers")
+    parser.add_argument("--store-url", help="MemFabric Offload store URL; default: an available port on listen-host")
+    parser.add_argument(
+        "--consumers", type=int, required=True, help="Exact number of fixed consumer workers; all must start"
+    )
     parser.add_argument("--listen-host", default="127.0.0.1", help="Reachable owner address for cross-node consumers")
     parser.add_argument("--port", type=int, default=0)
     args = parser.parse_args()
@@ -73,7 +82,7 @@ def main():
         host=args.listen_host,
         port=args.port,
         store_url=args.store_url,
-        world_size=args.max_consumers + 1,
+        world_size=args.consumers + 1,
     )
     try:
         load_tables(owner, args.model, stop)

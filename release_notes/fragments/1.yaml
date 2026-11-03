@@ -1,0 +1,15 @@
+pr: 1
+entries:
+  - category: feature
+    text: >-
+      Added experimental same-host A3 MemFabric SHARED Offload storage for Engram
+      tables, with one DRAM owner and zero-allocation consumers using the existing
+      host lookup operator. The fixed-member pool requires all initial workers to
+      join and does not support independent worker restart.
+    model: deepseek-v4.1
+    hardware: [A3]
+  - category: breaking
+    text: >-
+      The experimental shared Engram owner now uses --consumers for the exact
+      initial worker count instead of --max-consumers. Stop existing BM-backed
+      pools and create a fresh pool when switching to the Offload backend.
