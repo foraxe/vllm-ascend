@@ -1,0 +1,21 @@
+tests/ut/models/test_engram_v2_model_state.py
+  s_e7a51dcf069eaf::t_ac11eeb5541424 573,578
+vllm_ascend/models/deepseek_v41/model.py
+  s_e7a51dcf069eaf::t_00833ba460555e 1304-1306
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "5aab375c1c419a25637f64f8005db45ea1e82f61",
+  "prompts": {},
+  "sessions": {
+    "s_e7a51dcf069eaf": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a19a2f-aa6b-7033-8dd6-6934cca25f9b",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}
