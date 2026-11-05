@@ -1,0 +1,16 @@
+vllm_ascend/ops/triton/dcp/dcp_a2a.py
+  h_02e4646417b93d 480-481
+vllm_ascend/ops/triton/dcp/dcp_a2a_rank_tiled.py
+  h_02e4646417b93d 6,17-18,33,36-37,39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "72f77c1f89a95df0abfd986b659dcf74844478ab",
+  "prompts": {},
+  "humans": {
+    "h_02e4646417b93d": {
+      "author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}
