@@ -1,0 +1,33 @@
+tests/ut/models/test_engram_shared_shards.py
+  s_128bc83b4eb0d9::t_21c6e9025ea53c 475-600,622-636
+  s_128bc83b4eb0d9::t_1c377e43d93662 601-621
+vllm_ascend/models/deepseek_v41/engram/shared_shards.py
+  s_128bc83b4eb0d9::t_83a4a8a6d830cf 183-207
+vllm_ascend/worker/worker.py
+  s_128bc83b4eb0d9::t_83a4a8a6d830cf 366-373
+vllm_ascend/shared_engram_launch.py
+  s_128bc83b4eb0d9::t_c8deb531f167a4 195,198-201,203,220-221,229,440
+  s_128bc83b4eb0d9::t_aae7f80ca61ecb 192-194,196-197,202,204-219,222,227-228,230-232,325,435-439,446-448
+  s_128bc83b4eb0d9::t_28a233a82b38fe 441-445
+  s_128bc83b4eb0d9::t_1c377e43d93662 223-226
+vllm_ascend/models/deepseek_v41/engram/shared_pool.py
+  s_128bc83b4eb0d9::t_83a4a8a6d830cf 153-162
+docs/source/user_guide/feature_guide/sharded_engram.md
+  s_128bc83b4eb0d9::t_9f0df5214608f4 173-196
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "48361b6ddb61fbbf9de3c15ed3d25ddc9cd169ea",
+  "prompts": {},
+  "sessions": {
+    "s_128bc83b4eb0d9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1864f-13f3-7213-aaf3-9a0b0f231ea4",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}
