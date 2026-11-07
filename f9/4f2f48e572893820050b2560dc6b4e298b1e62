@@ -1,0 +1,20 @@
+tests/ut/models/test_engram_shared_rdma.py
+  s_60cbb78615f812::t_f75d62b0b12db9 212
+  s_60cbb78615f812::t_7baab0841629e0 150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f94f2f48e572893820050b2560dc6b4e298b1e62",
+  "prompts": {},
+  "sessions": {
+    "s_60cbb78615f812": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1b410-5955-7f23-9e47-7fd29d81e01a",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}
