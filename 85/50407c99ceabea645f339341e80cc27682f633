@@ -1,0 +1,19 @@
+release_notes/fragments/21246.yaml
+  s_60cbb78615f812::t_b5d35f7f4d7711 1-4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "8550407c99ceabea645f339341e80cc27682f633",
+  "prompts": {},
+  "sessions": {
+    "s_60cbb78615f812": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1b410-5955-7f23-9e47-7fd29d81e01a",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}
