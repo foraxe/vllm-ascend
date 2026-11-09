@@ -32,6 +32,8 @@ from vllm.model_executor.utils import set_weight_attrs
 # Upstream #56741 normalized the V4.1 model package name.
 from vllm.models.deepseek_v41.common.engram import ParallelEngramEmbedding
 
+from vllm_ascend.ascend_config import get_ascend_config
+
 from .npu import (
     HostUvaBuffer,
     SharedUvaBuffer,
@@ -162,7 +164,9 @@ class AscendParallelEngramEmbedding(ParallelEngramEmbedding):
 
             assert identity is not None and key is not None
             warmup_shared_engram_aicpu()
-            client = SharedPoolClient(pool_dir, identity, device=device)
+            client = SharedPoolClient(
+                pool_dir, identity, device=device, node_rank=get_ascend_config().engram_shared_host_node_rank
+            )
             self._shared_pool_client = client
             try:
                 self._codes_uva = codes = client.view(

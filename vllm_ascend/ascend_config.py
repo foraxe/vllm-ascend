@@ -567,6 +567,8 @@ class AscendConfig:
     # Optional private shared-filesystem generation published by shared_engram.
     # Default None retains the existing HBM/host-UVA placement paths.
     engram_shared_host_dir: str | None = None
+    # Physical node index in the fixed Offload group; the owner runs on node 0.
+    engram_shared_host_node_rank: int = 0
     multistream_dsv4_dsa_overlap: bool = True
     # Prepare Engram hashes, lookups and DP/TP exchanges on an auxiliary stream;
     # FULL graphs wait on descriptor-specific external events at consumers.
