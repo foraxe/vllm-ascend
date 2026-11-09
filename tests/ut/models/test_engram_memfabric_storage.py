@@ -1,8 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Allocation/publication/release invariants with a fake BM, no NPU imports."""
+"""Offload instance, allocation and release invariants with a fake backend."""
 
+import contextlib
 import ctypes
 import importlib.util
+import sys
+import types
 from contextlib import nullcontext
 from pathlib import Path
 from types import SimpleNamespace
@@ -29,58 +32,28 @@ def runtime():
     data = ctypes.create_string_buffer(65536)
     calls: list[object] = []
 
-    class Handle:
-        fail_leave = False
-
-        def join(self):
-            calls.append("join")
-            return 0
-
-        def leave(self):
-            calls.append("leave")
-            return -1 if self.fail_leave else 0
-
-        def destroy(self):
-            calls.append("destroy")
-
-        def peer_rank_ptr(self, rank, kind):
-            calls.append(("rank", rank))
-            return 0x10000000
-
-        def gva_to_va(self, gva, kind):
-            base = ctypes.addressof(data) if kind == "host" else 0x20000000
-            return base + gva - 0x10000000
-
-        def local_mem_size(self, kind):
-            return 0
-
-    def create(*args, **kwargs):
-        calls.append(("create", args, kwargs))
-        return Handle()
-
-    def check(result, name):
-        if result:
-            raise RuntimeError(name)
-
-    bm = SimpleNamespace(
-        create2=create,
-        BmDataOpType=SimpleNamespace(SDMA=1),
-        BmMemType=SimpleNamespace(HOST="global_host", LOCAL_HOST="host", LOCAL_DEVICE="device"),
+    offload = SimpleNamespace(
+        malloc=lambda size: calls.append(("malloc", size)) or ctypes.addressof(data),
+        get_dva=lambda ptr: ptr,
+        free=lambda ptr: calls.append(("free", ptr)) or 0,
     )
+
+    def check(result, operation):
+        if result:
+            raise RuntimeError(f"{operation}: {result}")
+
     return SimpleNamespace(
-        bm=bm, device=torch.device("cpu"), rank=0, objects=set(), check=check, data=data, calls=calls
+        offload=offload, device=torch.device("cpu"), rank=0, objects=set(), data=data, calls=calls, check=check
     )
 
 
 @pytest.mark.parametrize("owner", [True, False])
-def test_only_owner_contributes_rounded_dram(storage, runtime, owner):
-    buffer = storage.MappedHostBuffer(runtime, 0, 32, 256, torch.int8, owner=owner, owner_rank=3)
-    call = runtime.calls[0]
-    assert call[1] == (0, (1 << 30) if owner else 0, 1 << 30)
-    assert call[2]["flags"] == storage.DRAM_MAP_HOST_VA
-    assert ("rank", 0 if owner else 3) in runtime.calls
+def test_only_owner_allocates(storage, runtime, owner):
+    buffer = storage.MappedHostBuffer(runtime, 0, 32, 256, torch.int8, owner=owner, address=0x10000000)
+    assert runtime.calls == ([("malloc", 8192)] if owner else [])
     buffer.close()
     assert not runtime.objects
+    assert len(runtime.calls) == (2 if owner else 0)
 
 
 def test_publication_uses_owner_cpu_mapping_and_preserves_bounds(storage, runtime):
@@ -94,59 +67,200 @@ def test_publication_uses_owner_cpu_mapping_and_preserves_bounds(storage, runtim
     buffer.close()
 
 
-def test_live_views_block_release_and_failed_leave_is_retryable(storage, runtime):
-    buffer = storage.MappedHostBuffer(runtime, 0, 32, 256, torch.int8, owner=False, owner_rank=0)
+def test_live_views_block_release_and_failed_synchronize_is_retryable(storage, runtime, monkeypatch):
+    buffer = storage.MappedHostBuffer(runtime, 0, 32, 256, torch.int8, owner=False, address=0x10000000)
     view = buffer.view(8, 24)
     assert view.tensor.device.type == "meta"
-    assert view.ptrs.tolist() == [0x20000000 + 8 * 256]
+    assert view.ptrs.tolist() == [0x10000000 + 8 * 256]
     with pytest.raises(RuntimeError, match="slices"):
         buffer.close()
     view.close()
-    buffer.handle.fail_leave = True
-    with pytest.raises(RuntimeError, match="leave"):
+
+    def fail_sync():
+        raise RuntimeError("synchronize failed")
+
+    monkeypatch.setattr(torch.npu, "synchronize", fail_sync)
+    with pytest.raises(RuntimeError, match="synchronize"):
         buffer.close()
     assert not buffer.closed and runtime.objects == {0}
-    assert "destroy" not in runtime.calls
-    buffer.handle.fail_leave = False
+    assert not runtime.calls
+    monkeypatch.setattr(torch.npu, "synchronize", lambda: None)
     buffer.close()
-    assert buffer.closed and runtime.calls[-1] == "destroy"
+    assert buffer.closed and not runtime.calls
 
 
 def test_consumer_cannot_publish_or_duplicate_live_object(storage, runtime):
-    buffer = storage.MappedHostBuffer(runtime, 0, 32, 256, torch.int8, owner=False, owner_rank=0)
+    buffer = storage.MappedHostBuffer(runtime, 0, 32, 256, torch.int8, owner=False, address=0x10000000)
     with pytest.raises(RuntimeError, match="owner"):
         buffer.publish(0, torch.zeros(1, 256, dtype=torch.int8))
     with pytest.raises(ValueError, match="Duplicate"):
-        storage.MappedHostBuffer(runtime, 0, 32, 256, torch.int8, owner=False, owner_rank=0)
+        storage.MappedHostBuffer(runtime, 0, 32, 256, torch.int8, owner=False, address=0x10000000)
     buffer.close()
 
 
-def test_publication_resolves_each_independent_slice(storage, runtime, monkeypatch):
-    monkeypatch.setattr(storage, "GIB", 64)
-    buffer = storage.MappedHostBuffer(runtime, 0, 4, 64, torch.int8, owner=True)
-    chunks = [ctypes.create_string_buffer(64) for _ in range(4)]
+def test_nonidentity_owner_address_frees_allocation(storage, runtime):
+    runtime.offload.get_dva = lambda ptr: ptr + 4096
+    with pytest.raises(RuntimeError, match="identity-mapped"):
+        storage.MappedHostBuffer(runtime, 0, 32, 256, torch.int8, owner=True)
+    assert runtime.calls[-1][0] == "free"
+    assert not runtime.objects
 
-    def resolve(gva, kind):
-        offset = gva - buffer.gva
-        return ctypes.addressof(chunks[offset // 64]) + offset % 64
 
-    buffer.handle.gva_to_va = resolve
-    source = torch.arange(256).to(torch.int8).view(4, 64)
-    buffer.publish(0, source)
-    actual = torch.cat([torch.frombuffer(chunk, dtype=torch.int8) for chunk in chunks])
-    torch.testing.assert_close(actual, source.flatten())
+def test_failed_free_retains_mapping_for_retry(storage, runtime):
+    buffer = storage.MappedHostBuffer(runtime, 0, 32, 256, torch.int8, owner=True)
+    free = runtime.offload.free
+    runtime.offload.free = lambda ptr: -1
+    with pytest.raises(RuntimeError, match="Offload free"):
+        buffer.close()
+    assert not buffer.closed and runtime.objects == {0}
+    runtime.offload.free = free
     buffer.close()
+    assert buffer.closed and not runtime.objects
 
 
-def test_noncontiguous_npu_chunk_rejected_before_pointer_publication(storage, runtime):
-    buffer = storage.MappedHostBuffer(runtime, 0, 32, 256, torch.int8, owner=False, owner_rank=0)
+@pytest.fixture
+def backend(monkeypatch):
+    pytest.importorskip("torch_npu")
+    package = types.ModuleType("_engram_offload_ut")
+    package.__path__ = [str(Path(__file__).resolve().parents[3] / "vllm_ascend/models/deepseek_v41/engram")]
+    monkeypatch.setitem(sys.modules, package.__name__, package)
+    module = importlib.import_module("_engram_offload_ut.shared_host")
+    monkeypatch.setattr(torch.npu, "device", lambda _: contextlib.nullcontext())
+    monkeypatch.setattr(torch.npu, "synchronize", lambda: None)
+    calls, storage = [], []
 
-    def resolve(gva, kind):
-        offset = gva - buffer.gva
-        return 0x20000000 + offset + ((1 << 30) if offset >= 4096 else 0)
+    def malloc(size):
+        block = ctypes.create_string_buffer(size)
+        storage.append(block)
+        calls.append(("malloc", size))
+        return ctypes.addressof(block)
 
-    buffer.handle.gva_to_va = resolve
-    with pytest.raises(RuntimeError, match="not contiguous"):
-        buffer.view(8, 24)
-    assert not buffer._views
+    pool = types.SimpleNamespace(
+        OffloadConfig=types.SimpleNamespace,
+        Scene=types.SimpleNamespace(SHARED="shared"),
+        initialize=lambda config: calls.append(("initialize", config)) or 0,
+        uninitialize=lambda: calls.append(("uninitialize",)),
+        malloc=malloc,
+        free=lambda ptr: calls.append(("free", ptr)) or 0,
+        get_dva=lambda ptr: ptr,
+    )
+    # No default-instance allocation API: accidental module-level use must fail.
+    offload = types.SimpleNamespace(Offload=lambda: pool, OffloadConfig=pool.OffloadConfig, Scene=pool.Scene)
+    monkeypatch.setitem(
+        sys.modules,
+        "memfabric_hybrid",
+        types.SimpleNamespace(offload=offload, initialize=lambda: 0, get_last_err_msg=lambda: ""),
+    )
+    yield module, calls
+    for name in list(sys.modules):
+        if name.startswith("_engram_offload_ut."):
+            sys.modules.pop(name)
+
+
+def test_owner_suballocations_share_initialization(backend):
+    module, calls = backend
+    kwargs = dict(owner=True, capacity=module.GIB, rank=0, local_world_size=2)
+    runtime = module.MemfabricRuntime.acquire("generation", "tcp://127.0.0.1:9000", 2, "npu:0", **kwargs)
+    again = module.MemfabricRuntime.acquire("generation", "tcp://127.0.0.1:9000", 2, "npu:0", **kwargs)
+    assert runtime is again and runtime.references == 2
+    config = calls[0][1]
+    assert (config.scene, config.alloc_size, config.reserve_size, config.rank_id) == (
+        "shared",
+        module.GIB,
+        module.GIB,
+        0,
+    )
+    codes = module.MappedHostBuffer(runtime, 0, 2, 256, torch.int8, owner=True)
+    scales = module.MappedHostBuffer(runtime, 1, 2, 8, torch.float32, owner=True)
+    data = torch.arange(512).to(torch.int8).reshape(2, 256)
+    codes.publish(0, data)
+    assert ctypes.string_at(codes.gva, 512) == data.numpy().tobytes()
+    runtime.close()
+    with pytest.raises(RuntimeError, match="Close Engram mappings"):
+        runtime.close()
+    with pytest.raises(ValueError, match="outside"):
+        codes.device_pointer(512)
+    scales.close()
+    codes.close()
+    runtime.close()
+    assert sum(call[0] == "initialize" for call in calls) == 1
+    assert sum(call[0] == "free" for call in calls) == 2
+    assert sum(call[0] == "uninitialize" for call in calls) == 1
+
+
+def test_consumer_maps_without_allocating_or_freeing(backend):
+    module, calls = backend
+    runtime = module.MemfabricRuntime.acquire(
+        "generation", "tcp://127.0.0.1:9000", 2, "npu:1", owner=False, capacity=module.GIB, rank=1, local_world_size=2
+    )
+    config = calls[0][1]
+    assert config.alloc_size == 0 and config.reserve_size == module.GIB
+    buffer = module.MappedHostBuffer(runtime, 0, 2, 256, torch.int8, owner=False, address=4096)
+    assert buffer.device_pointer(256, 256) == 4352
+    with pytest.raises(RuntimeError, match="Only a live owner"):
+        buffer.publish(0, torch.zeros((2, 256), dtype=torch.int8))
+    with pytest.raises(RuntimeError, match="only one"):
+        module.MemfabricRuntime.acquire(
+            "another", "tcp://127.0.0.1:9000", 2, "npu:1", owner=False, capacity=module.GIB, rank=1, local_world_size=2
+        )
     buffer.close()
+    runtime.close()
+    assert not any(call[0] in ("malloc", "free") for call in calls)
+
+
+def test_sparse_kv_pool_can_coexist():
+    from vllm_ascend.ascend_config import AscendConfig
+
+    config = types.SimpleNamespace(
+        engram_shared_host_dir="/private/generation",
+        sparse_kv_offload_config=types.SimpleNamespace(enabled=True),
+        uses_packed_sfa_main_cache=False,
+    )
+    AscendConfig._validate_sparse_packed_kv_offload_compatibility(config)
+
+
+def test_cross_node_config_and_topology_reuse(backend):
+    module, calls = backend
+    kwargs = dict(owner=False, capacity=module.GIB, rank=2, local_world_size=2)
+    runtime = module.MemfabricRuntime.acquire("generation", "tcp://owner:9000", 4, "npu:0", **kwargs)
+    config = calls[0][1]
+    assert (config.world_size, config.local_world_size, config.rank_id, config.alloc_size) == (4, 2, 2, 0)
+    with pytest.raises(RuntimeError, match="only one"):
+        module.MemfabricRuntime.acquire(
+            "generation", "tcp://owner:9000", 4, "npu:0", **{**kwargs, "local_world_size": 4}
+        )
+    runtime.close()
+
+
+@pytest.mark.parametrize("local_world_size", [0, 3, 5])
+def test_invalid_topology_rejected_before_native_init(backend, local_world_size):
+    module, calls = backend
+    with pytest.raises(ValueError, match="configuration"):
+        module.MemfabricRuntime.acquire(
+            "generation",
+            "tcp://owner:9000",
+            4,
+            "npu:0",
+            owner=True,
+            capacity=module.GIB,
+            rank=0,
+            local_world_size=local_world_size,
+        )
+    assert calls == []
+
+
+def test_missing_multi_instance_api_fails_explicitly(backend, monkeypatch):
+    module, calls = backend
+    monkeypatch.delattr(sys.modules["memfabric_hybrid"].offload, "Offload")
+    with pytest.raises(RuntimeError, match="independent offload.Offload API"):
+        module.MemfabricRuntime.acquire(
+            "generation",
+            "tcp://owner:9000",
+            2,
+            "npu:0",
+            owner=True,
+            capacity=module.GIB,
+            rank=0,
+            local_world_size=2,
+        )
+    assert calls == []
