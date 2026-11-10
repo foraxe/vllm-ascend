@@ -1,0 +1,36 @@
+tests/ut/distributed/kv_transfer/test_mooncake_transfer_engine.py
+  s_d6485b3d09302c::t_620865a5b5595e 255,268-277
+  s_f8a5192ca1855d::t_242f2620e1d81c 278
+vllm_ascend/distributed/kv_transfer/kv_p2p/mooncake_hybrid_connector.py
+  s_d6485b3d09302c::t_5a164ca70e222c 606-621,625
+  s_d6485b3d09302c::t_862116eac1120a 210,214,227-230,328,527,550
+vllm_ascend/distributed/kv_transfer/utils/mooncake_transfer_engine.py
+  s_d6485b3d09302c::t_a787c2dfe353ed 129-131,145-147
+  s_d6485b3d09302c::t_2927e7afa66798 77-85,122-128,132-133,138-144,148-149
+tests/ut/distributed/kv_transfer/kv_p2p/test_mooncake_receiver_drain.py
+  s_d6485b3d09302c::t_e24edc8d05399f 19,149,188,212-230
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "322eb7388839df84b7533e010aae760ea819ec6e",
+  "prompts": {},
+  "sessions": {
+    "s_d6485b3d09302c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c4b6-d8aa-7320-9579-f20711e7bf1b",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    },
+    "s_f8a5192ca1855d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c594-6b74-77a0-a9e0-143a2e3d2182",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}
