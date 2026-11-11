@@ -129,6 +129,27 @@ def test_destroy_retry_does_not_repeat_successful_leave(storage, runtime):
     assert buffer.closed and not runtime.objects
 
 
+def test_failed_mapping_rollback_retains_handle_until_retry(storage, runtime):
+    create = runtime.bm.create2
+
+    def create_failing(*args, **kwargs):
+        handle = create(*args, **kwargs)
+        handle.gva_to_va = lambda *args: 0
+        handle.fail_leave = True
+        return handle
+
+    runtime.bm.create2 = create_failing
+    with pytest.raises(storage.MappingCleanupError) as exc:
+        storage.MappedHostBuffer(runtime, 0, 32, 256, torch.int8, owner=False, owner_rank=0)
+    buffer = exc.value.buffer
+    assert runtime.objects == {0} and not buffer.closed
+    with pytest.raises(ValueError, match="Invalid or closed"):
+        buffer.view()
+    buffer.handle.fail_leave = False
+    buffer.close()
+    assert buffer.closed and not runtime.objects
+
+
 def test_consumer_cannot_publish_or_duplicate_live_object(storage, runtime):
     buffer = storage.MappedHostBuffer(runtime, 0, 32, 256, torch.int8, owner=False, owner_rank=0)
     with pytest.raises(RuntimeError, match="owner"):

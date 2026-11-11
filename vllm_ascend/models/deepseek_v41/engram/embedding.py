@@ -123,27 +123,36 @@ class AscendParallelEngramEmbedding(ParallelEngramEmbedding):
         self.vocab_end_idx = sum(head_sizes[: self.head_start + self.part_n_hash_cols])
         self.part_num_embeddings = self.vocab_end_idx - self.vocab_start_idx
         weight, scales = self._allocate_weights()
-        self.weight = nn.Parameter(weight, requires_grad=False)
-        self.weight_scale_inv = nn.Parameter(scales, requires_grad=False) if scales is not None else None
-        for param in (self.weight, self.weight_scale_inv):
-            if param is None:
-                continue
-            set_weight_attrs(param, {"weight_loader": self._weight_loader, "engram_vocab_start": self.vocab_start_idx})
-        if cpu_offload:
-            set_weight_attrs(self.weight, {"dummy_weight_value": 0})
-            if self.weight_scale_inv is not None:
-                scale_one = 127 if self.scale_dtype == torch.uint8 else 1.0
-                set_weight_attrs(self.weight_scale_inv, {"dummy_weight_value": scale_one})
-            logger.info(
-                "Engram table offloaded to registered host memory: %d rows x %d, %.2f GiB per rank",
-                self.part_num_embeddings,
-                self.dim,
-                (
-                    weight.numel() * weight.element_size()
-                    + (scales.numel() * scales.element_size() if scales is not None else 0)
+        try:
+            self.weight = nn.Parameter(weight, requires_grad=False)
+            self.weight_scale_inv = nn.Parameter(scales, requires_grad=False) if scales is not None else None
+            for param in (self.weight, self.weight_scale_inv):
+                if param is None:
+                    continue
+                set_weight_attrs(
+                    param, {"weight_loader": self._weight_loader, "engram_vocab_start": self.vocab_start_idx}
                 )
-                / 1024**3,
-            )
+            if cpu_offload:
+                set_weight_attrs(self.weight, {"dummy_weight_value": 0})
+                if self.weight_scale_inv is not None:
+                    scale_one = 127 if self.scale_dtype == torch.uint8 else 1.0
+                    set_weight_attrs(self.weight_scale_inv, {"dummy_weight_value": scale_one})
+                logger.info(
+                    "Engram table offloaded to registered host memory: %d rows x %d, %.2f GiB per rank",
+                    self.part_num_embeddings,
+                    self.dim,
+                    (
+                        weight.numel() * weight.element_size()
+                        + (scales.numel() * scales.element_size() if scales is not None else 0)
+                    )
+                    / 1024**3,
+                )
+
+        except BaseException:
+            if self._shared_pool_client is not None:
+                self._shared_pool_client.close()
+                self._shared_pool_client = None
+            raise
 
     def _get_shard_info(self) -> tuple[int, int]:
         if self.dp_size == 1:

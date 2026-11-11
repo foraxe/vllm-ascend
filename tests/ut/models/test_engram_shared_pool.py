@@ -189,6 +189,46 @@ def test_client_failure_releases_other_buffers_and_retries(pool_module, owner):
     owner.close(timeout=1)
 
 
+def test_failed_mapping_construction_keeps_client_lease_until_cleanup(pool_module, owner, monkeypatch):
+    client = pool_module.SharedPoolClient(owner.root, "model-a", device="npu:0")
+    pending = pool_module.MappedHostBuffer()
+    pending.fail_release = True
+
+    def fail_mapping(*args, **kwargs):
+        raise pool_module.MappingCleanupError(pending)
+
+    monkeypatch.setattr(pool_module, "MappedHostBuffer", fail_mapping)
+    with pytest.raises(pool_module.MappingCleanupError):
+        client.view("codes", 0, 16, rows=32, width=256, dtype=torch.int8)
+    with pytest.raises(RuntimeError, match="device release failed"):
+        client.close()
+    with pytest.raises(TimeoutError):
+        owner.close()
+    pending.fail_release = False
+    client.close()
+    owner.close(timeout=1)
+    assert client.closed and owner.closed
+
+
+def test_failed_owner_mapping_construction_is_retained_for_retry(pool_module, tmp_path, monkeypatch):
+    owner = pool_module.SharedPoolOwner(tmp_path / "pool", "model-a", device="npu:0")
+    pending = pool_module.MappedHostBuffer()
+    pending.fail_release = True
+
+    def fail_mapping(*args, **kwargs):
+        raise pool_module.MappingCleanupError(pending)
+
+    monkeypatch.setattr(pool_module, "MappedHostBuffer", fail_mapping)
+    with pytest.raises(pool_module.MappingCleanupError):
+        owner.add("codes", 32, 256, torch.int8)
+    with pytest.raises(RuntimeError, match="device release failed"):
+        owner.close()
+    assert not owner.closed
+    pending.fail_release = False
+    owner.close()
+    assert owner.closed and pending.closed
+
+
 def test_owner_failure_releases_other_buffers_and_retries(pool_module, owner):
     failing = owner.buffers["codes"]
     other = pool_module.MappedHostBuffer()
@@ -262,6 +302,33 @@ def test_model_construction_rolls_back_first_layer_when_second_attach_fails(pool
     assert calls == ["close first"]
     owner.close(timeout=1)
     assert owner.closed
+
+
+def test_embedding_constructor_failure_after_mapping_releases_lease(pool_module, owner):
+    path = Path(__file__).resolve().parents[3] / "vllm_ascend/models/deepseek_v41/engram/embedding.py"
+    module = ast.parse(path.read_text())
+    cls = next(n for n in module.body if isinstance(n, ast.ClassDef) and n.name == "AscendParallelEngramEmbedding")
+    init = next(n for n in cls.body if isinstance(n, ast.FunctionDef) and n.name == "__init__")
+    cleanup_block = next(n for n in init.body if isinstance(n, ast.Try))
+    tree = ast.fix_missing_locations(ast.Module(body=[cleanup_block], type_ignores=[]))
+    client = pool_module.SharedPoolClient(owner.root, "model-a", device="npu:0")
+    embedding = types.SimpleNamespace(_shared_pool_client=client, _weight_loader=None, vocab_start_idx=0)
+
+    def fail_attributes(*args):
+        raise RuntimeError("parameter setup failed")
+
+    ns = dict(
+        self=embedding,
+        weight=torch.empty(1),
+        scales=torch.empty(1),
+        nn=torch.nn,
+        set_weight_attrs=fail_attributes,
+        cpu_offload=True,
+    )
+    with pytest.raises(RuntimeError, match="parameter setup failed"):
+        exec(compile(tree, str(path), "exec"), ns)
+    assert client.closed and embedding._shared_pool_client is None
+    owner.close(timeout=1)
 
 
 def test_layout_rejected_before_mapping(pool_module, owner):

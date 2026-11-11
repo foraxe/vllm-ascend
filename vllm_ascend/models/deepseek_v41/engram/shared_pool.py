@@ -17,7 +17,7 @@ from pathlib import Path
 
 import torch
 
-from .shared_host import MappedHostBuffer, MemfabricRuntime
+from .shared_host import MappedHostBuffer, MappingCleanupError, MemfabricRuntime
 
 SCHEMA = 2
 DTYPES = {"int8": torch.int8, "float32": torch.float32}
@@ -189,7 +189,11 @@ class SharedPoolOwner:
                 self.root, settings["store_url"], settings["world_size"], self.device, owner=True
             )
         object_id = len(self.buffers)
-        buffer = MappedHostBuffer(self.runtime, object_id, rows, width, dtype, owner=True)
+        try:
+            buffer = MappedHostBuffer(self.runtime, object_id, rows, width, dtype, owner=True)
+        except MappingCleanupError as exc:
+            self.buffers[key] = exc.buffer
+            raise
         self.buffers[key] = buffer
         self.manifest["tensors"][key] = dict(
             rows=rows, width=width, dtype=name, object_id=object_id, owner_rank=self.runtime.rank
@@ -277,15 +281,19 @@ class SharedPoolClient:
                 self.root, settings["store_url"], settings["world_size"], self.device, owner=False
             )
         if key not in self.buffers:
-            self.buffers[key] = MappedHostBuffer(
-                self.runtime,
-                metadata["object_id"],
-                rows,
-                width,
-                dtype,
-                owner=False,
-                owner_rank=metadata["owner_rank"],
-            )
+            try:
+                self.buffers[key] = MappedHostBuffer(
+                    self.runtime,
+                    metadata["object_id"],
+                    rows,
+                    width,
+                    dtype,
+                    owner=False,
+                    owner_rank=metadata["owner_rank"],
+                )
+            except MappingCleanupError as exc:
+                self.buffers[key] = exc.buffer
+                raise
         view = self.buffers[key].view(start, end)
         self.views.append(view)
         return view

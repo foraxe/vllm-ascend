@@ -15,6 +15,12 @@ CHUNK_ROWS = 1 << 22
 DRAM_MAP_HOST_VA = 1 << 9  # SMEM_BM_FLAG_DRAM_MAP_HOST_VA
 
 
+class MappingCleanupError(RuntimeError):
+    def __init__(self, buffer):
+        super().__init__("Failed to roll back an Engram mapping; cleanup is still required")
+        self.buffer = buffer
+
+
 class MemfabricRuntime:
     """Share BM's process-wide session between this worker's Engram layers.
 
@@ -98,10 +104,10 @@ class MappedHostBuffer:
         self.row_bytes = width * torch.empty((), dtype=dtype).element_size()
         self.size = ((rows * self.row_bytes + GIB - 1) // GIB) * GIB
         self.closed = False
-        self._left = False
+        self._ready = False
+        self._left = True
         self._views: weakref.WeakSet[HostTableSlice] = weakref.WeakSet()
         self.handle: Any = None
-        joined = False
         with torch.npu.device(self.device):
             try:
                 self.handle = runtime.bm.create2(
@@ -111,8 +117,11 @@ class MappedHostBuffer:
                     data_op_type=runtime.bm.BmDataOpType.SDMA,
                     flags=DRAM_MAP_HOST_VA,
                 )
+                if self.handle is None:
+                    raise RuntimeError("MemFabric failed to create an Engram mapping")
+                runtime.objects.add(object_id)
                 runtime.check(self.handle.join(), "join")
-                joined = True
+                self._left = False
                 rank = runtime.rank if owner else owner_rank
                 self.gva = self.handle.peer_rank_ptr(rank, runtime.bm.BmMemType.HOST)
                 self.device_pointer(0)
@@ -124,11 +133,12 @@ class MappedHostBuffer:
                     raise RuntimeError("An Engram consumer must not allocate a local table replica")
             except BaseException:
                 if self.handle is not None:
-                    if joined:
-                        self.handle.leave()
-                    self.handle.destroy()
+                    try:
+                        self.close()
+                    except Exception as cleanup_error:
+                        raise MappingCleanupError(self) from cleanup_error
                 raise
-        runtime.objects.add(object_id)
+        self._ready = True
 
     def device_pointer(self, offset, size=1):
         pointer = self.handle.gva_to_va(self.gva + offset, self.runtime.bm.BmMemType.LOCAL_DEVICE)
@@ -141,7 +151,7 @@ class MappedHostBuffer:
         return pointer
 
     def publish(self, start, source):
-        if self.closed or not self.owner:
+        if self.closed or not self._ready or not self.owner:
             raise RuntimeError("Only a live owner may publish table rows")
         if source.device.type != "cpu" or source.dtype != self.dtype:
             raise ValueError("Publication requires a matching CPU dtype")
@@ -164,7 +174,7 @@ class MappedHostBuffer:
 
     def view(self, start=0, end=None):
         end = self.rows if end is None else end
-        if self.closed or not 0 <= start < end <= self.rows:
+        if self.closed or not self._ready or not 0 <= start < end <= self.rows:
             raise ValueError("Invalid or closed shared Engram slice")
         view = HostTableSlice(self, start, end)
         self._views.add(view)
