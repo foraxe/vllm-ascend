@@ -1,0 +1,41 @@
+vllm_ascend/ops/triton/engram_lookup.py
+  s_128bc83b4eb0d9::t_24132df6356582 86-87,95-99
+vllm_ascend/ascend_config.py
+  s_128bc83b4eb0d9::t_474d8290546989 572-573,694-695
+  s_128bc83b4eb0d9::t_694b1f42b3e8b6 569
+vllm_ascend/models/deepseek_v41/engram/embedding.py
+  s_128bc83b4eb0d9::t_474d8290546989 453,455-474,477-481
+  s_128bc83b4eb0d9::t_24132df6356582 71,103-105,131-135,454,475-476
+  s_128bc83b4eb0d9::t_e5fb25dc115c83 136-138
+  s_128bc83b4eb0d9::t_93f5a787e149ee 139,428-429,482
+vllm_ascend/models/deepseek_v41/engram/npu.py
+  s_128bc83b4eb0d9::t_24132df6356582 207-208,249-250
+vllm_ascend/models/deepseek_v41/model.py
+  s_128bc83b4eb0d9::t_24132df6356582 1083,1235,1240,1386,1635
+  s_128bc83b4eb0d9::t_e5fb25dc115c83 1030
+  s_128bc83b4eb0d9::t_474d8290546989 1031-1033,1041-1044,1233-1234,1236-1237,1241-1252,1385,1387,1404
+  s_128bc83b4eb0d9::t_d2331cad18389d 30,1398-1403
+tests/ut/models/test_engram_sp_direct.py
+  s_128bc83b4eb0d9::t_844f548743614d 165-192
+  s_128bc83b4eb0d9::t_7b6be81f527ddb 1-63,65-142,144-164
+  s_128bc83b4eb0d9::t_e5fb25dc115c83 143
+  s_128bc83b4eb0d9::t_146c400c49887a 64
+docs/source/user_guide/feature_guide/sharded_engram.md
+  s_128bc83b4eb0d9::t_844f548743614d 121-146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ffebd559da728a451804b7c6dc2b426f436099e8",
+  "prompts": {},
+  "sessions": {
+    "s_128bc83b4eb0d9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1864f-13f3-7213-aaf3-9a0b0f231ea4",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

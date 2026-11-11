@@ -1,0 +1,19 @@
+tests/ut/models/test_engram_vmm_init_failures.py
+  s_d6485b3d09302c::t_25c75453453835 1-129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "99b636922845b3598e1a1c8ff967d3a35d879883",
+  "prompts": {},
+  "sessions": {
+    "s_d6485b3d09302c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c4b6-d8aa-7320-9579-f20711e7bf1b",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

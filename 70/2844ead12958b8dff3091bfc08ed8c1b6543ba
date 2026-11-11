@@ -1,0 +1,19 @@
+vllm_ascend/distributed/kv_transfer/kv_p2p/mooncake_hybrid_connector.py
+  s_d6485b3d09302c::t_4f19a9b76ba85d 376-379,1312-1313
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "702844ead12958b8dff3091bfc08ed8c1b6543ba",
+  "prompts": {},
+  "sessions": {
+    "s_d6485b3d09302c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c4b6-d8aa-7320-9579-f20711e7bf1b",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+vllm_ascend/patch/platform/__init__.py
+  s_128bc83b4eb0d9::t_c869c1d335cfea 45,132-146
+tests/ut/patch/platform/test_patch_engine_shutdown.py
+  s_128bc83b4eb0d9::t_c869c1d335cfea 1-13,16-31,34-37
+  s_128bc83b4eb0d9::t_37b4dcde6895e9 14-15,32-33,38
+docs/source/user_guide/feature_guide/sharded_engram.md
+  s_128bc83b4eb0d9::t_e59dfec8174c22 197-204
+vllm_ascend/patch/platform/patch_engine_shutdown.py
+  s_128bc83b4eb0d9::t_c869c1d335cfea 1-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "2bf05f4433494c94d6a78c8ec226c2e1b7c8c367",
+  "prompts": {},
+  "sessions": {
+    "s_128bc83b4eb0d9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1864f-13f3-7213-aaf3-9a0b0f231ea4",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

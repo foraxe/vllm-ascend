@@ -1,0 +1,19 @@
+docs/source/user_guide/feature_guide/sharded_engram.md
+  s_128bc83b4eb0d9::t_bcc5f649932f03 28-29,40-41,67-70,79-84,86-95,207-208
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0ad3c489abaeb639853a3f79656d6393f383f2cb",
+  "prompts": {},
+  "sessions": {
+    "s_128bc83b4eb0d9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1864f-13f3-7213-aaf3-9a0b0f231ea4",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}
