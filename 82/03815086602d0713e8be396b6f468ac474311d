@@ -1,0 +1,23 @@
+tests/ut/worker/test_model_runner_v2.py
+  s_9f41e3a32b69f3::t_37292bd96902b0 1944-1956
+  s_9f41e3a32b69f3::t_1fcba21a3c46a2 1964-1965
+  s_9f41e3a32b69f3::t_e0b20b65689cf8 1957-1963,1966-1968
+vllm_ascend/worker/v2/model_runner.py
+  s_9f41e3a32b69f3::t_37292bd96902b0 570-575,586-587
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "8203815086602d0713e8be396b6f468ac474311d",
+  "prompts": {},
+  "sessions": {
+    "s_9f41e3a32b69f3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a09114-51d1-7b92-8410-0d9e206e4388",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}
