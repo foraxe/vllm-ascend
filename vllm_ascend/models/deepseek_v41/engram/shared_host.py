@@ -98,6 +98,7 @@ class MappedHostBuffer:
         self.row_bytes = width * torch.empty((), dtype=dtype).element_size()
         self.size = ((rows * self.row_bytes + GIB - 1) // GIB) * GIB
         self.closed = False
+        self._left = False
         self._views: weakref.WeakSet[HostTableSlice] = weakref.WeakSet()
         self.handle: Any = None
         joined = False
@@ -176,7 +177,9 @@ class MappedHostBuffer:
             raise RuntimeError("Release all Engram slices before closing their mapping")
         with torch.npu.device(self.device):
             torch.npu.synchronize()
-            self.runtime.check(self.handle.leave(), "leave")
+            if not self._left:
+                self.runtime.check(self.handle.leave(), "leave")
+                self._left = True
             self.handle.destroy()
         self.runtime.objects.remove(self.object_id)
         self.closed = True

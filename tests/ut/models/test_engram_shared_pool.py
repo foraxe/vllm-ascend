@@ -167,6 +167,37 @@ def test_failed_device_release_retains_lease_until_retry(pool_module, owner):
     owner.close(timeout=1)
 
 
+def test_client_failure_releases_other_buffers_and_retries(pool_module, owner):
+    client = pool_module.SharedPoolClient(owner.root, "model-a", device="npu:0")
+    client.view("codes", 0, 16, rows=32, width=256, dtype=torch.int8)
+    failing = client.buffers["codes"]
+    other = pool_module.MappedHostBuffer()
+    client.buffers["other"] = other
+    failing.fail_release = True
+    with pytest.raises(RuntimeError, match="device release failed"):
+        client.close()
+    assert other.closed and not failing.closed and not client.closed
+    with pytest.raises(TimeoutError):
+        owner.close()
+    failing.fail_release = False
+    client.close()
+    assert client.closed and failing.closed
+    owner.close(timeout=1)
+
+
+def test_owner_failure_releases_other_buffers_and_retries(pool_module, owner):
+    failing = owner.buffers["codes"]
+    other = pool_module.MappedHostBuffer()
+    owner.buffers["other"] = other
+    failing.fail_release = True
+    with pytest.raises(RuntimeError, match="device release failed"):
+        owner.close()
+    assert other.closed and not failing.closed and not owner.closed
+    failing.fail_release = False
+    owner.close(timeout=1)
+    assert owner.closed and failing.closed
+
+
 def test_layout_rejected_before_mapping(pool_module, owner):
     client = pool_module.SharedPoolClient(owner.root, "model-a", device="npu:0")
     try:

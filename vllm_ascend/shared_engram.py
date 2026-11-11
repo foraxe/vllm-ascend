@@ -5,6 +5,7 @@ import argparse
 import json
 import signal
 import threading
+import time
 from pathlib import Path
 
 import torch
@@ -88,6 +89,9 @@ def main():
                 owner.close(timeout=5)
             except TimeoutError:
                 print("POOL_DRAINING waiting for consumers", flush=True)
+            except Exception as exc:
+                print(f"POOL_CLEANUP_ERROR retrying: {exc}", flush=True)
+                time.sleep(5)
         print("POOL_CLOSED", flush=True)
 
 

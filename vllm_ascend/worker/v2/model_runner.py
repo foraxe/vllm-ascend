@@ -568,7 +568,7 @@ class NPUModelRunner(GPUModelRunner):
 
     def shutdown(self) -> None:
         model = getattr(self, "model", None)
-        shared_embeddings = (
+        shared_embeddings = getattr(self, "_shared_engram_shutdown_pending", None) or (
             [module for module in model.modules() if getattr(module, "_shared_pool_client", None) is not None]
             if model is not None
             else []
@@ -582,9 +582,20 @@ class NPUModelRunner(GPUModelRunner):
         if isinstance(zeroer, C8KVBlockZeroer):
             zeroer.entries.clear()
             self.kv_block_zeroer = zeroer.delegate
-        super().shutdown()
+        if not getattr(self, "_shared_engram_parent_stopped", False):
+            super().shutdown()
+            self._shared_engram_parent_stopped = True
+        self._shared_engram_shutdown_pending = shared_embeddings
+        first_error = None
         for embedding in shared_embeddings:
-            embedding.close_host_offload()
+            try:
+                embedding.close_host_offload()
+            except Exception as exc:
+                if first_error is None:
+                    first_error = exc
+        if first_error is not None:
+            raise first_error
+        self._shared_engram_shutdown_pending = []
 
     def _register_sparse_kv_caches(self, kv_caches: dict[str, Any]) -> None:
         """Bind host pools before the V2 KV connector registers its destinations."""

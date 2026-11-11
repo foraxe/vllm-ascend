@@ -24,6 +24,18 @@ DTYPES = {"int8": torch.int8, "float32": torch.float32}
 MAX_CONTROL_BYTES = 1 << 20
 
 
+def _close_all(items):
+    first_error = None
+    for item in items:
+        try:
+            item.close()
+        except Exception as exc:
+            if first_error is None:
+                first_error = exc
+    if first_error is not None:
+        raise first_error
+
+
 def checkpoint_identity(root):
     """Hash config and index, not tensor payloads; use with an immutable model ref."""
     root = Path(root)
@@ -207,8 +219,7 @@ class SharedPoolOwner:
                 if remaining <= 0:
                     raise TimeoutError("Shared Engram consumers have not released their mappings")
                 self._condition.wait(remaining)
-            for buffer in reversed(list(self.buffers.values())):
-                buffer.close()
+            _close_all(reversed(list(self.buffers.values())))
             if self.runtime is not None:
                 self.runtime.close()
                 self.runtime = None
@@ -282,10 +293,15 @@ class SharedPoolClient:
     def close(self):
         if self.closed:
             return
-        for view in self.views:
-            view.close()
-        for buffer in reversed(list(self.buffers.values())):
-            buffer.close()
+        first_error = None
+        for items in (self.views, reversed(list(self.buffers.values()))):
+            try:
+                _close_all(items)
+            except Exception as exc:
+                if first_error is None:
+                    first_error = exc
+        if first_error is not None:
+            raise first_error
         if self.runtime is not None:
             self.runtime.close()
             self.runtime = None

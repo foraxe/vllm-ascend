@@ -112,6 +112,23 @@ def test_live_views_block_release_and_failed_leave_is_retryable(storage, runtime
     assert buffer.closed and runtime.calls[-1] == "destroy"
 
 
+def test_destroy_retry_does_not_repeat_successful_leave(storage, runtime):
+    buffer = storage.MappedHostBuffer(runtime, 0, 32, 256, torch.int8, owner=False, owner_rank=0)
+    destroy = buffer.handle.destroy
+
+    def fail_destroy():
+        raise RuntimeError("destroy failed")
+
+    buffer.handle.destroy = fail_destroy
+    with pytest.raises(RuntimeError, match="destroy failed"):
+        buffer.close()
+    assert runtime.objects == {0} and not buffer.closed
+    buffer.handle.destroy = destroy
+    buffer.close()
+    assert runtime.calls.count("leave") == 1
+    assert buffer.closed and not runtime.objects
+
+
 def test_consumer_cannot_publish_or_duplicate_live_object(storage, runtime):
     buffer = storage.MappedHostBuffer(runtime, 0, 32, 256, torch.int8, owner=False, owner_rank=0)
     with pytest.raises(RuntimeError, match="owner"):
