@@ -57,6 +57,17 @@ from vllm_ascend.device.hardware_profile import get_hardware_profile
 from vllm_ascend.utils import clear_enable_sp, enable_dsa_cp, enable_sp, shared_expert_dp_enabled
 
 
+def test_shared_engram_requires_v2_runner():
+    config = AscendConfig(engram_shared_host_dir="/tmp/engram")
+    vc = SimpleNamespace(use_v2_model_runner=False, engram_config=SimpleNamespace(cpu_offload=True))
+    try:
+        config.derive_and_validate(vc)
+    except ValueError as exc:
+        assert "Model Runner V2" in str(exc)
+    else:
+        raise AssertionError("V1 must reject shared Engram")
+
+
 def VllmConfig(*args: Any, **kwargs: Any) -> _VllmConfig:
     """Build a test config with the model metadata required by AscendConfig."""
     config = _VllmConfig(*args, **kwargs)

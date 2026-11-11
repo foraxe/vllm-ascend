@@ -690,6 +690,8 @@ class AscendConfig:
         vc = vllm_config
         engram_config = getattr(vc, "engram_config", None)
         if self.engram_shared_host_dir is not None:
+            if not vc.use_v2_model_runner:
+                raise ValueError("engram_shared_host_dir requires Model Runner V2")
             if not engram_config or not engram_config.cpu_offload:
                 raise ValueError("engram_shared_host_dir requires Engram cpu_offload")
             if vc.load_config.load_format == "dummy" or vc.model_config.enable_sleep_mode:

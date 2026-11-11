@@ -36,6 +36,8 @@ not encrypted; it carries no table rows.
 ## Start and attach
 
 Choose a new, nonexistent generation directory on the private shared mount.
+Shared host Engram requires Model Runner V2.
+
 Start the owner in a supervised process, using an address reachable from every
 consumer:
 

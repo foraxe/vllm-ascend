@@ -1,12 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
 """Real TCP lifecycle tests with a fake allocation backend; no NPU needed."""
 
+import ast
 import importlib
 import importlib.util
 import sys
 import threading
 import time
 import types
+from contextlib import ExitStack
 from pathlib import Path
 
 import pytest
@@ -198,6 +200,68 @@ def test_owner_failure_releases_other_buffers_and_retries(pool_module, owner):
     failing.fail_release = False
     owner.close(timeout=1)
     assert owner.closed and failing.closed
+
+
+def test_model_construction_rolls_back_first_layer_when_second_attach_fails(pool_module, owner):
+    path = Path(__file__).resolve().parents[3] / "vllm_ascend/models/deepseek_v41/model.py"
+    model = next(
+        n for n in ast.parse(path.read_text()).body if isinstance(n, ast.ClassDef) and n.name == "DeepseekV41Model"
+    )
+    init = next(n for n in model.body if isinstance(n, ast.FunctionDef) and n.name == "__init__")
+    block = next(
+        n
+        for n in init.body
+        if isinstance(n, ast.With)
+        and isinstance(n.items[0].context_expr, ast.Call)
+        and isinstance(n.items[0].context_expr.func, ast.Name)
+        and n.items[0].context_expr.func.id == "ExitStack"
+    )
+    code = ast.fix_missing_locations(ast.Module(body=[block], type_ignores=[]))
+    calls = []
+
+    class Embedding:
+        def __init__(self, rows, dim, heads, slot, **kwargs):
+            self.client = pool_module.SharedPoolClient(owner.root, "model-a", device="npu:0")
+            if slot == 1:
+                self.client.close()
+                raise RuntimeError("second attach failed")
+
+        def bind_checkpoint(self, *args):
+            pass
+
+        def close_host_offload(self):
+            calls.append("close first")
+            self.client.close()
+
+    layer = types.SimpleNamespace(engram=types.SimpleNamespace(embed_tokens=None))
+    model_obj = types.SimpleNamespace(
+        engram_layout=types.SimpleNamespace(primes=[[[32]], [[32]]]),
+        engram_weight_root="unused",
+        engram_dp_shared_memory=False,
+        layers=[layer, layer],
+    )
+    config = types.SimpleNamespace(engram_layer_ids=[0, 1], engram_num_embeddings=[32, 32], engram_head_dim=256)
+    vc = types.SimpleNamespace(load_config=types.SimpleNamespace(load_format="real"), quant_config=object())
+    ns = dict(
+        ExitStack=ExitStack,
+        self=model_obj,
+        config=config,
+        vllm_config=vc,
+        shared_pool_dir="pool",
+        shared_pool_identity="model-a",
+        cpu_offload=True,
+        torch=torch,
+        AscendParallelEngramEmbedding=Embedding,
+        preflight_engram_checkpoint=lambda *args: None,
+        engram_storage_dtype=lambda *args: torch.int8,
+        get_current_hardware_profile=lambda: types.SimpleNamespace(supports=lambda _: False),
+        HardwareCapability=types.SimpleNamespace(ENGRAM_MXFP8=object()),
+    )
+    with pytest.raises(RuntimeError, match="second attach failed"):
+        exec(compile(code, str(path), "exec"), ns)
+    assert calls == ["close first"]
+    owner.close(timeout=1)
+    assert owner.closed
 
 
 def test_layout_rejected_before_mapping(pool_module, owner):
