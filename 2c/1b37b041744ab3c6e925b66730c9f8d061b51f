@@ -1,0 +1,21 @@
+mkdocs.yml
+  s_d6485b3d09302c::t_cb75de2e4e47bb 305
+docs/hooks/nav_titles.py
+  s_d6485b3d09302c::t_411bbcffcd967e 205
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "2c1b37b041744ab3c6e925b66730c9f8d061b51f",
+  "prompts": {},
+  "sessions": {
+    "s_d6485b3d09302c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c4b6-d8aa-7320-9579-f20711e7bf1b",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}
