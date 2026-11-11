@@ -304,6 +304,37 @@ def test_model_construction_rolls_back_first_layer_when_second_attach_fails(pool
     assert owner.closed
 
 
+def test_shutdown_retry_after_model_deletion_releases_tcp_lease(pool_module, owner):
+    path = Path(__file__).resolve().parents[3] / "vllm_ascend/worker/v2/model_runner.py"
+    module = ast.parse(path.read_text())
+    cls = next(n for n in module.body if isinstance(n, ast.ClassDef) and n.name == "NPUModelRunner")
+    shutdown = next(n for n in cls.body if isinstance(n, ast.FunctionDef) and n.name == "shutdown")
+    client = pool_module.SharedPoolClient(owner.root, "model-a", device="npu:0")
+    embedding = types.SimpleNamespace(_shared_pool_client=client, close_host_offload=client.close)
+
+    class Parent:
+        def shutdown(self):
+            if hasattr(self, "model"):
+                del self.model
+                raise RuntimeError("empty cache failed")
+
+    runner_class = ast.ClassDef(
+        name="Runner", bases=[ast.Name(id="Parent", ctx=ast.Load())], keywords=[], body=[shutdown], decorator_list=[]
+    )
+    tree = ast.fix_missing_locations(ast.Module(body=[runner_class], type_ignores=[]))
+    ns = dict(Parent=Parent, C8KVBlockZeroer=type("C8KVBlockZeroer", (), {}))
+    exec(compile(tree, str(path), "exec"), ns)
+    runner = ns["Runner"]()
+    runner.model = types.SimpleNamespace(modules=lambda: [embedding])
+    with pytest.raises(RuntimeError, match="empty cache failed"):
+        runner.shutdown()
+    assert not client.closed
+    runner.shutdown()
+    assert client.closed
+    owner.close(timeout=1)
+    assert owner.closed
+
+
 def test_embedding_constructor_failure_after_mapping_releases_lease(pool_module, owner):
     path = Path(__file__).resolve().parents[3] / "vllm_ascend/models/deepseek_v41/engram/embedding.py"
     module = ast.parse(path.read_text())

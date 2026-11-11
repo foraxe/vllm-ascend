@@ -1981,6 +1981,28 @@ def test_shutdown_retries_failed_engram_and_closes_other_clients():
     assert failing.close_host_offload.call_count == 2
 
 
+def test_shutdown_retains_engram_when_parent_fails_after_deleting_model():
+    runner = NPUModelRunner.__new__(NPUModelRunner)
+    embedding = MagicMock()
+    embedding._shared_pool_client = object()
+    runner.model = MagicMock()
+    runner.model.modules.return_value = [embedding]
+    calls = []
+
+    def parent_shutdown():
+        calls.append("parent")
+        if hasattr(runner, "model"):
+            del runner.model
+            raise RuntimeError("parent failed after model deletion")
+
+    embedding.close_host_offload.side_effect = lambda: calls.append("release")
+    with patch.object(GPUModelRunner, "shutdown", side_effect=parent_shutdown):
+        pytest.raises(RuntimeError, runner.shutdown)
+        assert calls == ["parent"]
+        runner.shutdown()
+    assert calls == ["parent", "parent", "release"]
+
+
 @pytest.mark.parametrize("model_type", ["deepseek_v41", "other_model"])
 @pytest.mark.parametrize("speculative", [False, True])
 @pytest.mark.parametrize("pp_sync", [False, True])

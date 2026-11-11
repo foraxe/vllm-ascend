@@ -582,10 +582,10 @@ class NPUModelRunner(GPUModelRunner):
         if isinstance(zeroer, C8KVBlockZeroer):
             zeroer.entries.clear()
             self.kv_block_zeroer = zeroer.delegate
+        self._shared_engram_shutdown_pending = shared_embeddings
         if not getattr(self, "_shared_engram_parent_stopped", False):
             super().shutdown()
             self._shared_engram_parent_stopped = True
-        self._shared_engram_shutdown_pending = shared_embeddings
         first_error = None
         for embedding in shared_embeddings:
             try:
