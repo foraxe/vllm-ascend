@@ -2,7 +2,10 @@
 """Real TCP lifecycle tests with a fake allocation backend; no NPU needed."""
 
 import importlib
+import importlib.util
 import sys
+import threading
+import time
 import types
 from pathlib import Path
 
@@ -72,6 +75,79 @@ def test_drain_waits_for_consumer_and_rejects_new_attach(pool_module, owner):
         client.close()
     owner.close(timeout=1)
     assert owner.buffers["codes"].closed
+
+
+def test_manifest_failure_keeps_live_lease_and_rejects_new_attach(pool_module, owner, monkeypatch):
+    client = pool_module.SharedPoolClient(owner.root, "model-a", device="npu:0")
+    original = owner._publish_manifest
+
+    def fail_publish():
+        raise OSError("disk full")
+
+    monkeypatch.setattr(owner, "_publish_manifest", fail_publish)
+    try:
+        with pytest.raises(TimeoutError):
+            owner.close(timeout=0.05)
+        assert owner.manifest["state"] == "draining"
+        assert not owner.buffers["codes"].closed
+        with pytest.raises(ValueError, match="not ready"):
+            pool_module.SharedPoolClient(owner.root, "model-a", device="npu:0")
+        client.close()
+        owner.close(timeout=1)
+        assert owner.closed and owner.buffers["codes"].closed
+    finally:
+        monkeypatch.setattr(owner, "_publish_manifest", original)
+        client.close()
+
+
+def test_cli_drains_live_consumer_when_manifest_replace_fails(pool_module, tmp_path, monkeypatch):
+    module_name = "vllm_ascend.models.deepseek_v41.engram.shared_pool"
+    monkeypatch.setitem(sys.modules, module_name, pool_module)
+    monkeypatch.setitem(sys.modules, "torch_npu", types.ModuleType("torch_npu"))
+    package = types.ModuleType("vllm_ascend")
+    package.__path__ = []
+    package.ops = types.ModuleType("vllm_ascend.ops")
+    monkeypatch.setitem(sys.modules, "vllm_ascend", package)
+    monkeypatch.setitem(sys.modules, "vllm_ascend.ops", package.ops)
+    monkeypatch.setattr(torch, "npu", types.SimpleNamespace(set_device=lambda _: None), raising=False)
+    path = Path(__file__).resolve().parents[3] / "vllm_ascend/shared_engram.py"
+    spec = importlib.util.spec_from_file_location("_shared_engram_cli_ut", path)
+    cli = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cli)
+    monkeypatch.setattr(cli.signal, "signal", lambda *args: None)
+    monkeypatch.setattr(cli, "checkpoint_identity", lambda _: "model-a")
+    monkeypatch.setattr(cli, "load_tables", lambda owner, model, stop: owner.add("codes", 32, 256, torch.int8))
+    monkeypatch.setattr(sys, "argv", ["shared_engram", "--model", "unused", "--pool-dir", str(tmp_path / "pool")])
+    original_replace = Path.replace
+
+    def failing_replace(path, target):
+        if path.name == "manifest.tmp" and '"draining"' in path.read_text():
+            raise OSError("disk full")
+        return original_replace(path, target)
+
+    monkeypatch.setattr(Path, "replace", failing_replace)
+    real_event = threading.Event
+    done = real_event()
+    observed = []
+
+    class Stop:
+        def wait(self):
+            client = pool_module.SharedPoolClient(tmp_path / "pool", "model-a", device="npu:0")
+
+            def release_after_drain():
+                time.sleep(0.1)
+                observed.append(not done.is_set())
+                client.close()
+
+            threading.Thread(target=release_after_drain).start()
+
+        def set(self):
+            pass
+
+    monkeypatch.setattr(cli, "threading", types.SimpleNamespace(Event=Stop))
+    cli.main()
+    done.set()
+    assert observed == [True]
 
 
 def test_failed_device_release_retains_lease_until_retry(pool_module, owner):

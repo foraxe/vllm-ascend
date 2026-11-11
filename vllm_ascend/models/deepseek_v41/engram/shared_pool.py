@@ -196,7 +196,11 @@ class SharedPoolOwner:
             return
         with self._condition:
             self.manifest["state"] = "draining"
-            self._publish_manifest()
+            try:
+                self._publish_manifest()
+            except OSError as exc:
+                # The in-memory state still rejects new leases, even if NFS is down.
+                print(f"POOL_MANIFEST_ERROR draining: {exc}", flush=True)
             deadline = time.monotonic() + timeout
             while self._leases:
                 remaining = deadline - time.monotonic()
@@ -209,7 +213,10 @@ class SharedPoolOwner:
                 self.runtime.close()
                 self.runtime = None
             self.manifest["state"] = "closed"
-            self._publish_manifest()
+            try:
+                self._publish_manifest()
+            except OSError as exc:
+                print(f"POOL_MANIFEST_ERROR closed: {exc}", flush=True)
             self.closed = True
         self._listener.close()
         self._thread.join(timeout=1)
