@@ -1,0 +1,19 @@
+docs/source/user_guide/feature_guide/engram_local_vmm.md
+  s_d6485b3d09302c::t_9ee6013b41fb4b 32-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "8a70c09d31ae9161c1e4312a75e45c3c17806f5c",
+  "prompts": {},
+  "sessions": {
+    "s_d6485b3d09302c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c4b6-d8aa-7320-9579-f20711e7bf1b",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}
