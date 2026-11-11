@@ -106,12 +106,14 @@ def test_cli_drains_live_consumer_when_manifest_replace_fails(pool_module, tmp_p
     monkeypatch.setitem(sys.modules, "torch_npu", types.ModuleType("torch_npu"))
     package = types.ModuleType("vllm_ascend")
     package.__path__ = []
-    package.ops = types.ModuleType("vllm_ascend.ops")
+    ops = types.ModuleType("vllm_ascend.ops")
+    monkeypatch.setattr(package, "ops", ops, raising=False)
     monkeypatch.setitem(sys.modules, "vllm_ascend", package)
-    monkeypatch.setitem(sys.modules, "vllm_ascend.ops", package.ops)
+    monkeypatch.setitem(sys.modules, "vllm_ascend.ops", ops)
     monkeypatch.setattr(torch, "npu", types.SimpleNamespace(set_device=lambda _: None), raising=False)
     path = Path(__file__).resolve().parents[3] / "vllm_ascend/shared_engram.py"
     spec = importlib.util.spec_from_file_location("_shared_engram_cli_ut", path)
+    assert spec is not None and spec.loader is not None
     cli = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(cli)
     monkeypatch.setattr(cli.signal, "signal", lambda *args: None)
