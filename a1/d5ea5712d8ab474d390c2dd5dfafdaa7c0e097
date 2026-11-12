@@ -1,0 +1,60 @@
+vllm_ascend/models/deepseek_v41/engram/shared_pool.py
+  s_9f41e3a32b69f3::t_683ba63d9aab6e 9
+  s_9f41e3a32b69f3::t_4aa4150a5ee112 2,43-47,70,73-75,98,135,158,200-201,206,209,218,274
+  s_9f41e3a32b69f3::t_b29c743a89d4dc 220,239
+vllm_ascend/ascend_config.py
+  s_9f41e3a32b69f3::t_65a83fa9818d92 397-409,581,702,704,706
+  s_70fb834a8f513b::t_02351940908607 396
+benchmarks/benchmark_shared_engram.py
+  s_9f41e3a32b69f3::t_fcbb52f9e9f8ae 55
+  s_9f41e3a32b69f3::t_732a85207918a1 53,75,134
+  s_9f41e3a32b69f3::t_8c19da0c8570f7 51
+tests/ut/models/test_engram_shared_pool.py
+  s_9f41e3a32b69f3::t_764d8a2aec3819 160-162
+  s_9f41e3a32b69f3::t_11f84e21e9146b 100-112
+  s_9f41e3a32b69f3::t_45d03ac24934c5 73-74,76,78-82,84-85,88-93,95,97
+  s_9f41e3a32b69f3::t_732a85207918a1 7,51-56,59,68,166-176,180,197,215,236,286,312,334,367,388,400,409,416
+  s_9f41e3a32b69f3::t_0fabb5845657fb 113-116,131,133-134,136-138,140-141,143-144,146-147,149,153-154,158-159
+  s_9f41e3a32b69f3::t_5c92c24bd76982 150-152,155-157
+  s_9f41e3a32b69f3::t_418c63176fb9f8 165
+vllm_ascend/shared_engram.py
+  s_9f41e3a32b69f3::t_fcbb52f9e9f8ae 80
+  s_9f41e3a32b69f3::t_8c19da0c8570f7 62
+  s_9f41e3a32b69f3::t_dbb5c8448f8928 17,59-60,65,71
+vllm_ascend/models/deepseek_v41/engram/embedding.py
+  s_9f41e3a32b69f3::t_dbb5c8448f8928 68,72,74,167-168,174
+docs/source/user_guide/feature_guide/shared_engram.md
+  s_9f41e3a32b69f3::t_658ba739e85b73 9,25-26,37-38,42,61,86,90,96-98,143,147,149,153
+tests/ut/test_ascend_config.py
+  s_9f41e3a32b69f3::t_70db7e4a2f90f6 74,86
+  s_9f41e3a32b69f3::t_e6937819b261da 48,72-73,75-85
+  s_9f41e3a32b69f3::t_732a85207918a1 62
+  s_9f41e3a32b69f3::t_8ff75a2f07ee36 87-88
+vllm_ascend/models/deepseek_v41/model.py
+  s_9f41e3a32b69f3::t_fcbb52f9e9f8ae 2014-2016
+  s_9f41e3a32b69f3::t_dbb5c8448f8928 1046-1047,1049,1083,1085,1087
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a1d5ea5712d8ab474d390c2dd5dfafdaa7c0e097",
+  "prompts": {},
+  "sessions": {
+    "s_70fb834a8f513b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a187a5-6f72-79f1-ace7-ba82e7e303a4",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    },
+    "s_9f41e3a32b69f3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a09114-51d1-7b92-8410-0d9e206e4388",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}
