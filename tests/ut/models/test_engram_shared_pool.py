@@ -8,7 +8,7 @@ import socket
 import sys
 import threading
 import types
-from contextlib import ExitStack
+from contextlib import ExitStack, contextmanager
 from pathlib import Path
 
 import pytest
@@ -514,6 +514,114 @@ def test_outer_model_init_failure_releases_attached_engram(pool_module, owner, c
             assert client.closed
     finally:
         client.close()
+
+
+@pytest.mark.parametrize("failure", ["context_exit", "attribute"])
+@pytest.mark.parametrize("cleanup_fails", [False, True])
+def test_vl_constructor_failure_releases_language_model_lease(pool_module, owner, failure, cleanup_fails):
+    path = Path(__file__).resolve().parents[3] / "vllm_ascend/models/deepseek_v41/vl_model.py"
+    module = ast.parse(path.read_text())
+    cls = next(n for n in module.body if isinstance(n, ast.ClassDef) and n.name == "AscendDeepseekV41ForCausalLM")
+    init = next(n for n in cls.body if isinstance(n, ast.FunctionDef) and n.name == "__init__")
+    runner_class = ast.ClassDef(
+        name="VL", bases=[ast.Name(id="Base", ctx=ast.Load())], keywords=[], body=[init], decorator_list=[]
+    )
+    tree = ast.fix_missing_locations(ast.Module(body=[runner_class], type_ignores=[]))
+    client = pool_module.SharedPoolClient(owner.endpoint, "model-a", device="npu:0")
+
+    class Embedding(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self._shared_pool_client = client
+
+        def close_host_offload(self):
+            if cleanup_fails:
+                raise RuntimeError("cleanup failed")
+            client.close()
+            self._shared_pool_client = None
+
+    class Language(torch.nn.Module):
+        def __init__(self, **kwargs):
+            super().__init__()
+            self.embedding = Embedding()
+
+        @property
+        def requires_uncompiled_fallback(self):
+            raise RuntimeError("attribute failed")
+
+    class Base(torch.nn.Module):
+        @contextmanager
+        def _mark_tower_model(self, *args):
+            yield
+
+        @contextmanager
+        def _mark_language_model(self, *args):
+            yield
+            if failure == "context_exit":
+                raise RuntimeError("context_exit failed")
+
+    ns = dict(
+        Base=Base,
+        nn=torch.nn,
+        torch=torch,
+        maybe_prefix=lambda *args: "language_model",
+        rollback_shared_engram=pool_module.rollback_shared_engram,
+    )
+    exec(compile(tree, str(path), "exec"), ns)
+    ns["VL"].language_model_cls = Language
+    config = types.SimpleNamespace(vision_n_layers=0)
+    vc = types.SimpleNamespace(model_config=types.SimpleNamespace(hf_config=config, multimodal_config=None))
+    try:
+        with pytest.raises(RuntimeError, match=f"{failure} failed"):
+            ns["VL"](vllm_config=vc)
+        if cleanup_fails:
+            assert isinstance(pool_module._failed_startup_cleanups[-1].__self__, Embedding)
+            with pytest.raises(TimeoutError):
+                owner.close()
+            pool_module._failed_startup_cleanups.clear()
+        else:
+            assert client.closed
+    finally:
+        client.close()
+
+
+def test_v2_shutdown_finds_shared_embedding_inside_vl_wrapper(pool_module, owner):
+    path = Path(__file__).resolve().parents[3] / "vllm_ascend/worker/v2/model_runner.py"
+    module = ast.parse(path.read_text())
+    cls = next(n for n in module.body if isinstance(n, ast.ClassDef) and n.name == "NPUModelRunner")
+    shutdown = next(n for n in cls.body if isinstance(n, ast.FunctionDef) and n.name == "shutdown")
+    client = pool_module.SharedPoolClient(owner.endpoint, "model-a", device="npu:0")
+
+    class Embedding(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self._shared_pool_client = client
+
+        def close_host_offload(self):
+            client.close()
+            self._shared_pool_client = None
+
+    wrapper = torch.nn.Module()
+    language = torch.nn.Module()
+    embedding = Embedding()
+    language.add_module("embedding", embedding)
+    wrapper.add_module("language_model", language)
+
+    class Parent:
+        def shutdown(self):
+            pass
+
+    runner_class = ast.ClassDef(
+        name="Runner", bases=[ast.Name(id="Parent", ctx=ast.Load())], keywords=[], body=[shutdown], decorator_list=[]
+    )
+    tree = ast.fix_missing_locations(ast.Module(body=[runner_class], type_ignores=[]))
+    ns = dict(Parent=Parent, C8KVBlockZeroer=type("C8KVBlockZeroer", (), {}))
+    exec(compile(tree, str(path), "exec"), ns)
+    runner = ns["Runner"]()
+    runner.model = wrapper
+    runner.shutdown()
+    assert client.closed and embedding._shared_pool_client is None
+    owner.close(timeout=1)
 
 
 @pytest.mark.parametrize("cleanup_fails", [False, True])
