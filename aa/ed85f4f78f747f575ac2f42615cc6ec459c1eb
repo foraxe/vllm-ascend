@@ -1,0 +1,21 @@
+tests/ut/distributed/kv_transfer/kv_p2p/test_mooncake_receiver_drain.py
+  s_d6485b3d09302c::t_269a1ad28694bf 231-248
+vllm_ascend/distributed/kv_transfer/kv_p2p/mooncake_hybrid_connector.py
+  s_d6485b3d09302c::t_269a1ad28694bf 646-649
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "aaed85f4f78f747f575ac2f42615cc6ec459c1eb",
+  "prompts": {},
+  "sessions": {
+    "s_d6485b3d09302c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c4b6-d8aa-7320-9579-f20711e7bf1b",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

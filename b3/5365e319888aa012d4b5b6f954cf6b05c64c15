@@ -1,0 +1,19 @@
+cd_config/guian.yml
+  s_10a49829a1d321::t_0719889a59bbaa 1-4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b35365e319888aa012d4b5b6f954cf6b05c64c15",
+  "prompts": {},
+  "sessions": {
+    "s_10a49829a1d321": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_10a49829a1d321",
+        "model": "unknown"
+      },
+      "human_author": "lt <lt02596710@antgroup.com>"
+    }
+  }
+}

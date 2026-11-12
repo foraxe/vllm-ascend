@@ -1,0 +1,27 @@
+vllm_ascend/models/deepseek_v41/engram/shared_pool.py
+  s_2c7c0a259eff1f::t_6a2cba960bbbbd 23,185
+vllm_ascend/models/deepseek_v41/engram/shared_host.py
+  s_2c7c0a259eff1f::t_6a2cba960bbbbd 97-98
+tests/ut/models/test_engram_memfabric_storage.py
+  s_2c7c0a259eff1f::t_6a2cba960bbbbd 75,77-78,83,99-104
+  s_2c7c0a259eff1f::t_8c109d3b18db4e 105-107
+tests/ut/models/test_engram_shared_pool.py
+  s_2c7c0a259eff1f::t_6a2cba960bbbbd 26,29,32-35,72-86
+  s_2c7c0a259eff1f::t_ab5af690d2ea2f 87-88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "dcb1869a3644d15fc2426c683e2e8792d7c86f47",
+  "prompts": {},
+  "sessions": {
+    "s_2c7c0a259eff1f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1cb69-b458-77a2-a7f7-ef64f39725f8",
+        "model": "gpt-6-luna"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

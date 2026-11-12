@@ -1,0 +1,37 @@
+csrc/engram_hixl/native.cpp
+  s_2c7c0a259eff1f::t_6fe629b3cf9d2b 16,87-90,95-101
+tests/native/engram_hixl_cpu_stubs/include/hixl/hixl.h
+  s_2c7c0a259eff1f::t_323109b0bf4347 1-44,46-65
+  s_2c7c0a259eff1f::t_4cb217198f9ae5 45
+tests/native/README.engram_hixl_cpu.md
+  s_2c7c0a259eff1f::t_7fc67931b3b4a8 21-22
+  s_2c7c0a259eff1f::t_323109b0bf4347 1-20
+tests/ut/models/test_engram_hixl_native_cpu.py
+  s_2c7c0a259eff1f::t_b250ada61d186c 1-14,16-34
+  s_2c7c0a259eff1f::t_3c9abae662e740 15
+tests/native/engram_hixl_cpu_stubs/include/acl/acl.h
+  s_2c7c0a259eff1f::t_323109b0bf4347 1-29
+tests/native/test_engram_hixl_local_comm_res.cpp
+  s_2c7c0a259eff1f::t_97687898579890 2
+  s_2c7c0a259eff1f::t_87c2ea640bc00f 12
+  s_2c7c0a259eff1f::t_2a55e2d6230581 76
+  s_2c7c0a259eff1f::t_7fc67931b3b4a8 3,8,111-114
+  s_2c7c0a259eff1f::t_4f1f58c6b90f79 21-27,29
+  s_2c7c0a259eff1f::t_323109b0bf4347 1,4-7,9-11,13-20,28,30-75,77-110,115-117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "25027142eed8e9fc9bc9a2f4b7769c6e0b6104e6",
+  "prompts": {},
+  "sessions": {
+    "s_2c7c0a259eff1f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1cb69-b458-77a2-a7f7-ef64f39725f8",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

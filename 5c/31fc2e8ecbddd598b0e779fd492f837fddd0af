@@ -1,0 +1,21 @@
+vllm_ascend/distributed/kv_transfer/kv_p2p/mooncake_hybrid_connector.py
+  s_d6485b3d09302c::t_fedcc1cb87a6bd 1765-1767
+vllm_ascend/models/deepseek_v41/engram/embedding.py
+  s_d6485b3d09302c::t_fedcc1cb87a6bd 97-98,166-167,169-170,172,174
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "5c31fc2e8ecbddd598b0e779fd492f837fddd0af",
+  "prompts": {},
+  "sessions": {
+    "s_d6485b3d09302c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c4b6-d8aa-7320-9579-f20711e7bf1b",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}
