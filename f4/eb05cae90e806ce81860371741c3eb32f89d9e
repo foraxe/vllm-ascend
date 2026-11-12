@@ -1,0 +1,20 @@
+tests/ut/distributed/ascend_store/test_ascend_store_connector.py
+  h_833aeec65eedb4 73-74,138-139,295-296,304-305,653-717
+tests/ut/distributed/ascend_store/test_metadata.py
+  h_833aeec65eedb4 804-816
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/ascend_store_connector.py
+  h_833aeec65eedb4 107-116,212-214,233,242,429-431,453-460
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/metadata.py
+  h_833aeec65eedb4 1349-1350,1365-1368
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f4eb05cae90e806ce81860371741c3eb32f89d9e",
+  "prompts": {},
+  "humans": {
+    "h_833aeec65eedb4": {
+      "author": "miaoruolin <miaoruolin@U-YXCDC6X4-2241.local>"
+    }
+  }
+}
