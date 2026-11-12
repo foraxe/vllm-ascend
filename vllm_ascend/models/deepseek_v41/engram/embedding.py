@@ -65,13 +65,13 @@ class AscendParallelEngramEmbedding(ParallelEngramEmbedding):
         cpu_offload: bool = False,
         dp_shared_memory: bool = False,
         storage_dtype: torch.dtype = torch.int8,
-        shared_pool_dir: str | None = None,
+        shared_pool_endpoint: str | None = None,
         shared_pool_identity: str | None = None,
         shared_pool_key: str | None = None,
     ) -> None:
-        self._shared_pool_spec = (shared_pool_dir, shared_pool_identity, shared_pool_key)
+        self._shared_pool_spec = (shared_pool_endpoint, shared_pool_identity, shared_pool_key)
         self._shared_pool_client: SharedPoolClient | None = None
-        if shared_pool_dir and (
+        if shared_pool_endpoint and (
             not cpu_offload or storage_dtype != torch.int8 or not shared_pool_identity or not shared_pool_key
         ):
             raise ValueError("Shared Engram requires INT8 host storage and an explicit pool identity/key")
@@ -164,14 +164,14 @@ class AscendParallelEngramEmbedding(ParallelEngramEmbedding):
         scales_shape = (self.part_num_embeddings, self.dim // self.block_size)
         device = torch.device("npu", torch.npu.current_device())
         quantized = self.storage_dtype != torch.bfloat16
-        pool_dir, identity, key = self._shared_pool_spec
-        if pool_dir:
+        pool_endpoint, identity, key = self._shared_pool_spec
+        if pool_endpoint:
             from .common import warmup_shared_engram_aicpu
             from .shared_pool import SharedPoolClient
 
             assert identity is not None and key is not None
             warmup_shared_engram_aicpu()
-            client = SharedPoolClient(pool_dir, identity, device=device)
+            client = SharedPoolClient(pool_endpoint, identity, device=device)
             self._shared_pool_client = client
             try:
                 self._codes_uva = codes = client.view(

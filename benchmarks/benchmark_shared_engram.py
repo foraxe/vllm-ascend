@@ -48,14 +48,11 @@ def main(args):
     root = Path(args.root)
     from vllm_ascend.models.deepseek_v41.engram import shared_pool as pool
 
-    if args.role == "owner":
-        root.mkdir(mode=0o700, parents=True, exist_ok=True)
+    root.mkdir(mode=0o700, parents=True, exist_ok=True)
     torch.npu.set_device(args.device)
-    generation = root / "pool"
+    endpoint = args.endpoint
     if args.role == "owner":
-        owner = pool.SharedPoolOwner(
-            generation, "probe-model", device=f"npu:{args.device}", host=args.host, world_size=65
-        )
+        owner = pool.SharedPoolOwner(endpoint, "probe-model", device=f"npu:{args.device}", world_size=65)
         try:
             for layer in (1, 14):
                 for key, values in zip(("codes", "scales"), source_tables(layer)):
@@ -75,7 +72,7 @@ def main(args):
     clients, views = [], {}
     try:
         for layer in (1, 14):
-            client = pool.SharedPoolClient(generation, "probe-model", device=f"npu:{args.device}")
+            client = pool.SharedPoolClient(endpoint, "probe-model", device=f"npu:{args.device}")
             clients.append(client)
             for key, width, dtype in (("codes", WIDTH, torch.int8), ("scales", 8, torch.float32)):
                 views[layer, key] = client.view(f"{layer}.{key}", 0, ROWS, rows=ROWS, width=width, dtype=dtype)
@@ -134,6 +131,6 @@ if __name__ == "__main__":
     parser.add_argument("role", choices=("owner", "consumer"))
     parser.add_argument("--root", required=True)
     parser.add_argument("--device", type=int, default=0)
-    parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--endpoint", required=True)
     parser.add_argument("--tag", default="consumer")
     main(parser.parse_args())

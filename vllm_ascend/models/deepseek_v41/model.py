@@ -1043,9 +1043,10 @@ class DeepseekV41Model(nn.Module, EagleModelMixin):
             bool(vllm_config.engram_config and vllm_config.engram_config.dp_shared_memory)
         )
         self.engram_layout = EngramLayout.from_config(config) if self.has_engram else None
-        shared_pool_dir = get_ascend_config().engram_shared_host_dir
+        shared_config = get_ascend_config().shared_engram
+        shared_pool_endpoint = shared_config.endpoint if shared_config is not None else None
         shared_pool_identity = None
-        if shared_pool_dir:
+        if shared_pool_endpoint:
             from .engram.shared_pool import checkpoint_identity
 
             shared_pool_identity = checkpoint_identity(self.engram_weight_root)
@@ -1079,11 +1080,11 @@ class DeepseekV41Model(nn.Module, EagleModelMixin):
                         storage_dtype=storage_dtype,
                         cpu_offload=cpu_offload,
                         dp_shared_memory=self.engram_dp_shared_memory,
-                        shared_pool_dir=shared_pool_dir,
+                        shared_pool_endpoint=shared_pool_endpoint,
                         shared_pool_identity=shared_pool_identity,
-                        shared_pool_key=f"layers.{layer_id}.engram.embed" if shared_pool_dir else None,
+                        shared_pool_key=f"layers.{layer_id}.engram.embed" if shared_pool_endpoint else None,
                     )
-                    if shared_pool_dir:
+                    if shared_pool_endpoint:
                         rollback.callback(embed.close_host_offload)
                     embed.bind_checkpoint(self.engram_weight_root, f"layers.{layer_id}.engram.embed.weight")
                     self.layers[layer_id].engram.embed_tokens = embed
@@ -2010,9 +2011,9 @@ class AscendDeepseekV41LLMForCausalLM(nn.Module, DeepseekV41MixtureOfExperts, Su
                     # down: RowParallel → split along dim 1
                     split_dim = 1 if "down_proj.weight" in name else 0
                     total = loaded_weight.shape[split_dim]
-                    assert total % num_chunks == 0, (
-                        f"Shared expert weight dim {total} not divisible by num_chunks {num_chunks}"
-                    )
+                    assert (
+                        total % num_chunks == 0
+                    ), f"Shared expert weight dim {total} not divisible by num_chunks {num_chunks}"
                     chunk_size = total // num_chunks
 
                 for j in range(num_chunks):

@@ -4,9 +4,8 @@
 import ast
 import importlib
 import importlib.util
+import socket
 import sys
-import threading
-import time
 import types
 from contextlib import ExitStack
 from pathlib import Path
@@ -49,9 +48,15 @@ def pool_module(monkeypatch):
             sys.modules.pop(name)
 
 
+def free_endpoint():
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        return f"127.0.0.1:{sock.getsockname()[1]}"
+
+
 @pytest.fixture
 def owner(pool_module, tmp_path):
-    owner = pool_module.SharedPoolOwner(tmp_path / "pool", "model-a", device="npu:0")
+    owner = pool_module.SharedPoolOwner(free_endpoint(), "model-a", device="npu:0")
     owner.add("codes", 32, 256, torch.int8)
     owner.ready()
     yield owner
@@ -60,51 +65,55 @@ def owner(pool_module, tmp_path):
 
 def test_identity_rejection_does_not_hold_lease(pool_module, owner):
     with pytest.raises(ValueError, match="model-compatible"):
-        pool_module.SharedPoolClient(owner.root, "model-b", device="npu:0")
+        pool_module.SharedPoolClient(owner.endpoint, "model-b", device="npu:0")
     owner.close(timeout=1)
     assert owner.closed
 
 
-def test_drain_waits_for_consumer_and_rejects_new_attach(pool_module, owner):
-    client = pool_module.SharedPoolClient(owner.root, "model-a", device="npu:0")
+def test_endpoint_discovery_requires_ready_and_identity(pool_module, tmp_path):
+    owner = pool_module.SharedPoolOwner(free_endpoint(), "model-a", device="npu:0")
     try:
-        with pytest.raises(TimeoutError):
-            owner.close()
-        assert not owner.buffers["codes"].closed
+        owner.add("codes", 32, 256, torch.int8)
         with pytest.raises(ValueError, match="not ready"):
-            pool_module.SharedPoolClient(owner.root, "model-a", device="npu:0")
+            pool_module.SharedPoolClient(owner.endpoint, "model-a", device="npu:0")
+        owner.ready()
+        client = pool_module.SharedPoolClient(owner.endpoint, "model-a", device="npu:0")
+        assert client.manifest["generation"] == owner.generation
+        assert "token" not in client.manifest
+        client.close()
     finally:
-        client.close()
-    owner.close(timeout=1)
-    assert owner.buffers["codes"].closed
-
-
-def test_manifest_failure_keeps_live_lease_and_rejects_new_attach(pool_module, owner, monkeypatch):
-    client = pool_module.SharedPoolClient(owner.root, "model-a", device="npu:0")
-    original = owner._publish_manifest
-
-    def fail_publish():
-        raise OSError("disk full")
-
-    monkeypatch.setattr(owner, "_publish_manifest", fail_publish)
-    try:
-        with pytest.raises(TimeoutError):
-            owner.close(timeout=0.05)
-        assert owner.manifest["state"] == "draining"
-        assert not owner.buffers["codes"].closed
-        with pytest.raises(ValueError, match="not ready"):
-            pool_module.SharedPoolClient(owner.root, "model-a", device="npu:0")
-        client.close()
         owner.close(timeout=1)
-        assert owner.closed and owner.buffers["codes"].closed
+
+
+def test_new_owner_has_new_generation(pool_module):
+    endpoint = free_endpoint()
+    owner = pool_module.SharedPoolOwner(endpoint, "model-a", device="npu:0")
+    first = owner.generation
+    owner.close(timeout=1)
+    other = pool_module.SharedPoolOwner(free_endpoint(), "model-a", device="npu:0")
+    try:
+        assert other.generation != first
     finally:
-        monkeypatch.setattr(owner, "_publish_manifest", original)
-        client.close()
+        other.close(timeout=1)
 
 
-def test_cli_drains_live_consumer_when_manifest_replace_fails(pool_module, tmp_path, monkeypatch):
-    module_name = "vllm_ascend.models.deepseek_v41.engram.shared_pool"
-    monkeypatch.setitem(sys.modules, module_name, pool_module)
+def test_stale_generation_release_does_not_retire_lease(pool_module, owner):
+    client = pool_module.SharedPoolClient(owner.endpoint, "model-a", device="npu:0")
+    pool_module._send(client._wire, {"op": "release", "generation": "stale"})
+    with pytest.raises(ConnectionError):
+        pool_module._receive(client._wire)
+    with pytest.raises(TimeoutError):
+        owner.close()
+    client._wire.close()
+    client._conn.close()
+    # Fake-storage test only: the simulated reader never created a device mapping.
+    with owner._condition:
+        owner._leases.clear()
+    owner.close(timeout=1)
+
+
+def test_owner_cli_uses_shared_backend_and_endpoint(pool_module, monkeypatch):
+    monkeypatch.setitem(sys.modules, "vllm_ascend.models.deepseek_v41.engram.shared_pool", pool_module)
     monkeypatch.setitem(sys.modules, "torch_npu", types.ModuleType("torch_npu"))
     package = types.ModuleType("vllm_ascend")
     package.__path__ = []
@@ -119,43 +128,56 @@ def test_cli_drains_live_consumer_when_manifest_replace_fails(pool_module, tmp_p
     cli = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(cli)
     monkeypatch.setattr(cli.signal, "signal", lambda *args: None)
+    monkeypatch.setattr(cli, "threading", types.SimpleNamespace(Event=lambda: types.SimpleNamespace(wait=lambda: None)))
     monkeypatch.setattr(cli, "checkpoint_identity", lambda _: "model-a")
-    monkeypatch.setattr(cli, "load_tables", lambda owner, model, stop: owner.add("codes", 32, 256, torch.int8))
-    monkeypatch.setattr(sys, "argv", ["shared_engram", "--model", "unused", "--pool-dir", str(tmp_path / "pool")])
-    original_replace = Path.replace
+    monkeypatch.setattr(cli, "load_tables", lambda *args: None)
+    captured = []
 
-    def failing_replace(path, target):
-        if path.name == "manifest.tmp" and '"draining"' in path.read_text():
-            raise OSError("disk full")
-        return original_replace(path, target)
+    class Owner:
+        closed = False
+        generation = "generation"
 
-    monkeypatch.setattr(Path, "replace", failing_replace)
-    real_event = threading.Event
-    done = real_event()
-    observed = []
+        def __init__(self, endpoint, identity, **kwargs):
+            captured.append((endpoint, identity, kwargs))
 
-    class Stop:
-        def wait(self):
-            client = pool_module.SharedPoolClient(tmp_path / "pool", "model-a", device="npu:0")
-
-            def release_after_drain():
-                time.sleep(0.1)
-                observed.append(not done.is_set())
-                client.close()
-
-            threading.Thread(target=release_after_drain).start()
-
-        def set(self):
+        def ready(self):
             pass
 
-    monkeypatch.setattr(cli, "threading", types.SimpleNamespace(Event=Stop))
+        def close(self, timeout):
+            self.closed = True
+
+    monkeypatch.setattr(cli, "SharedPoolOwner", Owner)
+    monkeypatch.setattr(
+        sys, "argv", ["shared_engram", "--backend", "a3", "--model", "model", "--endpoint", "owner:29500"]
+    )
     cli.main()
-    done.set()
-    assert observed == [True]
+    assert captured == [("owner:29500", "model-a", {"device": "npu:0", "store_url": None, "world_size": 65})]
+    monkeypatch.setattr(
+        sys, "argv", ["shared_engram", "--backend", "a2", "--model", "model", "--endpoint", "owner:29500"]
+    )
+    with pytest.raises(SystemExit):
+        cli.main()
+    monkeypatch.setattr(sys, "argv", ["shared_engram", "--backend", "a3", "--model", "model"])
+    with pytest.raises(SystemExit):
+        cli.main()
+
+
+def test_drain_waits_for_consumer_and_rejects_new_attach(pool_module, owner):
+    client = pool_module.SharedPoolClient(owner.endpoint, "model-a", device="npu:0")
+    try:
+        with pytest.raises(TimeoutError):
+            owner.close()
+        assert not owner.buffers["codes"].closed
+        with pytest.raises(ValueError, match="not ready"):
+            pool_module.SharedPoolClient(owner.endpoint, "model-a", device="npu:0")
+    finally:
+        client.close()
+    owner.close(timeout=1)
+    assert owner.buffers["codes"].closed
 
 
 def test_failed_device_release_retains_lease_until_retry(pool_module, owner):
-    client = pool_module.SharedPoolClient(owner.root, "model-a", device="npu:0")
+    client = pool_module.SharedPoolClient(owner.endpoint, "model-a", device="npu:0")
     client.view("codes", 0, 16, rows=32, width=256, dtype=torch.int8)
     buffer = client.buffers["codes"]
     try:
@@ -172,7 +194,7 @@ def test_failed_device_release_retains_lease_until_retry(pool_module, owner):
 
 
 def test_client_failure_releases_other_buffers_and_retries(pool_module, owner):
-    client = pool_module.SharedPoolClient(owner.root, "model-a", device="npu:0")
+    client = pool_module.SharedPoolClient(owner.endpoint, "model-a", device="npu:0")
     client.view("codes", 0, 16, rows=32, width=256, dtype=torch.int8)
     failing = client.buffers["codes"]
     other = pool_module.MappedHostBuffer()
@@ -190,7 +212,7 @@ def test_client_failure_releases_other_buffers_and_retries(pool_module, owner):
 
 
 def test_failed_mapping_construction_keeps_client_lease_until_cleanup(pool_module, owner, monkeypatch):
-    client = pool_module.SharedPoolClient(owner.root, "model-a", device="npu:0")
+    client = pool_module.SharedPoolClient(owner.endpoint, "model-a", device="npu:0")
     pending = pool_module.MappedHostBuffer()
     pending.fail_release = True
 
@@ -211,7 +233,7 @@ def test_failed_mapping_construction_keeps_client_lease_until_cleanup(pool_modul
 
 
 def test_failed_owner_mapping_construction_is_retained_for_retry(pool_module, tmp_path, monkeypatch):
-    owner = pool_module.SharedPoolOwner(tmp_path / "pool", "model-a", device="npu:0")
+    owner = pool_module.SharedPoolOwner(free_endpoint(), "model-a", device="npu:0")
     pending = pool_module.MappedHostBuffer()
     pending.fail_release = True
 
@@ -261,7 +283,7 @@ def test_model_construction_rolls_back_first_layer_when_second_attach_fails(pool
 
     class Embedding:
         def __init__(self, rows, dim, heads, slot, **kwargs):
-            self.client = pool_module.SharedPoolClient(owner.root, "model-a", device="npu:0")
+            self.client = pool_module.SharedPoolClient(owner.endpoint, "model-a", device="npu:0")
             if slot == 1:
                 self.client.close()
                 raise RuntimeError("second attach failed")
@@ -287,7 +309,7 @@ def test_model_construction_rolls_back_first_layer_when_second_attach_fails(pool
         self=model_obj,
         config=config,
         vllm_config=vc,
-        shared_pool_dir="pool",
+        shared_pool_endpoint="pool",
         shared_pool_identity="model-a",
         cpu_offload=True,
         torch=torch,
@@ -309,7 +331,7 @@ def test_shutdown_retry_after_model_deletion_releases_tcp_lease(pool_module, own
     module = ast.parse(path.read_text())
     cls = next(n for n in module.body if isinstance(n, ast.ClassDef) and n.name == "NPUModelRunner")
     shutdown = next(n for n in cls.body if isinstance(n, ast.FunctionDef) and n.name == "shutdown")
-    client = pool_module.SharedPoolClient(owner.root, "model-a", device="npu:0")
+    client = pool_module.SharedPoolClient(owner.endpoint, "model-a", device="npu:0")
     embedding = types.SimpleNamespace(_shared_pool_client=client, close_host_offload=client.close)
 
     class Parent:
@@ -342,7 +364,7 @@ def test_embedding_constructor_failure_after_mapping_releases_lease(pool_module,
     init = next(n for n in cls.body if isinstance(n, ast.FunctionDef) and n.name == "__init__")
     cleanup_block = next(n for n in init.body if isinstance(n, ast.Try))
     tree = ast.fix_missing_locations(ast.Module(body=[cleanup_block], type_ignores=[]))
-    client = pool_module.SharedPoolClient(owner.root, "model-a", device="npu:0")
+    client = pool_module.SharedPoolClient(owner.endpoint, "model-a", device="npu:0")
     embedding = types.SimpleNamespace(_shared_pool_client=client, _weight_loader=None, vocab_start_idx=0)
 
     def fail_attributes(*args):
@@ -363,7 +385,7 @@ def test_embedding_constructor_failure_after_mapping_releases_lease(pool_module,
 
 
 def test_layout_rejected_before_mapping(pool_module, owner):
-    client = pool_module.SharedPoolClient(owner.root, "model-a", device="npu:0")
+    client = pool_module.SharedPoolClient(owner.endpoint, "model-a", device="npu:0")
     try:
         with pytest.raises(ValueError, match="layout mismatch"):
             client.view("codes", 0, 16, rows=33, width=256, dtype=torch.int8)
@@ -375,30 +397,23 @@ def test_layout_rejected_before_mapping(pool_module, owner):
 def test_consumer_reattaches_without_reloading_owner(pool_module, owner):
     original = owner.buffers["codes"]
     for _ in range(2):
-        client = pool_module.SharedPoolClient(owner.root, "model-a", device="npu:0")
+        client = pool_module.SharedPoolClient(owner.endpoint, "model-a", device="npu:0")
         client.close()
     assert owner.buffers["codes"] is original
     assert not original.closed
 
 
-def test_private_directory_required(pool_module, owner):
-    owner.root.chmod(0o755)
-    with pytest.raises(ValueError, match="mode0700"):
-        pool_module.SharedPoolClient(owner.root, "model-a", device="npu:0")
-    owner.root.chmod(0o700)
-
-
 def test_old_schema_rejected_and_lease_released(pool_module, owner):
     owner.manifest["schema"] = 1
     with pytest.raises(ValueError, match="manifest"):
-        pool_module.SharedPoolClient(owner.root, "model-a", device="npu:0")
+        pool_module.SharedPoolClient(owner.endpoint, "model-a", device="npu:0")
     owner.close(timeout=1)
     assert owner.closed
 
 
 def test_invalid_bm_object_rejected_before_mapping(pool_module, owner):
     owner.manifest["tensors"]["codes"]["object_id"] = -1
-    client = pool_module.SharedPoolClient(owner.root, "model-a", device="npu:0")
+    client = pool_module.SharedPoolClient(owner.endpoint, "model-a", device="npu:0")
     try:
         with pytest.raises(ValueError, match="object id"):
             client.view("codes", 0, 16, rows=32, width=256, dtype=torch.int8)

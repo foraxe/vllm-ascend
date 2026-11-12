@@ -1,18 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Startup manifests and authenticated control leases; no table data on TCP.
-
-NFS may have local-only locks, so leases live in the owner process, not files.
-Use a fresh private directory per generation and a trusted cluster network.
-"""
+"""Network discovery and control leases for a trusted cluster network."""
 
 import hashlib
-import hmac
 import json
-import os
-import secrets
 import socket
 import threading
 import time
+import uuid
 from pathlib import Path
 
 import torch
@@ -46,10 +40,11 @@ def checkpoint_identity(root):
     return digest.hexdigest()
 
 
-def _private(root):
-    stat = root.stat()
-    if stat.st_uid != os.getuid() or stat.st_mode & 0o077:
-        raise ValueError("Shared Engram directory must be uid-owned and mode0700")
+def parse_endpoint(endpoint):
+    host, sep, port = endpoint.rpartition(":")
+    if not sep or not host or not port.isdigit() or not 0 < int(port) < 65536:
+        raise ValueError("shared Engram endpoint must be host:port")
+    return host, int(port)
 
 
 def _send(wire, value):
@@ -71,26 +66,13 @@ def _receive(wire):
     return value
 
 
-def owner_alive(root):
-    try:
-        manifest = json.loads((Path(root) / "manifest.json").read_text())
-        with (
-            socket.create_connection(tuple(manifest["endpoint"]), timeout=5) as conn,
-            conn.makefile("rwb", buffering=0) as wire,
-        ):
-            _send(wire, dict(op="ping", token=manifest["token"]))
-            return _receive(wire).get("alive", False)
-    except (OSError, ValueError, KeyError):
-        return False
-
-
 class SharedPoolOwner:
-    def __init__(self, root, identity, *, device, host="127.0.0.1", port=0, store_url=None, world_size=65):
+    def __init__(self, endpoint, identity, *, device, store_url=None, world_size=65):
         if not 2 <= world_size <= 1024:
             raise ValueError("MemFabric world size must include the owner and consumers")
-        self.root = Path(root)
-        self.root.mkdir(mode=0o700)
-        _private(self.root)
+        host, port = parse_endpoint(endpoint)
+        self.endpoint = endpoint
+        self.generation = uuid.uuid4().hex
         self.device = device
         self.runtime = None
         if store_url is None:
@@ -113,19 +95,10 @@ class SharedPoolOwner:
             backend="memfabric_bm",
             memfabric=dict(store_url=store_url, world_size=world_size),
             endpoint=[host, self._listener.getsockname()[1]],
-            token=secrets.token_hex(32),
+            generation=self.generation,
         )
-        self._publish_manifest()
         self._thread = threading.Thread(target=self._accept, daemon=True)
         self._thread.start()
-
-    def _publish_manifest(self):
-        temporary = self.root / "manifest.tmp"
-        with temporary.open("w") as file:
-            json.dump(self.manifest, file)
-            file.flush()
-            os.fsync(file.fileno())
-        temporary.replace(self.root / "manifest.json")
 
     def _accept(self):
         while not self.closed:
@@ -144,10 +117,6 @@ class SharedPoolOwner:
                 conn.settimeout(30)
                 with conn.makefile("rwb", buffering=0) as wire:
                     request = _receive(wire)
-                    token = request.get("token")
-                    if not isinstance(token, str) or not hmac.compare_digest(token, self.manifest["token"]):
-                        _send(wire, dict(error="Invalid Engram capability"))
-                        return
                     with self._condition:
                         if request.get("op") == "ping":
                             _send(wire, dict(alive=not self.closed))
@@ -163,7 +132,7 @@ class SharedPoolOwner:
                         acquired = True
                         _send(wire, dict(manifest=self.manifest))
                     conn.settimeout(None)
-                    if _receive(wire) != {"op": "release"}:
+                    if _receive(wire) != {"op": "release", "generation": self.generation}:
                         raise ValueError("Expected mapping-release acknowledgement")
                     with self._condition:
                         self._leases.remove(conn)
@@ -186,7 +155,7 @@ class SharedPoolOwner:
         if self.runtime is None:
             settings = self.manifest["memfabric"]
             self.runtime = MemfabricRuntime.acquire(
-                self.root, settings["store_url"], settings["world_size"], self.device, owner=True
+                self.generation, settings["store_url"], settings["world_size"], self.device, owner=True
             )
         object_id = len(self.buffers)
         try:
@@ -205,18 +174,12 @@ class SharedPoolOwner:
             if self.manifest["state"] != "loading" or not self.buffers:
                 raise ValueError("Only a populated loading pool can be published")
             self.manifest["state"] = "ready"
-            self._publish_manifest()
 
     def close(self, timeout=0):
         if self.closed:
             return
         with self._condition:
             self.manifest["state"] = "draining"
-            try:
-                self._publish_manifest()
-            except OSError as exc:
-                # The in-memory state still rejects new leases, even if NFS is down.
-                print(f"POOL_MANIFEST_ERROR draining: {exc}", flush=True)
             deadline = time.monotonic() + timeout
             while self._leases:
                 remaining = deadline - time.monotonic()
@@ -228,28 +191,22 @@ class SharedPoolOwner:
                 self.runtime.close()
                 self.runtime = None
             self.manifest["state"] = "closed"
-            try:
-                self._publish_manifest()
-            except OSError as exc:
-                print(f"POOL_MANIFEST_ERROR closed: {exc}", flush=True)
             self.closed = True
         self._listener.close()
         self._thread.join(timeout=1)
 
 
 class SharedPoolClient:
-    def __init__(self, root, identity, *, device):
-        self.root = Path(root)
-        _private(self.root)
-        discovery = json.loads((self.root / "manifest.json").read_text())
+    def __init__(self, endpoint, identity, *, device):
+        self.endpoint = endpoint
         self.buffers, self.views = {}, []
         self.closed = False
         self.device = device
         self.runtime = None
-        self._conn = socket.create_connection(tuple(discovery["endpoint"]), timeout=30)
+        self._conn = socket.create_connection(parse_endpoint(endpoint), timeout=30)
         self._wire = self._conn.makefile("rwb", buffering=0)
         try:
-            _send(self._wire, dict(op="attach", token=discovery["token"], identity=identity))
+            _send(self._wire, dict(op="attach", identity=identity))
             response = _receive(self._wire)
             if "error" in response:
                 raise ValueError(response["error"])
@@ -258,8 +215,9 @@ class SharedPoolClient:
                 self.manifest.get("schema") != SCHEMA
                 or self.manifest.get("identity") != identity
                 or self.manifest.get("backend") != "memfabric_bm"
+                or not self.manifest.get("generation")
             ):
-                _send(self._wire, dict(op="release"))
+                _send(self._wire, dict(op="release", generation=self.manifest.get("generation")))
                 _receive(self._wire)
                 raise ValueError("Incompatible shared Engram manifest")
         except BaseException:
@@ -278,7 +236,7 @@ class SharedPoolClient:
         if self.runtime is None:
             settings = self.manifest["memfabric"]
             self.runtime = MemfabricRuntime.acquire(
-                self.root, settings["store_url"], settings["world_size"], self.device, owner=False
+                self.manifest["generation"], settings["store_url"], settings["world_size"], self.device, owner=False
             )
         if key not in self.buffers:
             try:
@@ -313,7 +271,7 @@ class SharedPoolClient:
         if self.runtime is not None:
             self.runtime.close()
             self.runtime = None
-        _send(self._wire, dict(op="release"))
+        _send(self._wire, dict(op="release", generation=self.manifest["generation"]))
         if _receive(self._wire) != {"released": True}:
             raise RuntimeError("Shared Engram release was not acknowledged")
         self._wire.close()

@@ -6,7 +6,7 @@ the tables into MemFabric BM host DRAM. Consumers join the BM group and use
 the existing NPU gather/dequantization kernel; only selected BF16 results are
 materialized in HBM. This does not remove model collectives or KV transfer.
 
-The default remains unchanged. Without `engram_shared_host_dir`, existing
+The default remains unchanged. Without `shared_engram`, existing
 HBM and host-offload paths retain their normal behavior.
 
 ## Requirements
@@ -22,20 +22,11 @@ HBM and host-offload paths retain their normal behavior.
   establish that the packaging fix is included.
 - An immutable, identical checkpoint on every instance. Supported tables use
   INT8 codes of width256 and group32 scales; the owner converts scales to FP32.
-- A private shared-filesystem directory accessible under the same UID by the
-  owner and all consumers, plus a trusted network for the owner control socket.
-- Enough owner-node DRAM for the complete table. Codes and scales are separate
-  mappings, each rounded to 1GiB. No full-table HBM allocation is required.
-
-The identity check hashes checkpoint configuration and index metadata, not all
-weight payloads. Pin an immutable model revision independently. Generation
-files contain control credentials: do not publish them, include them in bug reports,
-or expose the directory to other users. Control traffic is authenticated but
-not encrypted; it carries no table rows.
+- A trusted network reachable by the owner and consumers. Control connections
+  do not authenticate peers or encrypt traffic; no network isolation is implied.
 
 ## Start and attach
 
-Choose a new, nonexistent generation directory on the private shared mount.
 Shared host Engram requires Model Runner V2.
 
 Start the owner in a supervised process, using an address reachable from every
@@ -43,13 +34,12 @@ consumer:
 
 ```bash
 python -m vllm_ascend.shared_engram \
-  --model /models/immutable-checkpoint \
-  --pool-dir /shared/private/engram-generation-001 \
-  --device 0 --listen-host OWNER_ADDRESS
+  --backend a3 --model /models/immutable-checkpoint \
+  --endpoint OWNER_ADDRESS:29500 --device 0
 ```
 
 Wait for `POOL_READY`. The owner must remain alive independently of all model
-servers. The BM store uses an available port on `--listen-host` by default;
+servers. The BM store uses an available port on the endpoint host by default;
 use `--store-url tcp://OWNER_ADDRESS:PORT` when an explicit port is needed.
 `--max-consumers 64` reserves room for the owner plus 64 worker processes,
 enough for three DP4/TP4 prefills and one DP8/TP2 decoder. Two Engram layers in
@@ -68,7 +58,7 @@ Add these options to each server's otherwise unchanged launch:
 
 ```bash
 --engram-config '{"cpu_offload":true,"dp_shared_memory":true}' \
---additional-config '{"engram_shared_host_dir":"/shared/private/engram-generation-001"}'
+--additional-config '{"shared_engram":{"backend":"a3","endpoint":"OWNER_ADDRESS:29500"}}'
 ```
 
 Merge this key into any existing additional configuration; do not replace
@@ -93,15 +83,18 @@ Unexpected consumer disconnection conservatively retains an orphaned lease.
 Do not force-stop the owner while another consumer may still access its table.
 For orphan recovery, stop and verify termination of **all** consumers of that
 generation, then terminate the owner and create a fresh generation. Never reuse
-stale capability files. Automatic orphan reclamation and transparent owner
+stale generation metadata. Automatic orphan reclamation and transparent owner
 failover are not implemented. Active-graph owner-failure behavior still needs
 hardware validation before production use.
 
-To fall back, restart consumers without `engram_shared_host_dir`. Budget for
+To fall back, restart consumers without `shared_engram`. Budget for
 the original per-instance table replicas before doing so. Preserve the owner
 until all shared consumers are gone.
 
 ## Current MemFabric validation
+
+The full-model numbers below used the earlier shared-directory discovery path;
+they are not endpoint-bootstrap measurements.
 
 CPU protocol and storage tests use fake BM allocation and real control sockets.
 They cover publication bounds, zero-consumer allocation requests, metadata-only
@@ -147,17 +140,17 @@ and arbitrary BM teardown/reinitialization remain unvalidated.
 
 The component benchmark can be reproduced with the following two commands in
 separate terminals on a supported, correctly packaged A3 environment. Choose a
-fresh private shared root, wait for `POOL_READY`, then start consumers:
+local benchmark root, wait for `POOL_READY`, then start consumers:
 
 ```bash
 python benchmarks/benchmark_shared_engram.py owner \
-    --root /shared/private/engram-bm-smoke --host OWNER_ADDRESS --device 0
+    --root /tmp/engram-bm-smoke --endpoint OWNER_ADDRESS:29500 --device 0
 python benchmarks/benchmark_shared_engram.py consumer \
-    --root /shared/private/engram-bm-smoke --device 1 --tag consumer-1
+    --root /tmp/engram-bm-smoke-consumer --endpoint OWNER_ADDRESS:29500 --device 1 --tag consumer-1
 ```
 
 Repeat the consumer command with distinct tags to exercise fresh processes.
-Stop all consumers before creating `/shared/private/engram-bm-smoke/stop` to
+Stop all consumers before creating `/tmp/engram-bm-smoke/stop` to
 shut down this benchmark owner. This uses small warm tables; its HBM/GVA lookup
 timings are not full-model throughput or DRAM bandwidth-ceiling measurements.
 The real model owner remains `python -m vllm_ascend.shared_engram` above.

@@ -14,7 +14,7 @@ from safetensors import safe_open
 
 # Initialize the normal operator registry before Engram's DeviceOperator import.
 import vllm_ascend.ops  # noqa: F401
-from vllm_ascend.models.deepseek_v41.engram.shared_pool import SharedPoolOwner, checkpoint_identity
+from vllm_ascend.models.deepseek_v41.engram.shared_pool import SharedPoolOwner, checkpoint_identity, parse_endpoint
 
 
 def load_tables(owner, model, stop):
@@ -56,30 +56,28 @@ def load_tables(owner, model, stop):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", required=True)
-    parser.add_argument("--pool-dir", required=True)
+    parser.add_argument("--backend", required=True, choices=("a3",))
+    parser.add_argument("--endpoint", required=True, help="Reachable owner control host:port")
     parser.add_argument("--device", type=int, default=0)
-    parser.add_argument("--store-url", help="MemFabric BM store URL; default: an available port on listen-host")
+    parser.add_argument("--store-url", help="MemFabric BM store URL; default: an available port on endpoint host")
     parser.add_argument("--max-consumers", type=int, default=64, help="Maximum simultaneous consumer workers")
-    parser.add_argument("--listen-host", default="127.0.0.1", help="Reachable owner address for cross-node consumers")
-    parser.add_argument("--port", type=int, default=0)
     args = parser.parse_args()
+    parse_endpoint(args.endpoint)
     torch.npu.set_device(args.device)
     stop = threading.Event()
     for sig in (signal.SIGINT, signal.SIGTERM):
         signal.signal(sig, lambda *_: stop.set())
     owner = SharedPoolOwner(
-        args.pool_dir,
+        args.endpoint,
         checkpoint_identity(args.model),
         device=f"npu:{args.device}",
-        host=args.listen_host,
-        port=args.port,
         store_url=args.store_url,
         world_size=args.max_consumers + 1,
     )
     try:
         load_tables(owner, args.model, stop)
         owner.ready()
-        print(json.dumps(dict(stage="POOL_READY", root=args.pool_dir, identity=owner.manifest["identity"])), flush=True)
+        print(json.dumps(dict(stage="POOL_READY", endpoint=args.endpoint, generation=owner.generation)), flush=True)
         stop.wait()
     finally:
         # Do not free memory while consumers still hold mappings. SIGKILL is
