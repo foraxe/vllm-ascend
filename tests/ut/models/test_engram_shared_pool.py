@@ -433,6 +433,83 @@ def test_model_construction_rolls_back_first_layer_when_second_attach_fails(pool
     assert owner.closed
 
 
+def test_merged_model_initializes_rotation_and_registers_replay():
+    path = Path(__file__).resolve().parents[3] / "vllm_ascend/models/deepseek_v41/model.py"
+    model = next(
+        n for n in ast.parse(path.read_text()).body if isinstance(n, ast.ClassDef) and n.name == "DeepseekV41Model"
+    )
+    init = next(n for n in model.body if isinstance(n, ast.FunctionDef) and n.name == "__init__")
+    block = next(
+        n
+        for n in init.body
+        if isinstance(n, ast.With)
+        and isinstance(n.items[0].context_expr, ast.Call)
+        and isinstance(n.items[0].context_expr.func, ast.Name)
+        and n.items[0].context_expr.func.id == "ExitStack"
+    )
+    tree = ast.fix_missing_locations(ast.Module(body=[block], type_ignores=[]))
+    swa = object()
+    attn = types.SimpleNamespace(dsa_attn=types.SimpleNamespace(swa_cache_layer=swa))
+    layer = types.SimpleNamespace(engram=types.SimpleNamespace(embed_tokens=None), self_attn=attn)
+    model_obj = types.SimpleNamespace(
+        engram_layout=types.SimpleNamespace(primes=[[[32]]]),
+        engram_weight_root="unused",
+        engram_root="unused",
+        engram_dp_shared_memory=False,
+        layers=[layer],
+        has_engram=True,
+        device="cpu",
+        end_layer=1,
+    )
+    model_obj.register_buffer = lambda name, value, **kwargs: setattr(model_obj, name, value)
+    config = types.SimpleNamespace(
+        engram_layer_ids=[0], engram_num_embeddings=[32], engram_head_dim=256, hidden_size=64
+    )
+    context = {}
+    vc = types.SimpleNamespace(
+        load_config=types.SimpleNamespace(load_format="real"),
+        quant_config=object(),
+        scheduler_config=types.SimpleNamespace(max_num_batched_tokens=64),
+        compilation_config=types.SimpleNamespace(max_cudagraph_capture_size=32, static_forward_context=context),
+    )
+    rotation = torch.stack([torch.eye(32), -torch.eye(32)])
+    replay = object()
+
+    class Embedding:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def bind_checkpoint(self, *args):
+            pass
+
+    ns = dict(
+        ExitStack=ExitStack,
+        self=model_obj,
+        config=config,
+        vllm_config=vc,
+        shared_pool_endpoint=None,
+        shared_pool_identity=None,
+        cpu_offload=True,
+        torch=torch,
+        AscendParallelEngramEmbedding=Embedding,
+        preflight_engram_checkpoint=lambda *args: None,
+        engram_storage_dtype=lambda *args: torch.int8,
+        get_current_hardware_profile=lambda: types.SimpleNamespace(supports=lambda _: False),
+        HardwareCapability=types.SimpleNamespace(ENGRAM_MXFP8=object()),
+        get_ascend_config=lambda: types.SimpleNamespace(multistream_engram_overlap=False),
+        get_rotation_path=lambda _: "rotation",
+        load_engram_rotation_block=lambda *args: rotation,
+        create_engram_hash_state=lambda *args: "hash",
+        make_decoder_replay=lambda *args: replay,
+        prefix="model",
+        rollback_shared_engram=lambda fn: fn(),
+    )
+    exec(compile(tree, str(path), "exec"), ns)
+    torch.testing.assert_close(model_obj.engram_rotation, rotation)
+    assert model_obj.engram_hash == "hash" and model_obj.decoder_replay_layers is replay
+    assert context == {"model.decoder_replay": replay}
+
+
 def test_shutdown_retry_after_model_deletion_releases_tcp_lease(pool_module, owner):
     path = Path(__file__).resolve().parents[3] / "vllm_ascend/worker/v2/model_runner.py"
     module = ast.parse(path.read_text())
