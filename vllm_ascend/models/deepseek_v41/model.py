@@ -97,6 +97,7 @@ from .engram.embedding import (
 )
 from .engram.layer import AscendEngram
 from .engram.parallel import gather_engram_hashes, resolve_dp_shared_memory
+from .engram.shared_pool import rollback_shared_engram
 from .indexer import DeepseekV41Indexer
 
 
@@ -1085,7 +1086,7 @@ class DeepseekV41Model(nn.Module, EagleModelMixin):
                         shared_pool_key=f"layers.{layer_id}.engram.embed" if shared_pool_endpoint else None,
                     )
                     if shared_pool_endpoint:
-                        rollback.callback(embed.close_host_offload)
+                        rollback.callback(rollback_shared_engram, embed.close_host_offload)
                     embed.bind_checkpoint(self.engram_weight_root, f"layers.{layer_id}.engram.embed.weight")
                     self.layers[layer_id].engram.embed_tokens = embed
             self.engram_hash = None
@@ -1680,24 +1681,30 @@ class AscendDeepseekV41LLMForCausalLM(nn.Module, DeepseekV41MixtureOfExperts, Su
         self.requires_uncompiled_fallback = DeviceOperator.get_dsv41_packed_cache_ops() is not None
 
         self.model = self.model_cls(vllm_config=vllm_config, prefix=maybe_prefix(prefix, "model"))
-        if get_pp_group().is_last_rank:
-            self.lm_head = ParallelLMHead(
-                config.vocab_size,
-                config.hidden_size,
-                quant_config=quant_config,
-                prefix=maybe_prefix(prefix, "lm_head"),
-            )
-        else:
-            self.lm_head = PPMissingLayer()
-        self.logits_processor = LogitsProcessor(config.vocab_size)
-        self.make_empty_intermediate_tensors = self.model.make_empty_intermediate_tensors
-        # Set MoE hyperparameters
-        self.num_moe_layers = self.config.num_hidden_layers
-        self.set_moe_parameters()
-        from vllm_ascend.ascend_forward_context import MoECommType
-        from vllm_ascend.ops.fused_moe.moe_comm_method import get_moe_comm_method
+        with ExitStack() as rollback:
+            for module in self.model.modules():
+                if getattr(module, "_shared_pool_client", None) is not None:
+                    rollback.callback(rollback_shared_engram, module.close_host_offload)
+            if get_pp_group().is_last_rank:
+                self.lm_head = ParallelLMHead(
+                    config.vocab_size,
+                    config.hidden_size,
+                    quant_config=quant_config,
+                    prefix=maybe_prefix(prefix, "lm_head"),
+                )
+            else:
+                self.lm_head = PPMissingLayer()
+            self.logits_processor = LogitsProcessor(config.vocab_size)
+            self.make_empty_intermediate_tensors = self.model.make_empty_intermediate_tensors
+            # Set MoE hyperparameters
+            self.num_moe_layers = self.config.num_hidden_layers
+            self.set_moe_parameters()
+            from vllm_ascend.ascend_forward_context import MoECommType
+            from vllm_ascend.ops.fused_moe.moe_comm_method import get_moe_comm_method
 
-        self.moe_comm_methods = {kind: get_moe_comm_method(kind) for kind in MoECommType}
+            self.moe_comm_methods = {kind: get_moe_comm_method(kind) for kind in MoECommType}
+
+            rollback.pop_all()
 
     requires_raw_input_tokens = True
     _DEFERRED_WEIGHT_MARKERS: tuple[str, ...] = ()

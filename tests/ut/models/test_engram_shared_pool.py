@@ -6,6 +6,7 @@ import importlib
 import importlib.util
 import socket
 import sys
+import threading
 import types
 from contextlib import ExitStack
 from pathlib import Path
@@ -95,6 +96,111 @@ def test_new_owner_has_new_generation(pool_module):
         assert other.generation != first
     finally:
         other.close(timeout=1)
+
+
+def test_default_store_never_uses_control_port(pool_module, monkeypatch):
+    endpoint = free_endpoint()
+    control_port = int(endpoint.rsplit(":", 1)[1])
+    real_socket = socket.socket
+
+    class Socket:
+        def __init__(self, *args, **kwargs):
+            self.socket = real_socket(*args, **kwargs)
+
+        def bind(self, address):
+            if address[1] == 0:
+                try:
+                    return self.socket.bind((address[0], control_port))
+                except OSError:
+                    pass
+            return self.socket.bind(address)
+
+        def __getattr__(self, name):
+            return getattr(self.socket, name)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            self.socket.close()
+
+    monkeypatch.setattr(pool_module.socket, "socket", Socket)
+    owner = pool_module.SharedPoolOwner(endpoint, "model-a", device="npu:0")
+    try:
+        assert owner.manifest["memfabric"]["store_url"] != f"tcp://{endpoint}"
+    finally:
+        owner.close(timeout=1)
+
+
+def test_same_store_endpoint_rejected_without_leaking_listener(pool_module):
+    endpoint = free_endpoint()
+    with pytest.raises(ValueError, match="endpoints must differ"):
+        pool_module.SharedPoolOwner(endpoint, "model-a", device="npu:0", store_url=f"tcp://{endpoint}")
+    with socket.socket() as probe:
+        probe.bind(pool_module.parse_endpoint(endpoint))
+
+
+def test_failed_release_ack_wakes_draining_owner(pool_module, owner, monkeypatch):
+    client = pool_module.SharedPoolClient(owner.endpoint, "model-a", device="npu:0")
+    original_send = pool_module._send
+    ack_attempted = threading.Event()
+    completed = threading.Event()
+    notified = threading.Event()
+    waiting = threading.Event()
+    original_wait = owner._condition.wait
+
+    def wait(timeout):
+        waiting.set()
+        result = original_wait(timeout)
+        if result:
+            notified.set()
+        return result
+
+    def send(wire, message):
+        if message == {"released": True}:
+            ack_attempted.set()
+            raise OSError("connection lost while acknowledging release")
+        return original_send(wire, message)
+
+    monkeypatch.setattr(pool_module, "_send", send)
+    monkeypatch.setattr(owner._condition, "wait", wait)
+    drain = threading.Thread(target=lambda: (owner.close(timeout=2), completed.set()))
+    drain.start()
+    assert waiting.wait(1)
+    pool_module._send(client._wire, {"op": "release", "generation": client.manifest["generation"]})
+    assert ack_attempted.wait(1)
+    assert notified.wait(1), "owner was not notified when release acknowledgement failed"
+    assert completed.wait(2)
+    drain.join()
+    client._wire.close()
+    client._conn.close()
+
+
+def test_blocked_release_ack_does_not_hold_owner_lock(pool_module, owner, monkeypatch):
+    client = pool_module.SharedPoolClient(owner.endpoint, "model-a", device="npu:0")
+    original_send = pool_module._send
+    ack_started = threading.Event()
+    unblock_ack = threading.Event()
+
+    def send(wire, message):
+        if message == {"released": True}:
+            ack_started.set()
+            assert unblock_ack.wait(3)
+        return original_send(wire, message)
+
+    monkeypatch.setattr(pool_module, "_send", send)
+    pool_module._send(client._wire, {"op": "release", "generation": client.manifest["generation"]})
+    assert ack_started.wait(1)
+    completed = threading.Event()
+    drain = threading.Thread(target=lambda: (owner.close(timeout=1), completed.set()))
+    drain.start()
+    try:
+        assert completed.wait(1.5), "blocked acknowledgement held the owner lock"
+    finally:
+        unblock_ack.set()
+        drain.join(timeout=2)
+        client._wire.close()
+        client._conn.close()
 
 
 def test_stale_generation_release_does_not_retire_lease(pool_module, owner):
@@ -318,6 +424,7 @@ def test_model_construction_rolls_back_first_layer_when_second_attach_fails(pool
         engram_storage_dtype=lambda *args: torch.int8,
         get_current_hardware_profile=lambda: types.SimpleNamespace(supports=lambda _: False),
         HardwareCapability=types.SimpleNamespace(ENGRAM_MXFP8=object()),
+        rollback_shared_engram=pool_module.rollback_shared_engram,
     )
     with pytest.raises(RuntimeError, match="second attach failed"):
         exec(compile(code, str(path), "exec"), ns)
@@ -357,7 +464,60 @@ def test_shutdown_retry_after_model_deletion_releases_tcp_lease(pool_module, own
     assert owner.closed
 
 
-def test_embedding_constructor_failure_after_mapping_releases_lease(pool_module, owner):
+@pytest.mark.parametrize("cleanup_fails", [False, True])
+def test_outer_model_init_failure_releases_attached_engram(pool_module, owner, cleanup_fails):
+    path = Path(__file__).resolve().parents[3] / "vllm_ascend/models/deepseek_v41/model.py"
+    module = ast.parse(path.read_text())
+    cls = next(n for n in module.body if isinstance(n, ast.ClassDef) and n.name == "AscendDeepseekV41LLMForCausalLM")
+    init = next(n for n in cls.body if isinstance(n, ast.FunctionDef) and n.name == "__init__")
+    init.args.kwonlyargs[0].annotation = None
+    runner_class = ast.ClassDef(
+        name="Model", bases=[ast.Name(id="Base", ctx=ast.Load())], keywords=[], body=[init], decorator_list=[]
+    )
+    tree = ast.fix_missing_locations(ast.Module(body=[runner_class], type_ignores=[]))
+    client = pool_module.SharedPoolClient(owner.endpoint, "model-a", device="npu:0")
+
+    def close():
+        if cleanup_fails:
+            raise RuntimeError("cleanup failed")
+        client.close()
+
+    embedding = types.SimpleNamespace(_shared_pool_client=client, close_host_offload=close)
+    inner = types.SimpleNamespace(modules=lambda: [embedding])
+
+    def fail_head(*args, **kwargs):
+        raise RuntimeError("head failed")
+
+    ns = dict(
+        Base=object,
+        normalize_deepseek_v41_config=lambda config: config,
+        DeviceOperator=types.SimpleNamespace(get_dsv41_packed_cache_ops=lambda: None),
+        maybe_prefix=lambda *args: "model",
+        get_pp_group=lambda: types.SimpleNamespace(is_last_rank=True),
+        ParallelLMHead=fail_head,
+        ExitStack=ExitStack,
+        rollback_shared_engram=pool_module.rollback_shared_engram,
+    )
+    exec(compile(tree, str(path), "exec"), ns)
+    ns["Model"].model_cls = staticmethod(lambda **kwargs: inner)
+    config = types.SimpleNamespace(vocab_size=1, hidden_size=1)
+    vc = types.SimpleNamespace(model_config=types.SimpleNamespace(hf_config=config), quant_config=None)
+    try:
+        with pytest.raises(RuntimeError, match="head failed"):
+            ns["Model"](vllm_config=vc)
+        if cleanup_fails:
+            assert pool_module._failed_startup_cleanups[-1] is close
+            with pytest.raises(TimeoutError):
+                owner.close()
+            pool_module._failed_startup_cleanups.clear()
+        else:
+            assert client.closed
+    finally:
+        client.close()
+
+
+@pytest.mark.parametrize("cleanup_fails", [False, True])
+def test_embedding_constructor_failure_after_mapping_releases_lease(pool_module, owner, cleanup_fails):
     path = Path(__file__).resolve().parents[3] / "vllm_ascend/models/deepseek_v41/engram/embedding.py"
     module = ast.parse(path.read_text())
     cls = next(n for n in module.body if isinstance(n, ast.ClassDef) and n.name == "AscendParallelEngramEmbedding")
@@ -365,7 +525,15 @@ def test_embedding_constructor_failure_after_mapping_releases_lease(pool_module,
     cleanup_block = next(n for n in init.body if isinstance(n, ast.Try))
     tree = ast.fix_missing_locations(ast.Module(body=[cleanup_block], type_ignores=[]))
     client = pool_module.SharedPoolClient(owner.endpoint, "model-a", device="npu:0")
-    embedding = types.SimpleNamespace(_shared_pool_client=client, _weight_loader=None, vocab_start_idx=0)
+
+    def close():
+        if cleanup_fails:
+            raise RuntimeError("cleanup failed")
+        client.close()
+
+    embedding = types.SimpleNamespace(
+        _shared_pool_client=types.SimpleNamespace(close=close), _weight_loader=None, vocab_start_idx=0
+    )
 
     def fail_attributes(*args):
         raise RuntimeError("parameter setup failed")
@@ -377,10 +545,18 @@ def test_embedding_constructor_failure_after_mapping_releases_lease(pool_module,
         nn=torch.nn,
         set_weight_attrs=fail_attributes,
         cpu_offload=True,
+        rollback_shared_engram=pool_module.rollback_shared_engram,
     )
     with pytest.raises(RuntimeError, match="parameter setup failed"):
         exec(compile(tree, str(path), "exec"), ns)
-    assert client.closed and embedding._shared_pool_client is None
+    if cleanup_fails:
+        assert pool_module._failed_startup_cleanups[-1] is close
+        with pytest.raises(TimeoutError):
+            owner.close()
+        pool_module._failed_startup_cleanups.clear()
+        client.close()
+    else:
+        assert client.closed and embedding._shared_pool_client is None
     owner.close(timeout=1)
 
 

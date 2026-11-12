@@ -46,6 +46,7 @@ from .parallel import (
     get_engram_dp_group,
     get_engram_dp_size,
 )
+from .shared_pool import rollback_shared_engram
 
 if TYPE_CHECKING:
     from .shared_host import HostTableSlice
@@ -150,8 +151,8 @@ class AscendParallelEngramEmbedding(ParallelEngramEmbedding):
 
         except BaseException:
             if self._shared_pool_client is not None:
-                self._shared_pool_client.close()
-                self._shared_pool_client = None
+                if rollback_shared_engram(self._shared_pool_client.close):
+                    self._shared_pool_client = None
             raise
 
     def _get_shard_info(self) -> tuple[int, int]:
@@ -192,7 +193,7 @@ class AscendParallelEngramEmbedding(ParallelEngramEmbedding):
                 )
                 return codes.tensor, scales.tensor
             except BaseException:
-                client.close()
+                rollback_shared_engram(client.close)
                 raise
         if not self.cpu_offload:
             return (

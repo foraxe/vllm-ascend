@@ -3,10 +3,12 @@
 
 import hashlib
 import json
+import logging
 import socket
 import threading
 import time
 import uuid
+from collections.abc import Callable
 from pathlib import Path
 
 import torch
@@ -16,6 +18,18 @@ from .shared_host import MappedHostBuffer, MappingCleanupError, MemfabricRuntime
 SCHEMA = 2
 DTYPES = {"int8": torch.int8, "float32": torch.float32}
 MAX_CONTROL_BYTES = 1 << 20
+# Keep failed startup rollbacks alive until process exit; EOF is not a safe release.
+_failed_startup_cleanups: list[Callable[[], None]] = []
+
+
+def rollback_shared_engram(close: Callable[[], None]) -> bool:
+    try:
+        close()
+    except BaseException:
+        _failed_startup_cleanups.append(close)
+        logging.getLogger(__name__).exception("Shared Engram startup cleanup failed; retaining mapping")
+        return False
+    return True
 
 
 def _close_all(items):
@@ -75,18 +89,24 @@ class SharedPoolOwner:
         self.generation = uuid.uuid4().hex
         self.device = device
         self.runtime = None
-        if store_url is None:
-            with socket.socket() as reservation:
-                reservation.bind((host, 0))
-                store_url = f"tcp://{host}:{reservation.getsockname()[1]}"
         self.buffers = {}
         self.closed = False
         self._condition = threading.Condition()
         self._leases = set()
         self._listener = socket.socket()
-        self._listener.bind((host, port))
-        self._listener.listen(128)
-        self._listener.settimeout(0.5)
+        try:
+            self._listener.bind((host, port))
+            self._listener.listen(128)
+            self._listener.settimeout(0.5)
+            if store_url is None:
+                with socket.socket() as reservation:
+                    reservation.bind((host, 0))
+                    store_url = f"tcp://{host}:{reservation.getsockname()[1]}"
+            elif store_url == f"tcp://{endpoint}":
+                raise ValueError("MemFabric store and owner control endpoints must differ")
+        except BaseException:
+            self._listener.close()
+            raise
         self.manifest = dict(
             schema=SCHEMA,
             identity=identity,
@@ -137,8 +157,8 @@ class SharedPoolOwner:
                     with self._condition:
                         self._leases.remove(conn)
                         acquired = False
-                        _send(wire, dict(released=True))
                         self._condition.notify_all()
+                    _send(wire, dict(released=True))
         except (OSError, ValueError):
             if acquired:
                 # EOF is not proof that a device mapping was safely released.

@@ -129,6 +129,18 @@ def test_destroy_retry_does_not_repeat_successful_leave(storage, runtime):
     assert buffer.closed and not runtime.objects
 
 
+def test_process_session_reuses_only_matching_owner_generation(storage, monkeypatch):
+    device = SimpleNamespace(type="npu", index=0)
+    monkeypatch.setattr(storage.torch, "device", lambda _: device)
+    active = SimpleNamespace(spec=("generation-a", "tcp://store:1", 65, device, False), references=1)
+    monkeypatch.setattr(storage.MemfabricRuntime, "_active", active)
+    reused = storage.MemfabricRuntime.acquire("generation-a", "tcp://store:1", 65, "npu:0", owner=False)
+    assert reused is active and active.references == 2
+    with pytest.raises(RuntimeError, match="only one MemFabric Engram generation"):
+        storage.MemfabricRuntime.acquire("generation-b", "tcp://store:1", 65, "npu:0", owner=False)
+    assert active.references == 2
+
+
 def test_failed_mapping_rollback_retains_handle_until_retry(storage, runtime):
     create = runtime.bm.create2
 

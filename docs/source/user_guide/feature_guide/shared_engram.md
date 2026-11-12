@@ -41,6 +41,9 @@ python -m vllm_ascend.shared_engram \
 Wait for `POOL_READY`. The owner must remain alive independently of all model
 servers. The BM store uses an available port on the endpoint host by default;
 use `--store-url tcp://OWNER_ADDRESS:PORT` when an explicit port is needed.
+The owner control endpoint and BM store endpoint must use distinct ports and
+both must be reachable by consumers. Use a concrete address rather than a
+wildcard as the advertised endpoint.
 `--max-consumers 64` reserves room for the owner plus 64 worker processes,
 enough for three DP4/TP4 prefills and one DP8/TP2 decoder. Two Engram layers in
 one worker share a process-wide BM session and use separate BM objects.
