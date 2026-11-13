@@ -3,14 +3,19 @@ vllm_ascend/ops/triton/dcp/dcp_warmup.py
   s_808287fb18d6f5::t_4feac34eed2c34 239-241
   s_808287fb18d6f5::t_43e62ad6af3108 253
   s_56a3851a612437::t_37107dc5ec311d 10,12,19,25-28,48,209-221,223,238
+  s_808287fb18d6f5::t_c149b19fd1a3a1 10,12,19,25-28,48,209-221,223,238-253
 tests/ut/ops/test_dcp_a2a_combine.py
   s_808287fb18d6f5::t_f67f8711612a33 70-71,74-80,103,105,109-146
+  s_808287fb18d6f5::t_e0930aa49d2af5 70-71,74-80,103,105,109-146
 vllm_ascend/ops/triton/dcp/dcp_a2a.py
   s_808287fb18d6f5::t_41d5b8904a083b 11,18-21,26-51,496-528
+  s_808287fb18d6f5::t_b21168148b12df 11,18-21,26-51,496-528
 vllm_ascend/ops/triton/dcp/dcp_a2a_rank_tiled.py
   s_808287fb18d6f5::t_296b37cc399a86 44-119
+  s_808287fb18d6f5::t_4c51eb619de55e 44-119
 vllm_ascend/ops/triton/docs/fused_dcp_lse_combine.md
   s_808287fb18d6f5::t_3a9870517a6f12 51-56
+  s_808287fb18d6f5::t_606a4c90490a41 51-56
 ---
 {
   "schema_version": "authorship/3.0.0",

@@ -1,0 +1,17 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c482cd501353532a7cc0d72ce9b165b6cb4755a2",
+  "prompts": {},
+  "sessions": {
+    "s_808287fb18d6f5": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "e754b7c9-f459-4ad0-9196-7d19c4b9f766",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

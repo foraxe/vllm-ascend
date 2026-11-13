@@ -1,0 +1,25 @@
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_dcp_a2a.py
+  s_808287fb18d6f5::t_038161922ba161 8,540-559,562-586,587-601,602-607,609-612,614-639
+tests/ut/ops/test_dcp_a2a_combine.py
+  s_808287fb18d6f5::t_a63c29f34cd6b7 7,38-39,43-47,49,52-54,55-67,70-90,93
+vllm_ascend/ops/triton/dcp/dcp_a2a.py
+  s_808287fb18d6f5::t_e39ae7f6837358 16,426,428,429,431,434,436,438-441,443,445-450,453-457
+vllm_ascend/ops/triton/dcp/dcp_a2a_rank_tiled.py
+  s_808287fb18d6f5::t_ee0ee4afa429a5 1-5,7-16,19-32,34-35,38,40-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "5851234d0b17db069e16de7e30b83877e5d60342",
+  "prompts": {},
+  "sessions": {
+    "s_808287fb18d6f5": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "e754b7c9-f459-4ad0-9196-7d19c4b9f766",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}
