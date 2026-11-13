@@ -1,0 +1,19 @@
+tests/ut/ops/test_dcp_a2a_combine.py
+  s_808287fb18d6f5::t_d1118b79f6db1e 213,216
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "bff0d547b553ab1985a91733ce4ff530a7eaeeb6",
+  "prompts": {},
+  "sessions": {
+    "s_808287fb18d6f5": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "e754b7c9-f459-4ad0-9196-7d19c4b9f766",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}
