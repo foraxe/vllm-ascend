@@ -1,0 +1,64 @@
+tests/ut/models/test_engram_local_vmm_lifecycle.py
+  s_d6485b3d09302c::t_2a29dc00621a69 73
+  s_d6485b3d09302c::t_d80e07949a3563 1-72,74-75
+tests/ut/worker/test_model_runner_v2.py
+  s_d6485b3d09302c::t_6caa9a2bbbcf54 1972-1976,1982-1985
+  s_d6485b3d09302c::t_454d682af8b352 1932-1971
+  s_d6485b3d09302c::t_2a6c61db8b6727 1977-1981
+vllm_ascend/models/deepseek_v41/model.py
+  s_d6485b3d09302c::t_d5d83cd8844f67 94,1077-1078,1845-1851,1853
+  s_d6485b3d09302c::t_a30ce33fc46a3a 99,104-114,1089-1102,1852
+tests/ut/models/test_engram_vmm_model_rollback.py
+  s_d6485b3d09302c::t_029d494919efbf 35-37
+  s_d6485b3d09302c::t_0ce72e17eca8a1 107-108
+  s_d6485b3d09302c::t_66d392525f5352 15-18,81-105,110-130
+  s_d6485b3d09302c::t_c5c77fe31d1879 32-34
+  s_d6485b3d09302c::t_c8fbbd58e31e22 1-14,19-31,38-42,44-80
+  s_d6485b3d09302c::t_1b38cc5a631f9f 106,109
+  s_d6485b3d09302c::t_cd03e32230d563 43
+vllm_ascend/models/deepseek_v41/engram/embedding.py
+  s_d6485b3d09302c::t_d5d83cd8844f67 35,52-55,69,76-78,134-135,164-172,208-211,256-257,290-295,334-339,353-354,360-361
+vllm_ascend/models/deepseek_v41/engram/local_shared_vmm.py
+  s_d6485b3d09302c::t_eb64238b83fbaa 1-114
+docs/source/user_guide/feature_guide/engram_local_vmm.md
+  s_d6485b3d09302c::t_bad0d88522f05b 1-29
+tests/ut/distributed/kv_transfer/kv_p2p/test_mooncake_receiver_drain.py
+  s_d6485b3d09302c::t_13654d149f419e 1-193
+  s_d6485b3d09302c::t_fe582f014294da 194-210
+vllm_ascend/distributed/kv_transfer/kv_p2p/mooncake_hybrid_connector.py
+  s_d6485b3d09302c::t_43c014f8302818 221-223,226-227,279,324-325,371-388,396,398-399,523-527,601-618,636,641-676,1273-1307,1841-1844
+vllm_ascend/worker/v2/model_runner.py
+  s_d6485b3d09302c::t_e08ac4a29d9b82 561-569,571-573
+CMakeLists.txt
+  s_d6485b3d09302c::t_bb144a5c25affd 230-255
+csrc/engram_vmm/native.cpp
+  s_d6485b3d09302c::t_6c46a2e4be9de7 1-456
+tests/ut/distributed/kv_transfer/test_mooncake_transfer_engine.py
+  s_d6485b3d09302c::t_04791aa5a82a7a 208-314
+tests/ut/models/test_engram_vmm_cleanup.py
+  s_d6485b3d09302c::t_fde9a4ac27dd9e 1-98
+tests/ut/models/test_engram_vmm_local_publication.py
+  s_d6485b3d09302c::t_48d0ad940c7df8 1-47
+vllm_ascend/ascend_config.py
+  s_d6485b3d09302c::t_9afa0f7f1fa74f 620-621
+vllm_ascend/distributed/kv_transfer/utils/mooncake_transfer_engine.py
+  s_d6485b3d09302c::t_978dc556486672 12-15,17-72,77-78,81-94,97-110,113,117-119,122-125,131-132
+vllm_ascend/models/deepseek_v41/engram/shared_host.py
+  s_d6485b3d09302c::t_dfe96733de6072 1-149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "61020f3827ce2e96648b348d5bd045451521b9b6",
+  "prompts": {},
+  "sessions": {
+    "s_d6485b3d09302c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c4b6-d8aa-7320-9579-f20711e7bf1b",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

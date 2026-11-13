@@ -1,0 +1,108 @@
+CMakeLists.txt
+  s_2c7c0a259eff1f::t_f5e8f8165d92f3 230-241
+csrc/engram_hixl/native.cpp
+  s_2c7c0a259eff1f::t_f9f1a2e0bbc306 1-192
+tests/ut/models/test_engram_memfabric_storage.py
+  s_2c7c0a259eff1f::t_f9f1a2e0bbc306 1-201
+vllm_ascend/models/deepseek_v41/engram/shared_host.py
+  s_2c7c0a259eff1f::t_f9f1a2e0bbc306 1-220
+vllm_ascend/models/deepseek_v41/engram/shared_rdma.py
+  s_2c7c0a259eff1f::t_f9f1a2e0bbc306 1-701
+tests/ut/models/test_engram_shared_rdma.py
+  s_2c7c0a259eff1f::t_2475538499c9b3 1-476
+tests/ut/models/test_engram_aicpu_init.py
+  s_2c7c0a259eff1f::t_89dc6d2ded71e1 1-55
+docs/source/user_guide/feature_guide/qwen_shared_ple.md
+  s_2c7c0a259eff1f::t_0915139d39ffcf 1-23
+tests/ut/models/test_engram_shared_pool.py
+  s_2c7c0a259eff1f::t_f9f1a2e0bbc306 1-285
+vllm_ascend/models/deepseek_v41/engram/shared_pool.py
+  s_2c7c0a259eff1f::t_f9f1a2e0bbc306 1-321
+vllm_ascend/models/deepseek_v41/engram/common.py
+  s_2c7c0a259eff1f::t_f5e8f8165d92f3 11,20-55
+  s_f4ecdc97fbe5c3::t_485fed7cf5b733 56-57
+docs/source/user_guide/feature_guide/index.md
+  s_2c7c0a259eff1f::t_bb3a0943aacf8d 4-5
+tests/ut/models/qwen4_exp/test_ple_bm_embedding.py
+  s_2c7c0a259eff1f::t_eea9484dc8523a 1-98
+tests/ut/models/qwen4_exp/test_ple_bm_layout.py
+  s_2c7c0a259eff1f::t_d10dca21557e12 1-40
+tests/ut/models/qwen4_exp/test_ple_bm_reader.py
+  s_2c7c0a259eff1f::t_4b45072719b610 1-51
+tests/ut/models/qwen4_exp/test_ple_bm_table.py
+  s_2c7c0a259eff1f::t_3a6867b5d72cf9 1-47
+tests/ut/models/qwen4_exp/test_ple_checkpoint.py
+  s_2c7c0a259eff1f::t_ea69121fb5cd7e 1-63
+tests/ut/models/qwen4_exp/test_ple_external_weights.py
+  s_2c7c0a259eff1f::t_803c47f0601d07 1-82
+tests/ut/models/qwen4_exp/test_ple_layout.py
+  s_2c7c0a259eff1f::t_c648b85490654c 1-29
+tests/ut/models/qwen4_exp/test_ple_model_state.py
+  s_2c7c0a259eff1f::t_85dd8cc7c8a164 1-91
+tests/ut/models/qwen4_exp/test_ple_rdma.py
+  s_2c7c0a259eff1f::t_761707cc165e3b 1-63
+tests/ut/models/qwen4_exp/test_ple_rdma_embedding.py
+  s_2c7c0a259eff1f::t_ea7ba4fb08b004 1-70
+tests/ut/test_ascend_config.py
+  s_2c7c0a259eff1f::t_b4d5470390b055 2421-2427
+tests/ut/worker/test_model_runner_v2.py
+  s_2c7c0a259eff1f::t_e0a5730162857d 2350-2400
+vllm_ascend/ascend_config.py
+  s_2c7c0a259eff1f::t_8c5dbf614e566d 686
+vllm_ascend/models/qwen4_exp/model.py
+  s_2c7c0a259eff1f::t_94e485a57425de 38,80,83-88,113-115,118-123
+vllm_ascend/models/qwen4_exp/model_state.py
+  s_2c7c0a259eff1f::t_f24665bf6670bb 40-82
+vllm_ascend/models/qwen4_exp/ple.py
+  s_2c7c0a259eff1f::t_712cfa726ddf27 344-364
+vllm_ascend/models/qwen4_exp/ple_bm_embedding.py
+  s_2c7c0a259eff1f::t_9ef00a8c178175 1-101
+vllm_ascend/models/qwen4_exp/ple_bm_layout.py
+  s_2c7c0a259eff1f::t_916fc6c35099fe 1-38
+vllm_ascend/models/qwen4_exp/ple_bm_reader.py
+  s_2c7c0a259eff1f::t_de8a6571ab2041 1-67
+vllm_ascend/models/qwen4_exp/ple_bm_table.py
+  s_2c7c0a259eff1f::t_9435573c8aee00 1-39
+vllm_ascend/models/qwen4_exp/ple_checkpoint.py
+  s_2c7c0a259eff1f::t_a977a3eb2789ec 1-90
+vllm_ascend/models/qwen4_exp/ple_external_weights.py
+  s_2c7c0a259eff1f::t_eece5477dc968f 1-26
+vllm_ascend/models/qwen4_exp/ple_layout.py
+  s_2c7c0a259eff1f::t_5bae02c3bb8b2a 1-43
+vllm_ascend/models/qwen4_exp/ple_rdma.py
+  s_2c7c0a259eff1f::t_19879cc2e6a436 1-125
+vllm_ascend/models/qwen4_exp/ple_rdma_embedding.py
+  s_2c7c0a259eff1f::t_edcdbcea72b4e2 1-105
+vllm_ascend/ops/triton/qwen4_exp/ple_shared.py
+  s_2c7c0a259eff1f::t_a76bca73f158c6 1-69
+vllm_ascend/shared_ple.py
+  s_2c7c0a259eff1f::t_c60da47cd50799 1-61
+vllm_ascend/shared_ple_rdma.py
+  s_2c7c0a259eff1f::t_fd48f56c92ceb0 1-60
+vllm_ascend/worker/v2/model_runner.py
+  s_2c7c0a259eff1f::t_08385dd83d8abe 552-557,567-580
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e797c87508de73e5dbdb648f9a9d1ec493e3a7be",
+  "prompts": {},
+  "sessions": {
+    "s_2c7c0a259eff1f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1cb69-b458-77a2-a7f7-ef64f39725f8",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    },
+    "s_f4ecdc97fbe5c3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1a0b5-a6d4-72d0-a235-18ac3c6a5232",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

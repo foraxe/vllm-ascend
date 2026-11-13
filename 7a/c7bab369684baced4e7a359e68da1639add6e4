@@ -1,0 +1,34 @@
+vllm_ascend/models/qwen4_exp/ple_external_weights.py
+  s_2c7c0a259eff1f::t_227c6a6d377203 4-7,14-15
+vllm_ascend/ops/triton/engram_lookup.py
+  s_2c7c0a259eff1f::t_407b65293ea214 21-60
+  s_2c7c0a259eff1f::t_cdea22d5b08626 20
+vllm_ascend/models/qwen4_exp/ple_rdma.py
+  s_2c7c0a259eff1f::t_227c6a6d377203 112
+vllm_ascend/models/deepseek_v41/engram/shared_host.py
+  s_2c7c0a259eff1f::t_227c6a6d377203 53-54
+vllm_ascend/models/deepseek_v41/engram/shared_rdma.py
+  s_2c7c0a259eff1f::t_19cd1a0fd42362 30
+vllm_ascend/models/qwen4_exp/ple_rdma_embedding.py
+  s_2c7c0a259eff1f::t_227c6a6d377203 28,38,64-65
+tests/ut/models/qwen4_exp/test_ple_bm_reader.py
+  s_2c7c0a259eff1f::t_9c47dc6be2e9d4 52-67
+vllm_ascend/models/qwen4_exp/ple_bm_reader.py
+  s_2c7c0a259eff1f::t_6c07039593c8be 30-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7ac7bab369684baced4e7a359e68da1639add6e4",
+  "prompts": {},
+  "sessions": {
+    "s_2c7c0a259eff1f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1cb69-b458-77a2-a7f7-ef64f39725f8",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}
