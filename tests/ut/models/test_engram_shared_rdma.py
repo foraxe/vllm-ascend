@@ -226,6 +226,86 @@ def test_owner_retains_unacknowledged_stage(rdma, monkeypatch, abrupt):
         assert deregistered == [handle]
 
 
+def test_a5_preregistered_slots_are_reused_without_live_registration(rdma, monkeypatch):
+    owner = object.__new__(rdma.SharedOwner)
+    owner.metadata = {"tables": {"1": {"row_bytes": 264}}}
+    owner.generation = "generation"
+    owner.sessions, owner.retained, owner.lock = {}, [], threading.Lock()
+    owner.staging_capacity = 8
+    stages = [SimpleNamespace(data_ptr=lambda ptr=ptr: ptr) for ptr in (100, 200)]
+    handles = [object(), object()]
+    owner._free_stages = list(zip(stages, handles))
+    engine = SimpleNamespace(
+        device=0,
+        register=lambda *_: pytest.fail("registered while connected"),
+        deregister=lambda *_: pytest.fail("deregistered while connected"),
+    )
+    owner.engine_for_reader = lambda *_: (engine, "owner:29501")
+    monkeypatch.setattr(rdma, "_configure_socket", lambda wire: None)
+    monkeypatch.setattr(torch, "npu", SimpleNamespace(set_device=lambda device: None), raising=False)
+    threads = []
+
+    def attach(capacity=8):
+        client, server = socket.socketpair()
+        worker = threading.Thread(target=rdma._OwnerConnection, args=(server, ("127.0.0.1", 1), owner))
+        worker.start()
+        threads.append(worker)
+        rdma._send(client, {"op": "attach", "metadata": owner.metadata, "capacity": capacity, "physical_device": 0})
+        return client, rdma._receive(client)
+
+    a, ar = attach()
+    b, br = attach()
+    assert {ar["address"], br["address"]} == {100, 200}
+    full, error = attach()
+    assert "no pre-registered" in error["error"]
+    full.close()
+    rdma._send(a, {"op": "close", "generation": owner.generation})
+    assert rdma._receive(a) == {"closed": True}
+    a.close()
+    threads[0].join(timeout=5)
+    c, cr = attach()
+    assert cr["address"] == ar["address"]
+    for client in (b, c):
+        rdma._send(client, {"op": "close", "generation": owner.generation})
+        assert rdma._receive(client) == {"closed": True}
+        client.close()
+    for worker in threads:
+        worker.join(timeout=5)
+        assert not worker.is_alive()
+    assert len(owner._free_stages) == 2 and not owner.sessions and not owner.retained
+
+
+@pytest.mark.parametrize("capacity,abrupt", [(9, False), (8, True)])
+def test_a5_pool_rejects_oversize_and_quarantines_eof(rdma, monkeypatch, capacity, abrupt):
+    owner = object.__new__(rdma.SharedOwner)
+    owner.metadata = {"tables": {"1": {"row_bytes": 264}}}
+    owner.generation = "generation"
+    owner.sessions, owner.retained, owner.lock = {}, [], threading.Lock()
+    owner.staging_capacity = 8
+    stage, registration = SimpleNamespace(data_ptr=lambda: 100), object()
+    owner._free_stages = [(stage, registration)]
+    engine = SimpleNamespace(device=0, deregister=lambda *_: pytest.fail("must retain registration"))
+    owner.engine_for_reader = lambda *_: (engine, "owner:29501")
+    monkeypatch.setattr(rdma, "_configure_socket", lambda wire: None)
+    monkeypatch.setattr(torch, "npu", SimpleNamespace(set_device=lambda device: None), raising=False)
+    client, server = socket.socketpair()
+    worker = threading.Thread(target=rdma._OwnerConnection, args=(server, ("127.0.0.1", 1), owner))
+    worker.start()
+    rdma._send(client, {"op": "attach", "metadata": owner.metadata, "capacity": capacity, "physical_device": 0})
+    response = rdma._receive(client)
+    if abrupt:
+        assert response["generation"] == owner.generation
+    else:
+        assert "exceeds" in response["error"]
+    client.close()
+    worker.join(timeout=5)
+    assert not worker.is_alive() and not owner.sessions
+    if abrupt:
+        assert owner.retained == [(engine, stage, registration)] and not owner._free_stages
+    else:
+        assert not owner.retained and owner._free_stages == [(stage, registration)]
+
+
 @pytest.mark.parametrize("physical_device", [None, -1, True, "0"])
 def test_owner_rejects_missing_or_invalid_physical_device(rdma, monkeypatch, physical_device):
     owner = object.__new__(rdma.SharedOwner)
@@ -558,6 +638,61 @@ def test_owner_bind_failure_closes_socket_and_engine(rdma, monkeypatch, tmp_path
     with pytest.raises(OSError, match="bind failed"):
         rdma.SharedOwner(str(tmp_path), "127.0.0.1:0", "127.0.0.1:1")
     assert closed == [True] and sockets[0].fileno() == -1
+
+
+def test_a5_slots_register_before_control_listener(rdma, monkeypatch, tmp_path):
+    weight = "layers.1.engram.embed.weight"
+    scale = "layers.1.engram.embed.scale"
+    save_file(
+        {weight: torch.zeros((1, 256), dtype=torch.uint8), scale: torch.zeros((1, 8), dtype=torch.uint8)},
+        tmp_path / "weights.safetensors",
+    )
+    (tmp_path / "index.json").write_text(
+        json.dumps({"weight_map": {weight: "weights.safetensors", scale: "weights.safetensors"}})
+    )
+    monkeypatch.setattr(
+        rdma,
+        "checkpoint_metadata",
+        lambda model: {"index_file": "index.json", "tables": {"1": {"rows": 1, "row_bytes": 264}}},
+    )
+    monkeypatch.setattr(rdma, "_physical_device_id", lambda device: device)
+    events = []
+
+    class Engine:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def register(self, tensor):
+            events.append("register")
+            return object()
+
+        def close(self):
+            events.append("engine-close")
+
+    monkeypatch.setattr(rdma, "HixlEngine", Engine)
+    original_empty = torch.empty
+
+    def cpu_empty(*args, **kwargs):
+        kwargs.pop("pin_memory", None)
+        return original_empty(*args, **kwargs)
+
+    monkeypatch.setattr(torch, "empty", cpu_empty)
+    original_bind = rdma.socketserver.TCPServer.server_bind
+
+    def record_bind(server):
+        events.append("bind")
+        original_bind(server)
+
+    monkeypatch.setattr(rdma.socketserver.TCPServer, "server_bind", record_bind)
+    owner = rdma.SharedOwner(
+        str(tmp_path), "127.0.0.1:0", "127.0.0.1:1", fabric="ub", staging_slots=2, staging_capacity=8
+    )
+    try:
+        assert events == ["register", "register", "bind"]
+        assert len(owner._free_stages) == len(owner._stage_backings) == 2
+    finally:
+        owner.server_close()
+    assert events[-1] == "engine-close"
 
 
 def test_ub_reader_reuses_owner_engine_without_second_npu(rdma, monkeypatch):

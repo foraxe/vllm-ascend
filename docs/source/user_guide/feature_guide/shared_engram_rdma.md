@@ -62,6 +62,14 @@ Wait for `POOL_READY` from this owner process. Enable consumers with `cpu_offloa
 
 For A5, use `--backend a5` for the owner and `"backend": "a5"` for consumers. Select the owner transport explicitly with `--fabric ub` or `--fabric roce` as appropriate.
 
+With `--fabric ub`, the owner pre-registers its reader staging buffers before
+accepting connections. `--staging-slots` sets the maximum number of concurrent
+readers (default 8), and `--staging-capacity` sets the maximum rows per reader
+(default 65536). Set the owner capacity at least as high as the capacity each
+consumer requires; if either limit is exceeded, the attach is rejected. A
+normally closed reader returns its slot for reuse without deregistration. A
+failed or disconnected reader's slot remains retained for external recovery.
+
 Owner `--listen-port` and `--local-comm-res` are mutually exclusive. Consumers may set `listen_port` or `local_comm_res` in `shared_engram`; these options are mutually exclusive and omitted by default. Rebuild the native adapter when updating this code.
 
 `capacity` is a minimum number of selected rows in one lookup, not a token count. The consumer chooses the larger of 65536, configured capacity, and the maximum batch or graph size multiplied by the largest per-TP single-layer head count, then sends that capacity to the owner on attach. The supported limit is 262144 rows; configurations requiring more fail at startup. Two-layer batches may fall back to per-layer lookup. A single-layer lookup exceeding the negotiated capacity fails locally without retiring the reader and is not split automatically. The consumer allocates a bounded packed-row HBM buffer; the owner allocates a pinned stage of the same capacity per connected reader. Other Engram result/exchange buffers remain additional allocations.

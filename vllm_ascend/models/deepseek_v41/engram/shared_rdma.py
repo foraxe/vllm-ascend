@@ -27,6 +27,8 @@ from safetensors import safe_open
 MIN_ROWS = 65536
 MAX_ROWS = 262144
 MAX_CONTROL_BYTES = 65536
+DEFAULT_STAGING_SLOTS = 8
+MAX_STAGING_SLOTS = 4096
 
 # A failed transfer may still access its registered receive buffer.
 _held_readers = set()
@@ -483,6 +485,8 @@ class SharedOwner(socketserver.ThreadingTCPServer):
         listen_port=None,
         local_comm_res=None,
         fabric="roce",
+        staging_slots=DEFAULT_STAGING_SLOTS,
+        staging_capacity=MIN_ROWS,
     ):
         self.metadata = checkpoint_metadata(model)
         self.generation = uuid.uuid4().hex
@@ -503,7 +507,15 @@ class SharedOwner(socketserver.ThreadingTCPServer):
         self.retained = []
         self.lock = threading.Lock()
         self.pending_handlers = 0
+        self._free_stages = [] if fabric == "ub" else None
+        self._stage_backings = []
+        self.staging_capacity = staging_capacity
         try:
+            if self._free_stages is not None:
+                if type(staging_slots) is not int or not 0 < staging_slots <= MAX_STAGING_SLOTS:
+                    raise ValueError("invalid A5 Engram staging slot count")
+                if type(staging_capacity) is not int or not 0 < staging_capacity <= MAX_ROWS:
+                    raise ValueError("invalid A5 Engram staging capacity")
             root = Path(model)
             index = json.loads((root / self.metadata["index_file"]).read_text())["weight_map"]
             for layer, spec in self.metadata["tables"].items():
@@ -517,6 +529,14 @@ class SharedOwner(socketserver.ThreadingTCPServer):
                             packed[row:stop, start:end].copy_(tensor[row:stop].contiguous().view(torch.uint8))
                 self.tables[layer] = packed
                 print(json.dumps(dict(stage="TABLE_LOADED", layer=layer, bytes=packed.numel())), flush=True)
+            if self._free_stages is not None:
+                row_bytes = max(t["row_bytes"] for t in self.metadata["tables"].values())
+                for _ in range(staging_slots):
+                    stage = torch.empty(staging_capacity * row_bytes, dtype=torch.uint8, pin_memory=True)
+                    # Retain even a partially registered allocation on failed initialization.
+                    self._stage_backings.append(stage)
+                    registration = self.engine.register(stage)
+                    self._free_stages.append((stage, registration))
             host, port = endpoint.rsplit(":", 1)
             super().__init__((host, int(port)), _OwnerConnection, bind_and_activate=False)
             self.server_bind()
@@ -608,11 +628,21 @@ class _OwnerConnection(socketserver.BaseRequestHandler):
                 raise ValueError("remote Engram attach requires a physical device ID")
             engine, endpoint = owner.engine_for_reader(self.client_address[0], physical_device)
             torch.npu.set_device(engine.device)
-            row_bytes = max(t["row_bytes"] for t in owner.metadata["tables"].values())
-            stage = torch.empty(capacity * row_bytes, dtype=torch.uint8, pin_memory=True)
-            registration = engine.register(stage)
-            with owner.lock:
-                owner.sessions[session] = stage
+            pooled = getattr(owner, "_free_stages", None) is not None
+            if pooled:
+                with owner.lock:
+                    if capacity > owner.staging_capacity:
+                        raise ValueError("reader capacity exceeds pre-registered staging capacity")
+                    if not owner._free_stages:
+                        raise RuntimeError("no pre-registered Engram staging slots available")
+                    stage, registration = owner._free_stages.pop()
+                    owner.sessions[session] = stage
+            else:
+                row_bytes = max(t["row_bytes"] for t in owner.metadata["tables"].values())
+                stage = torch.empty(capacity * row_bytes, dtype=torch.uint8, pin_memory=True)
+                registration = engine.register(stage)
+                with owner.lock:
+                    owner.sessions[session] = stage
             # A valid lease may stay idle throughout model loading/graph capture.
             wire.settimeout(None)
             _send(
@@ -630,7 +660,8 @@ class _OwnerConnection(socketserver.BaseRequestHandler):
                 if request.get("generation") != owner.generation:
                     raise ValueError("stale Engram generation")
                 if request.get("op") == "close":
-                    engine.deregister(registration)
+                    if not pooled:
+                        engine.deregister(registration)
                     retired = True
                     _send(wire, {"closed": True})
                     break
@@ -647,4 +678,6 @@ class _OwnerConnection(socketserver.BaseRequestHandler):
                 if registration is not None and not retired:
                     # EOF is not proof that a remote RDMA request has retired.
                     owner.retained.append((engine, stage, registration))
+                elif registration is not None and getattr(owner, "_free_stages", None) is not None:
+                    owner._free_stages.append((stage, registration))
             wire.close()

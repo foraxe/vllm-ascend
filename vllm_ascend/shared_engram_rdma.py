@@ -21,6 +21,8 @@ def main():
     options.add_argument("--listen-port", type=int, choices=range(1, 65536), metavar="PORT")
     options.add_argument("--local-comm-res", help="Device communication resources JSON path")
     parser.add_argument("--fabric", choices=("roce", "ub"), default="roce")
+    parser.add_argument("--staging-slots", type=int, default=8, help="Pre-registered A5 reader slots")
+    parser.add_argument("--staging-capacity", type=int, default=65536, help="Maximum rows per A5 reader")
     args = parser.parse_args()
     if args.ready_file and not Path(args.ready_file).parent.is_dir():
         raise FileNotFoundError(f"ready-file parent directory does not exist: {Path(args.ready_file).parent}")
@@ -45,6 +47,8 @@ def main():
         listen_port=args.listen_port,
         local_comm_res=args.local_comm_res,
         fabric=args.fabric,
+        staging_slots=args.staging_slots,
+        staging_capacity=args.staging_capacity,
     )
     service = threading.Thread(target=owner.serve_forever, name="engram-owner")
     started = False
