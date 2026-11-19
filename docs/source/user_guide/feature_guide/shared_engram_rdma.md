@@ -63,7 +63,7 @@ Wait for `POOL_READY` from this owner process. Enable consumers with `cpu_offloa
 For A5, use `--backend a5` for the owner and `"backend": "a5"` for consumers. Select the owner transport explicitly with `--fabric ub` or `--fabric roce` as appropriate.
 
 With `--fabric ub`, the owner pre-registers its reader staging buffers before
-accepting connections. `--staging-slots` sets the maximum number of concurrent
+accepting reader control requests. `--staging-slots` sets the maximum number of concurrent
 readers (default 8), and `--staging-capacity` sets the maximum rows per reader
 (default 65536). Set the owner capacity at least as high as the capacity each
 consumer requires; if either limit is exceeded, the attach is rejected. A
