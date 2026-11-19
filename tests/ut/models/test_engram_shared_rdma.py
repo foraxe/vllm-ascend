@@ -244,6 +244,16 @@ def test_a5_preregistered_slots_are_reused_without_live_registration(rdma, monke
     monkeypatch.setattr(rdma, "_configure_socket", lambda wire: None)
     monkeypatch.setattr(torch, "npu", SimpleNamespace(set_device=lambda device: None), raising=False)
     threads = []
+    sent, finish = threading.Event(), threading.Event()
+    original_send = rdma._send
+
+    def hold_after_first_close_ack(wire, value):
+        original_send(wire, value)
+        if value == {"closed": True} and not sent.is_set():
+            sent.set()
+            assert finish.wait(5)
+
+    monkeypatch.setattr(rdma, "_send", hold_after_first_close_ack)
 
     def attach(capacity=8):
         client, server = socket.socketpair()
@@ -262,9 +272,10 @@ def test_a5_preregistered_slots_are_reused_without_live_registration(rdma, monke
     rdma._send(a, {"op": "close", "generation": owner.generation})
     assert rdma._receive(a) == {"closed": True}
     a.close()
-    threads[0].join(timeout=5)
+    assert sent.wait(5) and threads[0].is_alive()
     c, cr = attach()
     assert cr["address"] == ar["address"]
+    finish.set()
     for client in (b, c):
         rdma._send(client, {"op": "close", "generation": owner.generation})
         assert rdma._receive(client) == {"closed": True}

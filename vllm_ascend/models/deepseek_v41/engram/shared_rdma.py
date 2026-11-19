@@ -663,6 +663,13 @@ class _OwnerConnection(socketserver.BaseRequestHandler):
                     if not pooled:
                         engine.deregister(registration)
                     retired = True
+                    if pooled:
+                        # A successful acknowledgement must imply that the slot
+                        # can immediately be acquired by a new reader.
+                        with owner.lock:
+                            owner.sessions.pop(session, None)
+                            owner._free_stages.append((stage, registration))
+                            registration = None
                     _send(wire, {"closed": True})
                     break
                 plan, count = _lookup_plan(request, owner.tables, capacity)
@@ -678,6 +685,4 @@ class _OwnerConnection(socketserver.BaseRequestHandler):
                 if registration is not None and not retired:
                     # EOF is not proof that a remote RDMA request has retired.
                     owner.retained.append((engine, stage, registration))
-                elif registration is not None and getattr(owner, "_free_stages", None) is not None:
-                    owner._free_stages.append((stage, registration))
             wire.close()
