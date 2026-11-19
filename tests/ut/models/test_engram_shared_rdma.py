@@ -317,6 +317,59 @@ def test_a5_pool_rejects_oversize_and_quarantines_eof(rdma, monkeypatch, capacit
         assert not owner.retained and owner._free_stages == [(stage, registration)]
 
 
+def test_a5_owner_waits_for_close_handler_before_deregistering_pool(rdma, monkeypatch):
+    owner = object.__new__(rdma.SharedOwner)
+    owner.metadata = {"tables": {"1": {"row_bytes": 264}}}
+    owner.generation = "generation"
+    owner.sessions, owner.retained, owner.lock, owner.pending_handlers = {}, [], threading.Lock(), 0
+    owner.staging_capacity = 8
+    stage, registration = SimpleNamespace(data_ptr=lambda: 100), object()
+    owner._free_stages = [(stage, registration)]
+    closed, ack_sent, release = [], threading.Event(), threading.Event()
+    owner.engine = SimpleNamespace(device=0, close=lambda: closed.append(True))
+    owner.alternate_engine = None
+    owner.engine_for_reader = lambda *_: (owner.engine, "owner:29501")
+    monkeypatch.setattr(rdma, "_configure_socket", lambda wire: None)
+    monkeypatch.setattr(torch, "npu", SimpleNamespace(set_device=lambda device: None), raising=False)
+    original_send = rdma._send
+
+    def hold_after_close_ack(wire, value):
+        original_send(wire, value)
+        if value == {"closed": True}:
+            ack_sent.set()
+            assert release.wait(5)
+
+    monkeypatch.setattr(rdma, "_send", hold_after_close_ack)
+    rdma.socketserver.ThreadingTCPServer.__init__(owner, ("127.0.0.1", 0), rdma._OwnerConnection)
+    service = threading.Thread(target=owner.serve_forever)
+    service.start()
+    client = socket.create_connection(owner.server_address, timeout=5)
+    try:
+        rdma._send(client, {"op": "attach", "metadata": owner.metadata, "capacity": 8, "physical_device": 0})
+        assert rdma._receive(client)["generation"] == owner.generation
+        rdma._send(client, {"op": "close", "generation": owner.generation})
+        assert rdma._receive(client) == {"closed": True}
+        assert ack_sent.wait(5)
+        owner.shutdown()
+        service.join(timeout=5)
+        assert not service.is_alive() and not owner.sessions and owner._free_stages == [(stage, registration)]
+        assert owner.pending_handlers == 1
+        with pytest.raises(RuntimeError, match="retained Engram leases"):
+            owner.server_close()
+        assert not closed
+        release.set()
+        owner._threads.join()
+        assert owner.pending_handlers == 0
+        owner.server_close()
+        assert closed == [True]
+    finally:
+        release.set()
+        client.close()
+        if service.is_alive():
+            owner.shutdown()
+            service.join(timeout=5)
+
+
 @pytest.mark.parametrize("physical_device", [None, -1, True, "0"])
 def test_owner_rejects_missing_or_invalid_physical_device(rdma, monkeypatch, physical_device):
     owner = object.__new__(rdma.SharedOwner)
@@ -704,6 +757,59 @@ def test_a5_slots_register_before_control_listener(rdma, monkeypatch, tmp_path):
     finally:
         owner.server_close()
     assert events[-1] == "engine-close"
+
+
+def test_a5_failed_pool_registration_retains_backings_if_close_fails(rdma, monkeypatch, tmp_path):
+    weight = "layers.1.engram.embed.weight"
+    scale = "layers.1.engram.embed.scale"
+    save_file(
+        {weight: torch.zeros((1, 256), dtype=torch.uint8), scale: torch.zeros((1, 8), dtype=torch.uint8)},
+        tmp_path / "weights.safetensors",
+    )
+    (tmp_path / "index.json").write_text(
+        json.dumps({"weight_map": {weight: "weights.safetensors", scale: "weights.safetensors"}})
+    )
+    monkeypatch.setattr(
+        rdma,
+        "checkpoint_metadata",
+        lambda model: {"index_file": "index.json", "tables": {"1": {"rows": 1, "row_bytes": 264}}},
+    )
+    monkeypatch.setattr(rdma, "_physical_device_id", lambda device: device)
+    events = []
+
+    class Engine:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def register(self, tensor):
+            events.append("register")
+            if events.count("register") == 2:
+                raise RuntimeError("injected registration failure")
+            return object()
+
+        def close(self):
+            events.append("close")
+            raise RuntimeError("injected close failure")
+
+    monkeypatch.setattr(rdma, "HixlEngine", Engine)
+    original_empty = torch.empty
+
+    def cpu_empty(*args, **kwargs):
+        kwargs.pop("pin_memory", None)
+        return original_empty(*args, **kwargs)
+
+    monkeypatch.setattr(torch, "empty", cpu_empty)
+    try:
+        with pytest.raises(RuntimeError, match="injected registration failure"):
+            rdma.SharedOwner(
+                str(tmp_path), "127.0.0.1:0", "127.0.0.1:1", fabric="ub", staging_slots=2, staging_capacity=8
+            )
+        assert events == ["register", "register", "close"]
+        assert len(rdma._held_owners) == 1
+        held = next(iter(rdma._held_owners))
+        assert len(held._stage_backings) == 2 and len(held._free_stages) == 1
+    finally:
+        rdma._held_owners.clear()
 
 
 def test_ub_reader_reuses_owner_engine_without_second_npu(rdma, monkeypatch):
