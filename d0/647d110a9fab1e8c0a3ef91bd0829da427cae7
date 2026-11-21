@@ -1,0 +1,25 @@
+vllm_ascend/ops/fused_moe/prepare_finalize.py
+  s_c1fd1bcfc6f09b::t_e3d4ca92c7b46d 72-75
+  s_c1fd1bcfc6f09b::t_ce46080179f757 657-658
+  s_c1fd1bcfc6f09b::t_9221842b2151b1 588-626
+  s_c1fd1bcfc6f09b::t_3d7361c877d12d 76-95
+  s_c1fd1bcfc6f09b::t_1477c4ba4fa38e 587
+  s_c1fd1bcfc6f09b::t_426a124477d192 158
+  s_c1fd1bcfc6f09b::t_1738fd5bf7dc22 724-734
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d0647d110a9fab1e8c0a3ef91bd0829da427cae7",
+  "prompts": {},
+  "sessions": {
+    "s_c1fd1bcfc6f09b": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "55a01dbf-d46d-48f8-99ca-48ca41627699",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}
