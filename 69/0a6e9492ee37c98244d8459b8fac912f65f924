@@ -1,0 +1,81 @@
+vllm_ascend/attention/dsa_v41.py
+  s_1ca3cc9a501d06::t_1d28698acde2d9 483-486
+  s_1ca3cc9a501d06::t_40d2e9a44e1edc 17,33-37,375-412,431,434-440,442-444,449-468,470-472,474-480,487-493,495,499-501,505-512,514-515,518-520,525,530,539,546-553,595-602,634-640,657,669,671-678,683-684,688-689,693-696,707-709,786-792
+vllm_ascend/envs.py
+  s_1ca3cc9a501d06::t_9625809f498c40 75
+  s_1ca3cc9a501d06::t_a1b03dfbc8a819 76-110
+vllm_ascend/quantization/methods/w4a8/w4a8.py
+  s_1ca3cc9a501d06::t_51a4ab66ab6a01 70,75,98-100,152
+  s_1ca3cc9a501d06::t_ffa1651b5c080a 25,28,36,53-69,71-74,76-97,101-151,153-154,387,393-401,462-475,589-616,671-723
+tests/ut/quantization/methods/w4a8/test_w4a8.py
+  s_1ca3cc9a501d06::t_1897e34e18e18d 19
+  s_1ca3cc9a501d06::t_6db8405bc6fb08 1,8,12-14,20-21,23,260-276,338-559
+tests/e2e/nightly/single_node/ops/singlecard_ops/test_moe_token_unpermute_padding.py
+  s_1ca3cc9a501d06::t_e1f19e50d6ff44 1-76
+tests/ut/attention/test_dsa_v41.py
+  s_1ca3cc9a501d06::t_fdfc17de848465 292-450
+tests/ut/attention/test_dsa_v41_cp.py
+  s_1ca3cc9a501d06::t_e2b0f3c114793a 1262-1449
+tests/ut/device/test_device_op.py
+  s_1ca3cc9a501d06::t_fe6dc05ff4ae9f 337-393
+tests/ut/distributed/ascend_store/test_kv_transfer_load_failure.py
+  s_1ca3cc9a501d06::t_5891e7000b0467 1-207
+tests/ut/models/test_deepseek_v41_indexer_weights.py
+  s_1ca3cc9a501d06::t_dc87a52ccd27f5 1-110
+tests/ut/ops/test_prepare_finalize.py
+  s_1ca3cc9a501d06::t_dd5ae9d86b5ee1 2,10,244-249,347-555
+tests/ut/ops/test_prepare_prequant.py
+  s_1ca3cc9a501d06::t_45d2f9abf30853 1-703
+tests/ut/ops/test_token_dispatcher.py
+  s_1ca3cc9a501d06::t_4af04c85521246 26,43-44,1152-1267
+tests/ut/spec_decode/test_dspark_prefill_skip.py
+  s_1ca3cc9a501d06::t_efbb4a51ca3f84 1-432
+tests/ut/spec_decode/test_eagle_proposer.py
+  s_1ca3cc9a501d06::t_2c22620f33cf05 1608-1611
+tests/ut/worker/test_startup_warmup.py
+  s_1ca3cc9a501d06::t_64457524f67b94 1-274
+vllm_ascend/attention/context_parallel/dsa_v41_cp.py
+  s_1ca3cc9a501d06::t_941fac29463800 5,7,27-36,346,351-358,365-374,377-461
+vllm_ascend/device/device_op.py
+  s_1ca3cc9a501d06::t_28dbd425ef4652 44-51,1022-1023,1025
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/kv_transfer.py
+  s_1ca3cc9a501d06::t_36562a33eaa057 1204-1209,1215-1216
+vllm_ascend/models/deepseek_v41/indexer.py
+  s_1ca3cc9a501d06::t_1f26f4542cb8d6 177-191,197-204,286-289
+vllm_ascend/ops/fused_moe/moe_comm_method.py
+  s_1ca3cc9a501d06::t_f52b7379c7c2e7 119,126
+vllm_ascend/ops/fused_moe/prepare_finalize.py
+  s_1ca3cc9a501d06::t_1ea8f413e3a73a 17,30,35-36,39-45,49-121,150,163-165,222,346,477,486-493,495,497-499,502-506,508-516,555-556,562-571,576-601,610-615,619-622,632-636,646-650,657-759
+vllm_ascend/ops/fused_moe/prepare_prequant.py
+  s_1ca3cc9a501d06::t_56c8d6831a1027 1-201
+vllm_ascend/ops/fused_moe/routed_experts.py
+  s_1ca3cc9a501d06::t_f9705d3c1725d8 51,733-737
+vllm_ascend/ops/fused_moe/token_dispatcher.py
+  s_1ca3cc9a501d06::t_c6dc4777baeb8e 52,354-391,400,438-440,464-467,502-504,508
+vllm_ascend/worker/startup_warmup.py
+  s_1ca3cc9a501d06::t_76cad7a2fc3436 1-232
+vllm_ascend/worker/v1/model_runner.py
+  s_1ca3cc9a501d06::t_6fdc175166f0bb 866-867,875-879,881-882,886-889,893,896-897,900-902,4268,4384-4395
+vllm_ascend/worker/v1/spec_decode/dspark_proposer.py
+  s_1ca3cc9a501d06::t_355142e283775f 10,14,110-159
+vllm_ascend/worker/v1/spec_decode/llm_base_proposer.py
+  s_1ca3cc9a501d06::t_1447e7499d9257 11,17,1011-1123,1149-1151,1177-1191,1234-1239,1521-1522,1604-1620
+vllm_ascend/worker/worker.py
+  s_1ca3cc9a501d06::t_a2ffc67dfc8cc4 1090-1094,1109-1143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "690a6e9492ee37c98244d8459b8fac912f65f924",
+  "prompts": {},
+  "sessions": {
+    "s_1ca3cc9a501d06": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "eae451be-048d-4614-8afa-c18fb31ff5ac",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}
