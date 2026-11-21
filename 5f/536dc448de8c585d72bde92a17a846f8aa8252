@@ -1,0 +1,21 @@
+tests/ut/ops/test_prepare_finalize.py
+  s_1ca3cc9a501d06::t_49f874ef3101b8 2,10,244-249,347-555
+vllm_ascend/ops/fused_moe/prepare_finalize.py
+  s_1ca3cc9a501d06::t_d3d67c9a737e4d 17,34,41-81,495-497,537-600
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "5f536dc448de8c585d72bde92a17a846f8aa8252",
+  "prompts": {},
+  "sessions": {
+    "s_1ca3cc9a501d06": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "eae451be-048d-4614-8afa-c18fb31ff5ac",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}
