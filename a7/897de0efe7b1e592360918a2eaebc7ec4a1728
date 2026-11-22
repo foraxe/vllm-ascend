@@ -1,0 +1,33 @@
+tests/ut/ops/test_pcp_replicated.py
+  s_1ca3cc9a501d06::t_8ac6549b80e267 1-179
+tests/ut/ops/test_token_dispatcher.py
+  s_1ca3cc9a501d06::t_154fb4730f2862 1149-1411
+vllm_ascend/ascend_forward_context.py
+  s_1ca3cc9a501d06::t_700e107f61f4ca 2,30-31,315-327,344-347,350-359,473-483
+vllm_ascend/ops/fused_moe/moe_mlp.py
+  s_1ca3cc9a501d06::t_f6d0cc299f6366 18-19,22,30-94,139-143,145,150-154
+vllm_ascend/ops/fused_moe/prepare_finalize.py
+  s_1ca3cc9a501d06::t_953ccd086c2cc1 17,30,41-222,240,637-645,658-663,669-709,739-740,796-804,806-816,821
+vllm_ascend/ops/fused_moe/routed_experts.py
+  s_1ca3cc9a501d06::t_684c6cabdd91e4 17,56-76,420,460-461,594-736,974-1022
+vllm_ascend/ops/fused_moe/token_dispatcher.py
+  s_1ca3cc9a501d06::t_b537cde43bfc55 23,31,70-117,411-413,474-480,482-499,501,507,518-553,569-573,609-636,638-639,671-672,683-684,765,768,790-796,803-806,811-813,817,828-829
+vllm_ascend/platform.py
+  s_1ca3cc9a501d06::t_35f723374d3d26 740-751
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a7897de0efe7b1e592360918a2eaebc7ec4a1728",
+  "prompts": {},
+  "sessions": {
+    "s_1ca3cc9a501d06": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "eae451be-048d-4614-8afa-c18fb31ff5ac",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}
