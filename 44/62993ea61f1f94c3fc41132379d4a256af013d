@@ -1,0 +1,22 @@
+vllm_ascend/attention/dsa_v41.py
+  s_480f842b4b95f0::t_d3927902244e31 805
+  s_480f842b4b95f0::t_6611aab681b974 725
+  s_480f842b4b95f0::t_c44a4f146ea90e 770-804,806-808,822
+  s_480f842b4b95f0::t_2c5e8e1663e344 1582
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "4462993ea61f1f94c3fc41132379d4a256af013d",
+  "prompts": {},
+  "sessions": {
+    "s_480f842b4b95f0": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "7f96548e-9703-4091-aab9-2de7749a032e",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": null
+    }
+  }
+}
