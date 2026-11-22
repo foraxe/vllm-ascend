@@ -1,0 +1,21 @@
+vllm_ascend/models/deepseek_v41/hc_triton.py
+  s_1ca3cc9a501d06::t_c62a5a929dd319 1-614
+vllm_ascend/models/deepseek_v41/model.py
+  s_1ca3cc9a501d06::t_3241653433d680 9,871-887,901-906
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0cbf3638405f28d408cd86b9014083b2724960cf",
+  "prompts": {},
+  "sessions": {
+    "s_1ca3cc9a501d06": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "eae451be-048d-4614-8afa-c18fb31ff5ac",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}
