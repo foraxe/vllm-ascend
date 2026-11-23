@@ -16,6 +16,7 @@ vllm_ascend/models/qwen4_exp/ple_embedding.py
   s_2c7c0a259eff1f::t_2a455b46621f69 271-272,274
   s_2c7c0a259eff1f::t_ccd9ec964b2114 157-159
   s_2c7c0a259eff1f::t_b2ef7e9af96f7f 482
+  s_963f283fefd5c9::t_bded4d4ae8e3c8 239-241,494-504,506,510-512
 tests/ut/models/test_ple_shared_reuse.py
   s_2c7c0a259eff1f::t_7c82fc6c05c11c 1-13,15-34,40-88,90-121,123-124,126-132,134-139,150-151,153
   s_2c7c0a259eff1f::t_5cde1a49268ad3 307-310,312-315,316-381,383-386,388-400
@@ -29,6 +30,7 @@ tests/ut/models/test_ple_shared_reuse.py
   s_2c7c0a259eff1f::t_1998e504363b1c 125,267-268,270-272
   s_2c7c0a259eff1f::t_2a455b46621f69 122,133,140-149,152,154
   s_2c7c0a259eff1f::t_037df8bbfbcd72 14
+  s_963f283fefd5c9::t_bded4d4ae8e3c8 163,261,281,285,455-470
 docs/source/user_guide/feature_guide/index.md
   s_2c7c0a259eff1f::t_fbe2f8a0a26b07 6-7
 vllm_ascend/models/deepseek_v41/engram/shared_host.py
@@ -51,6 +53,7 @@ vllm_ascend/models/qwen4_exp/model.py
 vllm_ascend/models/qwen4_exp/model_state.py
   s_2c7c0a259eff1f::t_a0a48fa6de1b6f 53,62-65,74,97-98,100,104-107
   s_2c7c0a259eff1f::t_cd403c5c1cbf42 75-76
+  s_963f283fefd5c9::t_bded4d4ae8e3c8 51,66-71,79-96
 docs/source/user_guide/feature_guide/qwen_shared_ple.md
   s_2c7c0a259eff1f::t_fbe2f8a0a26b07 1-4,6-25
   s_2c7c0a259eff1f::t_9f2c0022e8d7f8 5
@@ -72,8 +75,11 @@ vllm_ascend/patch/worker/patch_external_weight_filter.py
   s_2c7c0a259eff1f::t_ccd9ec964b2114 25-30,32-37,40-45,53-57
 vllm_ascend/patch/__init__.py
   s_2c7c0a259eff1f::t_2364e6f324e166 1722-1736
+  s_963f283fefd5c9::t_bded4d4ae8e3c8 1737-1739
 tests/ut/models/test_ple_offload.py
   s_2c7c0a259eff1f::t_bb4b845aca8213 66,231
+tests/ut/models/qwen4_exp/test_ple_quant.py
+  s_963f283fefd5c9::t_bded4d4ae8e3c8 320
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -86,6 +92,14 @@ tests/ut/models/test_ple_offload.py
         "tool": "codex",
         "id": "01a1cb69-b458-77a2-a7f7-ef64f39725f8",
         "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    },
+    "s_963f283fefd5c9": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "4f0e41ed-8473-449d-9d40-f2162b1aba7d",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
       },
       "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
     }
