@@ -1,0 +1,20 @@
+image/dev-v0.32.0.1111/Dockerfile_arm64
+  h_a69a7e4ab4fb8d 96
+image/dev-v0.32.0.1111/Dockerfile_arm64-ssd
+  h_a69a7e4ab4fb8d 96
+image/dev-v0.32.0.1111/Dockerfile_x86
+  h_a69a7e4ab4fb8d 99
+image/dev-v0.32.0.1111/Dockerfile_x86-ssd
+  h_a69a7e4ab4fb8d 99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "20ff21f37d53ab8d9c49d1de8420dd9ee86e5bc3",
+  "prompts": {},
+  "humans": {
+    "h_a69a7e4ab4fb8d": {
+      "author": "zhengchao <zhengchao@U-T60N2XX7-1836.local>"
+    }
+  }
+}

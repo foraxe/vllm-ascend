@@ -1,0 +1,16 @@
+image/dev-v0.30.0.1013/Dockerfile_arm64
+  h_a69a7e4ab4fb8d 1
+image/dev-v0.30.0.1013/Dockerfile_x86
+  h_a69a7e4ab4fb8d 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9a181f3be42a565db1a3dbad3150f130fc96af8b",
+  "prompts": {},
+  "humans": {
+    "h_a69a7e4ab4fb8d": {
+      "author": "zhengchao <zhengchao@U-T60N2XX7-1836.local>"
+    }
+  }
+}

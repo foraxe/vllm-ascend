@@ -1,0 +1,19 @@
+image/dev-v0.32.0.1111/pkg/mooncake_kvpool.json
+  s_592121fd2e3bb2::t_3193dd2451caa5 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7538440ffced36ae8d48d204cc256e4c5bda0bb8",
+  "prompts": {},
+  "sessions": {
+    "s_592121fd2e3bb2": {
+      "agent_id": {
+        "tool": "codefuse",
+        "id": "f73b7708-1404-48fe-ac6e-035a15d0d463",
+        "model": "GLM-5.3"
+      },
+      "human_author": "zhengchao <zhengchao@U-T60N2XX7-1836.local>"
+    }
+  }
+}
