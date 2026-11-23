@@ -1,0 +1,23 @@
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/backend/mooncake_backend.py
+  s_1ca3cc9a501d06::t_ae30bf24171f09 852
+  s_1ca3cc9a501d06::t_c1fea03d6a4efc 412-416
+  s_1ca3cc9a501d06::t_5c4de80befd7a3 803-805
+  s_1ca3cc9a501d06::t_f8ea18f05a92a2 406-411
+  s_1ca3cc9a501d06::t_3cbb181cc8c5b2 863-873
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "2ff806c0d39538f1f45c45a9cb4743e59d283541",
+  "prompts": {},
+  "sessions": {
+    "s_1ca3cc9a501d06": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "eae451be-048d-4614-8afa-c18fb31ff5ac",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}
