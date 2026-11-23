@@ -1,0 +1,1166 @@
+vllm_ascend/attention/context_parallel/dsa_v41_cp.py
+  s_480f842b4b95f0::t_4b527a946647df 290-291
+  s_480f842b4b95f0::t_e56ab1fa608190 292
+.devcontainer/310p/devcontainer.json
+  s_480f842b4b95f0::t_5c28a2911178e4 1-63
+.devcontainer/a2/devcontainer.json
+  s_480f842b4b95f0::t_9d5b87e5175eb6 1-64
+.devcontainer/a3/devcontainer.json
+  s_480f842b4b95f0::t_d6184086457808 1-64
+.devcontainer/a5/devcontainer.json
+  s_480f842b4b95f0::t_66002b48f68242 1-66
+.devcontainer/cpu/devcontainer.json
+  s_480f842b4b95f0::t_fdf1918c14d841 1-58
+.github/CODEOWNERS
+  s_480f842b4b95f0::t_d51864c254dfa5 36-47,55,64,106,133,221,245
+.github/PULL_REQUEST_TEMPLATE.md
+  s_480f842b4b95f0::t_b0c2f6d6e0733e 28-41
+.github/actionlint.yaml
+  s_480f842b4b95f0::t_889e2a8505398e 23,27
+.github/agent-review/L1/checklist.md
+  s_480f842b4b95f0::t_1187773d78309a 1-55
+.github/agent-review/L2/ci/checklist.md
+  s_480f842b4b95f0::t_82f5501f2e7777 1-40
+.github/agent-review/L2/model-execution/checklist.md
+  s_480f842b4b95f0::t_9bcce5ebc38120 1-40
+.github/agent-review/L2/patch/checklist.md
+  s_480f842b4b95f0::t_7f8d45784b3aae 1-29
+.github/agent-review/L2/release-note/checklist.md
+  s_480f842b4b95f0::t_b155559060d631 1-39
+.github/agent-review/L2/speculative-decoding/checklist.md
+  s_480f842b4b95f0::t_77a85b1f3ad289 1-119
+.github/agent-review/README.md
+  s_480f842b4b95f0::t_ddb2f3197a6467 1-42
+.github/agent-review/allowlist.txt
+  s_480f842b4b95f0::t_42a578ade0ddbc 1-19
+.github/agent-review/context/architecture.md
+  s_480f842b4b95f0::t_bce5b0cd1eda5c 1-50
+.github/agent-review/domains.yaml
+  s_480f842b4b95f0::t_6a54a77693fe0c 1-53
+.github/agent-review/instructions.md
+  s_480f842b4b95f0::t_fe13f75d18f90c 1-74
+.github/agent-review/prompt_template.md
+  s_480f842b4b95f0::t_40c3c83e21e15b 1-30
+.github/workflows/_e2e_profile_parse.yaml
+  s_480f842b4b95f0::t_f653457912b42c 36
+.github/workflows/_nightly_image_build.yaml
+  s_480f842b4b95f0::t_19a2e398e2c11d 113,341
+.github/workflows/_schedule_ai_review_image_build.yaml
+  s_480f842b4b95f0::t_6655e61e1c1c68 1-61
+.github/workflows/_schedule_image_build.yaml
+  s_480f842b4b95f0::t_c19d038e71c121 276
+.github/workflows/_selected_tests.yaml
+  s_480f842b4b95f0::t_6a844097f20bf7 175-200,429,435-437,442-443,449,452-453,458,465-466,469-474,502
+.github/workflows/ai_review.yml
+  s_480f842b4b95f0::t_9937627be512c4 1-108
+.github/workflows/bot_ci_gate_comment.yaml
+  s_480f842b4b95f0::t_1918680a114291 61
+.github/workflows/bot_issue_manage.yaml
+  s_480f842b4b95f0::t_245e019a4bed9c 12
+.github/workflows/bot_merge_conflict.yaml
+  s_480f842b4b95f0::t_cced453cc20519 18
+.github/workflows/dockerfiles/Dockerfile.ai-review
+  s_480f842b4b95f0::t_6d243e832a4947 1-65
+.github/workflows/dockerfiles/Dockerfile.nightly.310p
+  s_480f842b4b95f0::t_d8d86519e32b24 27
+.github/workflows/dockerfiles/Dockerfile.nightly.a2
+  s_480f842b4b95f0::t_99a59064c319ca 27
+.github/workflows/dockerfiles/Dockerfile.nightly.a3
+  s_480f842b4b95f0::t_8ad729dcfa5f94 27
+.github/workflows/dockerfiles/Dockerfile.nightly.a5
+  s_480f842b4b95f0::t_a4b62571a9eb73 27
+.github/workflows/issue_wait_feedback_command.yml
+  s_480f842b4b95f0::t_b730a8d020eb24 13
+.github/workflows/post_fork_coverage_comment.yaml
+  s_480f842b4b95f0::t_e9f716641d761f 23-29,60,78,83-85,105-110,112-113
+.github/workflows/pr_cancel_command.yml
+  s_480f842b4b95f0::t_1025790cf91f59 37
+.github/workflows/pr_cherry_pick_command.yml
+  s_480f842b4b95f0::t_3bd818eae4f205 37
+.github/workflows/pr_close_job.yaml
+  s_480f842b4b95f0::t_7ebc8170d04172 14,56
+.github/workflows/pr_e2e_command.yml
+  s_480f842b4b95f0::t_671aadec762aeb 37,232
+.github/workflows/pr_nightly_command.yml
+  s_480f842b4b95f0::t_c31b57e23f828c 60,541-542,544-549,551-585,587-595,597-598,601-613,624,627-632,634-720,722,725,727,729-741,745,747,749-758,763-770
+.github/workflows/pr_refresh_ci_gate.yaml
+  s_480f842b4b95f0::t_a36bd586f41d19 81
+.github/workflows/pr_rerun_command.yml
+  s_480f842b4b95f0::t_ea014bd4e46859 37
+.github/workflows/pr_revert_command.yml
+  s_480f842b4b95f0::t_c657a7a6fe310f 37
+.github/workflows/pr_run_command.yml
+  s_480f842b4b95f0::t_36369bfef7dc3a 50
+.github/workflows/pr_supplement_new_tests.yaml
+  s_480f842b4b95f0::t_a637be5858c79f 22
+.github/workflows/pr_test.yaml
+  s_480f842b4b95f0::t_3d83f0376b3e68 840-842
+.github/workflows/recipes-preview-comment.yml
+  s_480f842b4b95f0::t_bb945568eaad0d 42,125
+.github/workflows/schedule_daily_test.yaml
+  s_480f842b4b95f0::t_742229069db8cc 70,341
+.github/workflows/schedule_doc_getting_started_test.yaml
+  s_480f842b4b95f0::t_4b35ae97a26345 64
+.github/workflows/schedule_doc_translate.yaml
+  s_480f842b4b95f0::t_7709bc90aedfa6 35-39,47,51-54,113-116,118,183,197-198
+.github/workflows/schedule_e2e_upstream_test.yaml
+  s_480f842b4b95f0::t_949ee53cb7c53e 37-38,53,86-87,178-183,186,189,191,240-241,329-334,337,340,342,467-472,475,478,480
+.github/workflows/schedule_image_build_and_push.yaml
+  s_480f842b4b95f0::t_11dd4cd694c7a0 58
+.github/workflows/schedule_main2main.yaml
+  s_480f842b4b95f0::t_498e5ba20c2e11 27,29,47,322-326,351-353,360,549-551
+.github/workflows/schedule_nightly_image_build_with_base.yaml
+  s_480f842b4b95f0::t_050036a6e4b01c 82
+.github/workflows/schedule_nightly_test_310p.yaml
+  s_480f842b4b95f0::t_5bbb8433b0bc33 115,147,355
+.github/workflows/schedule_nightly_test_a3.yaml
+  s_480f842b4b95f0::t_fdf64b0a966811 151,634
+.github/workflows/schedule_nightly_test_a3_560t.yaml
+  s_480f842b4b95f0::t_4bf7d5aa9f0378 112,141,431
+.github/workflows/schedule_nightly_test_a5.yaml
+  s_480f842b4b95f0::t_073e1fbf366e19 150
+.github/workflows/schedule_release_code_and_wheel.yml
+  s_480f842b4b95f0::t_5687b3b6fbcb13 43
+.github/workflows/schedule_stale_manage.yaml
+  s_480f842b4b95f0::t_806b85d7c5aa97 31
+.github/workflows/schedule_test_coverage.yaml
+  s_480f842b4b95f0::t_2acf7796f34619 48
+.github/workflows/schedule_weekly_test_310p.yaml
+  s_480f842b4b95f0::t_aa1c0f1abe7a2c 103,135,300
+.github/workflows/schedule_weekly_test_a3.yaml
+  s_480f842b4b95f0::t_dea96b2bc82006 135,427
+.github/workflows/schedule_weekly_test_a3_560t.yaml
+  s_480f842b4b95f0::t_d9c966d274bc28 96,125,336
+.github/workflows/scripts/ai_review.py
+  s_480f842b4b95f0::t_5462a525e2cdd1 1-810
+.github/workflows/scripts/coverage_comment.py
+  s_480f842b4b95f0::t_a8a3e7a1f631c8 25,27,31-37,39-43,45-46,50,54,57-73,75-77,84-167,175-176,181-183,185-195,197,202
+.github/workflows/scripts/estimated_times.yaml
+  s_480f842b4b95f0::t_28286c160e5585 104,119-120,148,162,172,181-182,202-243
+.github/workflows/scripts/po_translate.py
+  s_480f842b4b95f0::t_dba39647813263 32-36,56,130,133,138,145,151,153-154,157,161-162,164,171-183,222-230,239,594,597-605,623-625,627,630,632-635,637-642
+.github/workflows/scripts/test_ai_review.py
+  s_480f842b4b95f0::t_68ec21ecb08170 1-273
+.github/workflows/scripts/test_config.yaml
+  s_480f842b4b95f0::t_fac946692f7353 90
+.github/workflows/slash_command_dispatch.yml
+  s_480f842b4b95f0::t_b1e2223231b708 27
+AGENTS.md
+  s_480f842b4b95f0::t_7972b9cfcb494b 244-249,272-273
+Dockerfile.a5
+  s_480f842b4b95f0::t_c5225c34d5c21b 88,91,93
+Dockerfile.a5.openEuler
+  s_480f842b4b95f0::t_e45bccc3d65ba7 85-92
+csrc/moe/hc_post/op_kernel/hc_post.cpp
+  s_480f842b4b95f0::t_5c59d6ca89e756 21,24
+csrc/moe/hc_post/op_kernel/hc_post_d_split.h
+  s_480f842b4b95f0::t_9b5ba5020e333e 13,26,28,51,54,56,63,71,81-82,103-105,122,125-128,131-134,136-140,142-145,148-149,152-153,156-157,160-161,173-174,187-188,193,197,201-202,206,211,215-216,218,221-222,226,230-231,235,239,244,259,273-293,298-299,314,316,323-324,329-332,334,337-342,349-350,361-362,369,376-377,381-382,385-386,393-394
+csrc/moe/hc_pre/op_host/hc_pre_tiling.cpp
+  s_480f842b4b95f0::t_d37bb9720d7f40 65,209-212,243-244,248-249,266,269-270,288-293,315-316,318-319,323,326,348,352-355,357,416-549,696-697
+csrc/moe/hc_pre/op_host/hc_pre_tiling.h
+  s_480f842b4b95f0::t_2e2def9919ebcf 150
+csrc/moe/hc_pre/op_kernel/hc_pre.cpp
+  s_480f842b4b95f0::t_87096a9f0ae9f7 121-136
+csrc/moe/hc_pre/op_kernel/hc_pre_m_k_split_core.h
+  s_480f842b4b95f0::t_84eda5d229be35 902,1019-1393,1455
+csrc/moe/moe_gating_top_k_hash/op_host/moe_gating_top_k_hash_def.cpp
+  s_480f842b4b95f0::t_ed217517071320 97-111
+csrc/moe/moe_gating_top_k_hash/op_host/moe_gating_top_k_hash_proto.cpp
+  s_480f842b4b95f0::t_4ccc85bf24cf92 56
+csrc/moe/moe_gating_top_k_hash/op_host/moe_gating_top_k_hash_tiling.cpp
+  s_480f842b4b95f0::t_193c215914df92 41,261-265,321-332
+csrc/moe/moe_gating_top_k_hash/op_host/moe_gating_top_k_hash_tiling.h
+  s_480f842b4b95f0::t_9451b6aca6c6e7 55,83
+csrc/moe/moe_gating_top_k_hash/op_host/moe_gating_top_k_hash_tiling_arch35.h
+  s_480f842b4b95f0::t_68bb8551b886f7 48,273-277,306-317
+csrc/moe/moe_gating_top_k_hash/op_kernel/moe_gating_top_k_hash.cpp
+  s_480f842b4b95f0::t_2ad046a4ad60f4 39,68,74,80,86,92,106,112,118,124,130
+csrc/moe/moe_gating_top_k_hash/op_kernel/moe_gating_top_k_hash_eplb_map.h
+  s_480f842b4b95f0::t_2d64e5c3eaccb2 1-65
+csrc/moe/moe_gating_top_k_hash/op_kernel/moe_gating_top_k_hash_regbase.h
+  s_480f842b4b95f0::t_59e78cae767d4a 21,41,87,1490,1498,1504-1505
+csrc/moe/moe_gating_top_k_hash/op_kernel/moe_gating_top_k_hash_without_group.h
+  s_480f842b4b95f0::t_404404ce052e63 18,28,45,322,352,358-359
+csrc/torch_binding.cpp
+  s_480f842b4b95f0::t_f83d971f3903fb 945-946,965-975,1039-1041,1048,3325-3326
+csrc/torch_binding_meta.cpp
+  s_480f842b4b95f0::t_2994ac52c22df1 741-742,760-770
+docs/hooks/nav_titles.py
+  s_480f842b4b95f0::t_234679ed17a9a6 117-118
+docs/qwen38_mooncake_basic_pooling.md
+  s_480f842b4b95f0::t_cb6b33c7205c01 23,85,95-96
+docs/source/community/ai-review.md
+  s_480f842b4b95f0::t_67bec7f2bf9c95 1,3,5,7,9-28,30,32-34,36,38,40-44,46,48,50,52-108
+docs/source/community/index.md
+  s_480f842b4b95f0::t_731056955f2a71 15
+docs/source/community/slash-commands.md
+  s_480f842b4b95f0::t_c484c66610a87e 283-292,310-312,325-327
+docs/source/community/versioning_policy.md
+  s_480f842b4b95f0::t_f6404f992807f3 96-98,100-101,108
+docs/source/developer_guide/Design_Documents/npugraph_ex.md
+  s_480f842b4b95f0::t_ff31eb13eebdc4 9,11
+docs/source/developer_guide/contribution/index.md
+  s_480f842b4b95f0::t_a221ceca401814 65-66,68,97-108
+docs/source/developer_guide/contribution/multi_node_test.md
+  s_480f842b4b95f0::t_247daa98d890cf 426,509
+docs/source/developer_guide/contribution/testing.md
+  s_480f842b4b95f0::t_edf11a0902bfbe 378
+docs/source/getting_started/installation.md
+  s_480f842b4b95f0::t_d322658795e712 32,38-39,59,148,176,323
+docs/source/getting_started/installation/cann_image/atlas-300i-duo.inc.md
+  s_480f842b4b95f0::t_0dad28aafd9040 1
+docs/source/getting_started/installation/existing_cann_environment.inc.md
+  s_480f842b4b95f0::t_405bff953633de 15-17,19,42
+docs/source/getting_started/installation/install_vllm_ascend.inc.md
+  s_480f842b4b95f0::t_b46d35c1c4143b 34,75,82-86,202,206
+docs/source/getting_started/installation/prebuilt_image.inc.md
+  s_480f842b4b95f0::t_f6a53434cd5e1c 19-24,52,94
+docs/source/getting_started/installation/supported_hardware.inc.md
+  s_480f842b4b95f0::t_de813c71137cac 5
+docs/source/getting_started/quick_start.md
+  s_480f842b4b95f0::t_8d3af227d00f6a 18,73,90
+docs/source/getting_started/quick_start/ascend_image/atlas-300i-duo.inc.md
+  s_480f842b4b95f0::t_cf91d589107159 1
+docs/source/getting_started/quick_start/ascend_image/image_download_mirror.inc.md
+  s_480f842b4b95f0::t_0b5f7fd5498cab 7,13,22
+docs/source/getting_started/quick_start/offline/qwen3-0.6b-310p.inc.md
+  s_480f842b4b95f0::t_8a96b59c108630 1,61,70,77
+docs/source/getting_started/quick_start/offline/qwen3-0.6b.inc.md
+  s_480f842b4b95f0::t_790591d7fe1031 39,48,55
+docs/source/getting_started/quick_start/online/qwen3-0.6b-310p.inc.md
+  s_480f842b4b95f0::t_b2bf0c84472547 1,20,69
+docs/source/getting_started/quick_start/online/qwen3-0.6b.inc.md
+  s_480f842b4b95f0::t_9aef5060eab1d7 10,59
+docs/source/locale/zh_CN/LC_MESSAGES/community/slash-commands.po
+  s_480f842b4b95f0::t_e413e9df173cdb 514-522,528,530-532,535-537,540-550
+docs/source/locale/zh_CN/LC_MESSAGES/developer_guide/Design_Documents/ACL_Graph.po
+  s_480f842b4b95f0::t_0e7e9b76e1d8af 319-342
+docs/source/locale/zh_CN/LC_MESSAGES/developer_guide/Design_Documents/context_parallel.po
+  s_480f842b4b95f0::t_3612a2ba0d6847 395-459,473-474,481
+docs/source/locale/zh_CN/LC_MESSAGES/faqs.po
+  s_480f842b4b95f0::t_d02c3a6ad72447 529-589,592-607
+docs/source/locale/zh_CN/LC_MESSAGES/getting_started/installation.po
+  s_480f842b4b95f0::t_4366425a25112c 557-570
+docs/source/locale/zh_CN/LC_MESSAGES/getting_started/installation/supported_hardware.inc.po
+  s_480f842b4b95f0::t_31e2e81390ff98 52-53,55-56
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/DeepSeek-V4-Flash.po
+  s_480f842b4b95f0::t_8ae646dc8e139a 1289-1292,1310-1312,1473,1479,1664-1788
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/DeepSeek-V4-Pro.po
+  s_480f842b4b95f0::t_4084c11e8afdeb 1536-1537,1542-1543,1545-1712
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/DeepSeek-V4.1-Flash.po
+  s_480f842b4b95f0::t_78f96aecf4396e 2057-2096
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/Dots3-Note.po
+  s_480f842b4b95f0::t_2e20729466009b 10-11,25-26,823-838
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/GLM5.2.po
+  s_480f842b4b95f0::t_f72abeb2d42680 2266-2342
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/GLM5.3-Flash.po
+  s_480f842b4b95f0::t_a92b30f6702c1c 1864-2040
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/Gemma4.po
+  s_480f842b4b95f0::t_8728b960871c3b 563-590
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/HY4-Flash.po
+  s_480f842b4b95f0::t_a6c05a85956594 1-369
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/Hy4-preview.po
+  s_480f842b4b95f0::t_cbff84a1cfce9d 348-397
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/Hy4.po
+  s_480f842b4b95f0::t_8122d4a139553f 1-509
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/Kimi-K2.6.po
+  s_480f842b4b95f0::t_2f1434ac8405d7 557-558,562-659
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/Kimi-K3.1-Pro.po
+  s_480f842b4b95f0::t_a6724f176929e9 1748-1777,1782-1791
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/Kimi-K3.po
+  s_480f842b4b95f0::t_9903afb48bd97e 1349-1441,1443-1455
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/MiniMax-M3.1-Flash.po
+  s_480f842b4b95f0::t_8f7f0ed5a24f9c 1947-1982
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/MiniMax-M3.po
+  s_480f842b4b95f0::t_52345552a951eb 2345-2399
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/Qwen3.5-397B-A17B.po
+  s_480f842b4b95f0::t_5604b029307f7f 1375-1477,1481-1482,1487-1490
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/Qwen3.8-27B.po
+  s_480f842b4b95f0::t_af01a6e9e780f8 678-695
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/Qwen3.8-Flash-Next.po
+  s_480f842b4b95f0::t_60315a3ed66ff9 1725-1787
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/SigLIP2.po
+  s_480f842b4b95f0::t_e9e30f3e05c3c9 513-527,530,534-535,538-540
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/Step-5-Preview.po
+  s_480f842b4b95f0::t_40d9a1b3cebb50 509-537
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/configuration/additional_config.po
+  s_480f842b4b95f0::t_aec1116c5b08c3 1183-1264
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/configuration/device_selection.po
+  s_480f842b4b95f0::t_1448b0184ee2a6 1-238
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/configuration/runtime_config.po
+  s_480f842b4b95f0::t_7c9aa9835fc150 382-425
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/deployment_guide/using_mindie_motor.po
+  s_480f842b4b95f0::t_8b514ebb8e842c 27-28,31,38-48
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/deployment_guide/using_volcano_kthena.po
+  s_480f842b4b95f0::t_924b4b3da4f509 25-28,222-225,230,232,235-240
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/feature_guide/Ai_QoS_introduction_en.po
+  s_480f842b4b95f0::t_8e891224b70030 160-205,209-210,213-214,217-219,227-231
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/feature_guide/Fine_grained_TP.po
+  s_480f842b4b95f0::t_f23235134816b7 571-640
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/feature_guide/batch_invariance.po
+  s_480f842b4b95f0::t_7685c60512b8f7 302-308
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/feature_guide/context_parallel.po
+  s_480f842b4b95f0::t_a6e2d40a1e486d 323-369,380,391-392,394,399-422,430-431,435-438
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/feature_guide/encoder_cache_cpu_offload.po
+  s_480f842b4b95f0::t_e1c19b8c8737f4 90,93,95-97,99-109
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/feature_guide/epd_disaggregation.po
+  s_480f842b4b95f0::t_e27ae57932e61f 952-1019
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/feature_guide/expert_parallelism_load_balancer.po
+  s_480f842b4b95f0::t_a6f55ba319e196 599-612
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/feature_guide/graph_mode.po
+  s_480f842b4b95f0::t_2b8e51c6cf2ddf 603,608,611-681
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/feature_guide/hisparse.po
+  s_480f842b4b95f0::t_6592300bfb1f89 122-188
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/feature_guide/kv_cache_cpu_offload.po
+  s_480f842b4b95f0::t_9ae6d312fbe191 193-203
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/feature_guide/kv_cache_pool_ascend_store.po
+  s_480f842b4b95f0::t_0fd3af90b5fe68 114-115,402-403,405-406,756-757,1493-1494,1496-1497,1499-1500,1523-1525,2133-2282
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/feature_guide/kvpp.po
+  s_480f842b4b95f0::t_668a41e6f512ed 510-547
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/feature_guide/large_scale_ep.po
+  s_480f842b4b95f0::t_2f1b94816cf7e3 236-290
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/feature_guide/lmcache_ascend_deployment.po
+  s_480f842b4b95f0::t_ee8e56b74dd5d5 64-65,69-79,82,84
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/feature_guide/mooncake_hybrid_attention.po
+  s_480f842b4b95f0::t_b07e316f5d9bd9 207,214,389-394
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/feature_guide/mooncake_layerwise_adaptation_and_optimization.po
+  s_480f842b4b95f0::t_a9d6502960234f 81,84,247,252,393-405
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/feature_guide/netloader.po
+  s_480f842b4b95f0::t_739a0fc77d9803 186-225,229-231
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/feature_guide/pipeline_parallel.po
+  s_480f842b4b95f0::t_00ed991730fe12 835-861
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/feature_guide/quantization.po
+  s_480f842b4b95f0::t_7a71e0565eea01 197-220
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/feature_guide/rfork.po
+  s_480f842b4b95f0::t_54bb6d701ef03d 1302-1493
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/feature_guide/rl.po
+  s_480f842b4b95f0::t_b8b6311a396966 981-990
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/feature_guide/runtime_guard.po
+  s_480f842b4b95f0::t_5f09fee2ff5679 294-447
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/feature_guide/sequence_parallelism.po
+  s_480f842b4b95f0::t_b9471dd2571be8 185-193
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/feature_guide/shared_engram.po
+  s_480f842b4b95f0::t_93359640659676 22
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/feature_guide/sleep_mode.po
+  s_480f842b4b95f0::t_285e1408e982f6 185-187
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/release_notes.po
+  s_480f842b4b95f0::t_ba0940e135f251 4828-5151
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/support_matrix/feature_matrix.po
+  s_480f842b4b95f0::t_5d6bf92f22f53e 122,128,132-137
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/support_matrix/supported_features.po
+  s_480f842b4b95f0::t_bba3c64ae62c0a 139-165,168,170-171,174-175,177-276
+docs/source/tutorials/models/DeepSeek-V4-Flash.md
+  s_480f842b4b95f0::t_80ecfa8e1295b0 1953-1956,2361,2403,2476
+docs/source/tutorials/models/GLM5.2.md
+  s_480f842b4b95f0::t_20c863c3d1fc5e 1419-1423,1439,1446-1448,1452-1453,1456,1523,1528-1530,1534-1538,1543,1553,1555,1561-1562,1565,1567-1569,1572,1587-1588,1599,1608,1615,1624,1629-1631,1635-1639,1644,1654,1656,1662-1663,1666,1668-1670,1673,1688-1689,1708,1715,1725,1730-1731,1735-1739,1744,1753,1761-1762,1775,1777-1779,1781,1792-1794,1796,1802,1804,1813,1818-1819,1823-1827,1832,1841,1849-1850,1863,1865-1867,1869,1880-1882,1884,1890,1892,1964-1966,1969-1970,1972,1974-1983,4819,4821
+docs/source/tutorials/models/GLM5.3-Flash.md
+  s_480f842b4b95f0::t_dd3c014887fb00 58-77,626,645,654,657,661-664,670,694,722,725,728,744,802-803,806,808,816,819-820,822-823,1489-1493,1503,1572,1755
+docs/source/tutorials/models/Hy4.md
+  s_480f842b4b95f0::t_2e75964e267bce 1-506
+docs/source/tutorials/models/Kimi-K2.6.md
+  s_480f842b4b95f0::t_4738a5bdbe9ce3 376,439,454,517,532,749
+docs/source/tutorials/models/Kimi-K3.1-Pro.md
+  s_480f842b4b95f0::t_bae75b988869da 226,232,341,446,464,783-786,876,1088,1314,1409,1736,2083
+docs/source/tutorials/models/MiniMax-M3.1-Flash.md
+  s_480f842b4b95f0::t_7b8398f81fc4cf 11,1279,1420,2308,2920
+docs/source/tutorials/models/MiniMax-M3.md
+  s_480f842b4b95f0::t_1920b555a7824a 337-345,684,690,945,1479
+docs/source/tutorials/models/PaddleOCR-VL.md
+  s_480f842b4b95f0::t_b60a82fdc55481 3
+docs/source/tutorials/models/Qwen-VL-Dense.md
+  s_480f842b4b95f0::t_f0b7e02cb3949b 5,13,27-28,30,34,107,175,254,286,290,294,298,327,368,427,437
+docs/source/tutorials/models/Qwen3-30B-A3B.md
+  s_480f842b4b95f0::t_da43e66df80eaa 31,33,37,133,169,203,258,263,282-284,286-288
+docs/source/tutorials/models/Qwen3-Dense.md
+  s_480f842b4b95f0::t_f8e82d32cbde6c 9,41,45-47,55,149,186,204,275,418,463
+docs/source/tutorials/models/Qwen3-Reranker.md
+  s_480f842b4b95f0::t_93dbea6fac0e33 3
+docs/source/tutorials/models/Qwen3-VL-235B-A22B-Instruct.md
+  s_480f842b4b95f0::t_1b7e6e30e3773a 3
+docs/source/tutorials/models/Qwen3-VL-30B-A3B-Instruct.md
+  s_480f842b4b95f0::t_fc53f1fa3b4dfa 7,28,34,38,75,117,205,243,279,342,400
+docs/source/tutorials/models/Qwen3.5-27B-Qwen3.6-27B.md
+  s_480f842b4b95f0::t_27974f8b8218cd 15,29-31,35,41,51,53,57,96,125,127,157,192,196,210,230,339,341,349,351,392,414,417-419,423,484,488,503,612,622
+docs/source/tutorials/models/Qwen3.5-397B-A17B.md
+  s_480f842b4b95f0::t_6b5a944ad8ea3d 192,226,575,686,844,956,1156,1198-1199,1241,1352
+docs/source/tutorials/models/Qwen3.5-Dense.md
+  s_480f842b4b95f0::t_6c80621f9fc882 7,9,23-28,32,38,42,157,175,270-275,288,335,339,389
+docs/source/tutorials/models/Qwen3.6-35B-A3B.md
+  s_480f842b4b95f0::t_b12c53a66219ec 29-30,37,155,200,210,240-242,309,311-312,322,333,358-359,361-363,379,478-479
+docs/source/tutorials/models/Qwen3.8-2.4T-A95B.md
+  s_480f842b4b95f0::t_f5aad220a71f6f 11,58,70,75,116,651
+docs/source/tutorials/models/Qwen3.8-27B.md
+  s_480f842b4b95f0::t_6b54ac9fe822fc 37,43,49,162,213,223,284,425,433,472-474,479,593,595
+docs/source/tutorials/models/SigLIP2.md
+  s_480f842b4b95f0::t_edf47adc628667 9,23,25,37,57,105,138,142,526,556,558
+docs/source/tutorials/models/Step-5-Preview.md
+  s_480f842b4b95f0::t_d04bfdc5ab52f6 35
+docs/source/user_guide/configuration/additional_config.md
+  s_480f842b4b95f0::t_93f65a7563ee44 69
+docs/source/user_guide/feature_guide/context_parallel.md
+  s_480f842b4b95f0::t_7cf2221fb0db86 67-73
+docs/source/user_guide/feature_guide/graph_mode.md
+  s_480f842b4b95f0::t_01ef1b94fb5116 126,128
+docs/source/user_guide/feature_guide/hisparse.md
+  s_480f842b4b95f0::t_b0434acdfe69be 36-37,74-86
+docs/source/user_guide/feature_guide/kv_cache_pool_ascend_store.md
+  s_480f842b4b95f0::t_1055ff6f1e24b8 17,30,152,382,390,392,399,497,522,526,529,538,541,616,630,793,955,1063,1071,1089,1101,1198,1380,1401,1405-1406,1424,1565,1598-1600,1605-1606,1696
+docs/source/user_guide/feature_guide/lora.md
+  s_480f842b4b95f0::t_976a395e6b6d1b 40
+docs/source/user_guide/feature_guide/mooncake_hybrid_attention.md
+  s_480f842b4b95f0::t_c2308947b1c79d 143
+docs/source/user_guide/feature_guide/mooncake_layerwise_adaptation_and_optimization.md
+  s_480f842b4b95f0::t_2b717783cc2130 29,113,154
+docs/source/user_guide/feature_guide/pipeline_parallel.md
+  s_480f842b4b95f0::t_b765922851150c 4
+docs/source/user_guide/feature_guide/preempt_offload_connector.md
+  s_480f842b4b95f0::t_28e69ac6294426 22
+docs/source/user_guide/feature_guide/quantization.md
+  s_480f842b4b95f0::t_6a4872a8dbd978 36,117
+docs/source/user_guide/feature_guide/rfork.md
+  s_480f842b4b95f0::t_485af8cd94c23f 92,369
+docs/source/user_guide/feature_guide/sequence_parallelism.md
+  s_480f842b4b95f0::t_7c2902c1b62974 57
+docs/source/user_guide/feature_guide/short_request_first.md
+  s_480f842b4b95f0::t_91807defa6f5e3 3,53
+docs/source/user_guide/feature_guide/sleep_mode.md
+  s_480f842b4b95f0::t_1776c11ec31740 75
+docs/source/user_guide/feature_guide/speculative_decoding.md
+  s_480f842b4b95f0::t_71458fd1002754 772-773
+docs/source/user_guide/feature_guide/structured_output.md
+  s_480f842b4b95f0::t_90d87c92b79328 11-12,15,17
+docs/source/user_guide/feature_guide/ucm_deployment.md
+  s_480f842b4b95f0::t_5d3e02cf76d2c3 73,77,774
+docs/source/user_guide/release_notes.md
+  s_480f842b4b95f0::t_59579b646c45fd 61,167,171,196,289,331,341,360,365-366,389,469,485,537,539,549,558,560,599,764,1056,1065,1096,1303,1357,1449,1569,1649,1789,1827,1829,1876,1914,1939,1975,1983,2027,2098,2135,2260,2262,2307,2322,2331,2351,2358,2484,2505,2516,2521,2547,2595,2617,2642,2724
+docs/source/user_guide/support_matrix/supported_models.md
+  s_480f842b4b95f0::t_dd7888dd33cd34 34,68,72-73,96,100-104,123,144,155,159-166
+mkdocs.yml
+  s_480f842b4b95f0::t_ac8a179ce6d54d 263,385
+recipes/overlays/MiniMaxAI/MiniMax-M3.1-Flash.yaml
+  s_480f842b4b95f0::t_eef325431c34e9 1-666
+recipes/overlays/Qwen/Qwen3.8-Flash-Next.yaml
+  s_480f842b4b95f0::t_f0a821c9b6d861 11-12,17-18,47-56,63-70,75,80-82,85-205,208-210,212,215-217,223,228-234,240-241,243,327-1040,1055-1075,1235-1295
+recipes/overlays/deepseek-ai/DeepSeek-V4.1-Flash.yaml
+  s_480f842b4b95f0::t_58ab956c829d8b 6,21-33,50,58-61,120-155,272-386
+release_notes/README.md
+  s_480f842b4b95f0::t_c070271888be7b 56-84,234-237
+release_notes/fragments/20289.yaml
+  s_480f842b4b95f0::t_d5eb40ce487b37 1-8
+release_notes/fragments/20332.yaml
+  s_480f842b4b95f0::t_b34692de383274 1-6
+release_notes/fragments/21196.yaml
+  s_480f842b4b95f0::t_f31449205eba7f 1-9
+release_notes/fragments/21256.yaml
+  s_480f842b4b95f0::t_3f06157e971881 1-9
+release_notes/fragments/21437.yaml
+  s_480f842b4b95f0::t_e4b8ca12231675 1-6
+release_notes/fragments/21452.yaml
+  s_480f842b4b95f0::t_775da9ea1ed40e 1,4
+release_notes/fragments/21587.yaml
+  s_480f842b4b95f0::t_a50144fcc54bc1 1-8
+release_notes/fragments/21660.yaml
+  s_480f842b4b95f0::t_9ec465058fa2d4 1-6
+release_notes/fragments/21678.yaml
+  s_480f842b4b95f0::t_9edd2140260aa1 1-10
+release_notes/fragments/21727.yaml
+  s_480f842b4b95f0::t_9cc354e339f601 1-6
+release_notes/fragments/21831.yaml
+  s_480f842b4b95f0::t_ea5245c7dd84ab 1-8
+release_notes/fragments/21892.yaml
+  s_480f842b4b95f0::t_2b7d2a333cf590 1-7
+release_notes/fragments/21901.yaml
+  s_480f842b4b95f0::t_6f88bacbe07c4a 1-6
+release_notes/fragments/21907.yaml
+  s_480f842b4b95f0::t_2f48574b057118 1,4,6
+release_notes/fragments/22131.yaml
+  s_480f842b4b95f0::t_30ea4f9c4001c1 1-9
+release_notes/fragments/22167.yaml
+  s_480f842b4b95f0::t_a6da15c0227310 1-4
+release_notes/fragments/22324.yaml
+  s_480f842b4b95f0::t_90520e09a86283 1-4
+release_notes/fragments/22342.yaml
+  s_480f842b4b95f0::t_fff49d7cc0f878 1-6
+release_notes/fragments/22401.yaml
+  s_480f842b4b95f0::t_716d43625b52f4 1-5
+release_notes/fragments/22405.yaml
+  s_480f842b4b95f0::t_a3ed101f7c8df7 1-7
+release_notes/fragments/22482.yaml
+  s_480f842b4b95f0::t_964d08ddae2cc5 1-8
+release_notes/fragments/22592.yaml
+  s_480f842b4b95f0::t_13617f5f167e7c 1-9
+release_notes/fragments/22594.yaml
+  s_480f842b4b95f0::t_5ccb0c75d0d36c 1-4
+release_notes/fragments/22600.yaml
+  s_480f842b4b95f0::t_321ac6b877b4ae 1-8
+release_notes/fragments/22713.yaml
+  s_480f842b4b95f0::t_82a6068242b61f 1-7
+release_notes/fragments/22720.yaml
+  s_480f842b4b95f0::t_fe86628309d56d 1-11
+tests/SIT/cases/E2E_TEST_CASE_GUIDE.md
+  s_480f842b4b95f0::t_f178e5abfd4fd2 740
+tests/SIT/cases/features/kv_pool/DeepSeek-V4-Flash-Memcache-PD-acc.yaml
+  s_480f842b4b95f0::t_cd5b8cebb2f327 153
+tests/SIT/cases/features/pp/Qwen3.8-27B-w8a8-PP2-TP2.yaml
+  s_480f842b4b95f0::t_4560dc6f65ce1f 22
+tests/SIT/cases/models/configs/GLM/GLM-5.2-W8A8C8-layerwise-PD.yaml
+  s_480f842b4b95f0::t_f7c0b884ac30f3 222,273
+tests/SIT/cases/models/configs/Kimi/Kimi-K2.6-W4A8-64k-1k-TPOT50-PD.yaml
+  s_480f842b4b95f0::t_31861e0f04d475 156
+tests/SIT/cases/models/configs/Kimi/Kimi-K3.1-Pro-W4A8-A3-1M-PD.yaml
+  s_480f842b4b95f0::t_a234daada3d906 357-368
+tests/SIT/cases/models/configs/Qwen/Qwen-3.5-397B-A17B-W8A8-PD.yaml
+  s_480f842b4b95f0::t_4925f83662dff8 88,146,205
+tests/SIT/cases/models/configs/Qwen/Qwen3.5-122B-A10B-W8A8-A3_weekly.yaml
+  s_480f842b4b95f0::t_fb340f6fbbb9c0 60
+tests/SIT/cases/models/configs/Qwen/Qwen3.6-35B-A3B-w8a8-A3-accuracy.yaml
+  s_480f842b4b95f0::t_de2eaf0570dd8e 29
+tests/e2e/common/multi_node/run.sh
+  s_480f842b4b95f0::t_6f171a9d4607c6 292-297
+tests/e2e/common/rlhf/weight_transfer/case.py
+  s_480f842b4b95f0::t_be2e50f7967cb8 18,54-55,212-233
+tests/e2e/common/rlhf/weight_transfer/checkpoint_adapters.py
+  s_480f842b4b95f0::t_d4cfb421a449ca 4-6,9,86-135
+tests/e2e/common/rlhf/weight_transfer/hccl.py
+  s_480f842b4b95f0::t_fd008d63ea4dc9 93-95
+tests/e2e/common/rlhf/weight_transfer/npu_ipc.py
+  s_480f842b4b95f0::t_bc42637b6f841b 186-188
+tests/e2e/common/rlhf/weight_transfer/reference_check.py
+  s_480f842b4b95f0::t_6fa91f67ccd8c2 6,9,11,173-175,181-202,204,206-212,227-247,292-294
+tests/e2e/common/rlhf/weight_transfer/weight_source.py
+  s_480f842b4b95f0::t_227af084b3ee45 192-194
+tests/e2e/conftest.py
+  s_480f842b4b95f0::t_a517042865b020 989-1008,1012,1237-1250,1525-1567
+tests/e2e/nightly/single_node/ops/singlecard_ops/test_hc_pre.py
+  s_480f842b4b95f0::t_19f894fc7852eb 196-197,199,206,257
+tests/e2e/nightly/single_node/ops/singlecard_ops/test_moe_gating_top_k_hash.py
+  s_480f842b4b95f0::t_ecf1742b37b4be 1-4,8-9,27,47,52,62-63,125-182
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_dcp_a2a.py
+  s_480f842b4b95f0::t_ceaf964ceed9d1 3-5,10-11,370,377-670
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_engram_gate.py
+  s_480f842b4b95f0::t_71a1b6a7fd9ae2 1-99
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_kda_recoverssm_npu.py
+  s_480f842b4b95f0::t_24ec649ea0ba54 452,463,466,583
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_mamba_align_block_table.py
+  s_480f842b4b95f0::t_6b4b4af6a5a579 1-69
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_qwen4_exp_hc.py
+  s_480f842b4b95f0::t_8aad767b043fa3 1-194
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_step5_gated_scale.py
+  s_480f842b4b95f0::t_954a57cd69e9b8 1-190
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_step5_indexer_qkz_norm_rope.py
+  s_480f842b4b95f0::t_b708cf69ad5b33 1-446
+tests/e2e/pull_request/four_card/context_parallel/pool/__init__.py
+  s_480f842b4b95f0::t_b98f32cba447e2 1-2
+tests/e2e/pull_request/four_card/context_parallel/pool/test_deepseek_v4_pool.py
+  s_480f842b4b95f0::t_3bba750df50134 1-218
+tests/e2e/pull_request/four_card/model_runner_v2/test_spec_pp_accuracy.py
+  s_480f842b4b95f0::t_b1ad6f7c13cff5 33-34,39-40,43-44,46-55,62-99,139-175,197-200,203-226
+tests/e2e/pull_request/four_card/test_deepseek_v4.py
+  s_480f842b4b95f0::t_96f9c1c061dd33 20-22,25-26,28-29,31-36,40-112,133-138,140-141,148-176
+tests/e2e/pull_request/kv_pool_watch.py
+  s_480f842b4b95f0::t_699bf5e2db2cbe 1-658
+tests/e2e/pull_request/one_card/aclgraph/test_device_metadata.py
+  s_480f842b4b95f0::t_29e96591545eb0 9-10,80-160
+tests/e2e/pull_request/one_card/test_all2allv_dispatch_host_sync.py
+  s_480f842b4b95f0::t_e6b05f620cff72 1-92
+tests/e2e/pull_request/one_card/test_hisparse_attention.py
+  s_480f842b4b95f0::t_63162035029bc6 364
+tests/e2e/pull_request/one_card/test_hisparse_int8_prolog.py
+  s_480f842b4b95f0::t_0d57211f1ff87d 14,16,25-27,47-48,84-87,94-99,130-139
+tests/e2e/pull_request/two_card/model_runner_v2/test_qwen3_8b_dspark_batch_sharded.py
+  s_480f842b4b95f0::t_c7a302faff5660 1-74
+tests/e2e/pull_request/two_card/ops/conftest.py
+  s_480f842b4b95f0::t_0b18886f4fa4fb 2,4,9-10,12-40
+tests/e2e/pull_request/two_card/ops/test_attn_res_fwd.py
+  s_480f842b4b95f0::t_040fc8291d3e0f 1-89
+tests/e2e/pull_request/two_card/ops/test_bgmv_expand.py
+  s_480f842b4b95f0::t_5e7efa78b2ed65 1-49
+tests/e2e/pull_request/two_card/ops/test_bgmv_shrink.py
+  s_480f842b4b95f0::t_54782416f55aca 1-49
+tests/e2e/pull_request/two_card/ops/test_chunk_gated_delta_rule_fwd_h_vllm.py
+  s_480f842b4b95f0::t_8fc68d48123e00 1-334
+tests/e2e/pull_request/two_card/ops/test_copy_and_expand_eagle_inputs.py
+  s_480f842b4b95f0::t_d7daa091090d95 1-516
+tests/e2e/pull_request/two_card/ops/test_dequant_swiglu_quant.py
+  s_480f842b4b95f0::t_d59588fa60845d 1-111
+tests/e2e/pull_request/two_card/ops/test_inplace_partial_rotary_mul.py
+  s_480f842b4b95f0::t_db1afd12cd3c67 1-124
+tests/e2e/pull_request/two_card/ops/test_kda_gate_cumsum_vllm.py
+  s_480f842b4b95f0::t_e8c8142a57abd1 1-51
+tests/e2e/pull_request/two_card/ops/test_kda_layout_swap12.py
+  s_480f842b4b95f0::t_59df3c719cbd96 1-4,11-14,17-29,33,35-37,40-52
+tests/e2e/pull_request/two_card/ops/test_moe_gating_top_k_hash.py
+  s_480f842b4b95f0::t_4b737995882867 1-115
+tests/e2e/pull_request/two_card/ops/triton/test_bad_words.py
+  s_480f842b4b95f0::t_bc0315995f186b 1-220
+tests/e2e/pull_request/two_card/ops/triton/test_batch_memcpy.py
+  s_480f842b4b95f0::t_ef894452ccdcc4 1-41
+tests/e2e/pull_request/two_card/ops/triton/test_bincount.py
+  s_480f842b4b95f0::t_e102e8b99b562d 1-371
+tests/e2e/pull_request/two_card/ops/triton/test_chunk_gated_delta_rule.py
+  s_480f842b4b95f0::t_c2989ec8d5c3d2 1-103
+tests/e2e/pull_request/two_card/ops/triton/test_clear_ssm_states.py
+  s_480f842b4b95f0::t_41b1881e5bb813 1-43
+tests/e2e/pull_request/two_card/ops/triton/test_compressor_triton.py
+  s_480f842b4b95f0::t_d73d270110e90e 1-302
+tests/e2e/pull_request/two_card/ops/triton/test_compute_slot_mapping.py
+  s_480f842b4b95f0::t_0d1e9d088398c8 1-176
+tests/e2e/pull_request/two_card/ops/triton/test_compute_token_logprobs.py
+  s_480f842b4b95f0::t_c942796bd5c9fb 1-261
+tests/e2e/pull_request/two_card/ops/triton/test_compute_topk_logprobs.py
+  s_480f842b4b95f0::t_408bbc90a55699 1-100
+tests/e2e/pull_request/two_card/ops/triton/test_dflash_candidate_sampler.py
+  s_480f842b4b95f0::t_9959d6f3190cd8 1-263
+tests/e2e/pull_request/two_card/ops/triton/test_fused_gdn_gating.py
+  s_480f842b4b95f0::t_2c6aad666f1334 1-57
+tests/e2e/pull_request/two_card/ops/triton/test_gdn_prepare.py
+  s_480f842b4b95f0::t_5347c516b964b8 1-225
+tests/e2e/pull_request/two_card/ops/triton/test_glm5next_output_writeback.py
+  s_480f842b4b95f0::t_9fec52100a8b64 2,6,8-10,13-38,40,42-44,47-50,52-62,66-75,77-78
+tests/e2e/pull_request/two_card/ops/triton/test_glm5next_state_gather_npu.py
+  s_480f842b4b95f0::t_daf241435d18b5 1-51
+tests/e2e/pull_request/two_card/ops/triton/test_kda_state_copy_triton.py
+  s_480f842b4b95f0::t_dca0df47676132 1-231
+tests/e2e/pull_request/two_card/ops/triton/test_l2norm.py
+  s_480f842b4b95f0::t_043c360f1db4be 1-44
+tests/e2e/pull_request/two_card/ops/triton/test_log_softmax.py
+  s_480f842b4b95f0::t_c6ddfbeebfecdf 1-71
+tests/e2e/pull_request/two_card/ops/triton/test_lora_linear.py
+  s_480f842b4b95f0::t_11c3cdb7a248b2 1-218
+tests/e2e/pull_request/two_card/ops/triton/test_mamba_state_index.py
+  s_480f842b4b95f0::t_e74e3db4b47879 1-146
+tests/e2e/pull_request/two_card/ops/triton/test_min_p.py
+  s_480f842b4b95f0::t_1e01121705e50c 1-97
+tests/e2e/pull_request/two_card/ops/triton/test_mrope_vit_setup.py
+  s_480f842b4b95f0::t_52235a58d13eca 1-59
+tests/e2e/pull_request/two_card/ops/triton/test_muls_add.py
+  s_480f842b4b95f0::t_77d7857da19ac3 1-38
+tests/e2e/pull_request/two_card/ops/triton/test_mxfp_k_scale_scatter.py
+  s_480f842b4b95f0::t_c4ae81deee2369 1-368
+tests/e2e/pull_request/two_card/ops/triton/test_penality.py
+  s_480f842b4b95f0::t_bd18c60c05ee51 1-577
+tests/e2e/pull_request/two_card/ops/triton/test_qsa_rmsnorm_mrope.py
+  s_480f842b4b95f0::t_3f8a58d6d12b82 1-68
+tests/e2e/pull_request/two_card/ops/triton/test_qwen4_exp_qsa.py
+  s_480f842b4b95f0::t_addbecef8e0ad4 7-9,18-39,43-48,50,52-58,62-85
+tests/e2e/pull_request/two_card/ops/triton/test_rejection_sample_v2.py
+  s_480f842b4b95f0::t_44c91479c05695 1-649
+tests/e2e/pull_request/two_card/ops/triton/test_resample.py
+  s_480f842b4b95f0::t_735941bec07ab5 1-1056
+tests/e2e/pull_request/two_card/ops/triton/test_rms_norm.py
+  s_480f842b4b95f0::t_5b3b61093b3453 1-66
+tests/e2e/pull_request/two_card/ops/triton/test_temperature.py
+  s_480f842b4b95f0::t_e2627b9c9bccdd 1-87
+tests/e2e/pull_request/two_card/rlhf/weight_transfer/ipc/test_deepseek_vision_ipc.py
+  s_480f842b4b95f0::t_c64e63de1f6ed7 1-20
+tests/ut/attention/test_dsa_v1.py
+  s_480f842b4b95f0::t_713136cd7c8c3f 1831-1833
+tests/ut/attention/test_dsa_v41_cp.py
+  s_480f842b4b95f0::t_4b7083bc6d398f 324
+tests/ut/attention/test_flash_attn.py
+  s_480f842b4b95f0::t_74c1203a244f96 163-167,265-272,290
+tests/ut/attention/test_flashmla_auto_select.py
+  s_480f842b4b95f0::t_a370b5e3f5104e 91,119,131,155,159
+tests/ut/attention/test_flashmla_dcp.py
+  s_480f842b4b95f0::t_d5737ebd4db54c 184-186,194,281-294
+tests/ut/attention/test_indexer.py
+  s_480f842b4b95f0::t_7a423db707fbf7 22-23,36-38,52,57-58,72-76,472,482,501,513,701-797
+tests/ut/attention/test_minimax_dspark_integration.py
+  s_480f842b4b95f0::t_a6cce537262f72 32-37
+tests/ut/attention/test_minimax_fa3.py
+  s_480f842b4b95f0::t_68d43e7905271d 23-87,135,150-154,246-250,252-254,270,273-274,276,288-289,356-537,712-781
+tests/ut/attention/test_mla_v1.py
+  s_480f842b4b95f0::t_fa95f913de366d 1745
+tests/ut/attention/test_pcp_main_kv_overlap.py
+  s_480f842b4b95f0::t_d5e0a35668a78e 13,15,20,22-28,33,36,48-49,62,73,77-78,94,160
+tests/ut/attention/test_qli_metadata.py
+  s_480f842b4b95f0::t_3cbc3cf99c550f 1-103
+tests/ut/attention/test_sfa_cp.py
+  s_480f842b4b95f0::t_f2ea4fd238a60e 95-96,106-108,113,153-154,600-601,641-642,662-664,765-766,769,784-785,1089-1093,1159-1163,1719-1721,2468,2560-2561
+tests/ut/attention/test_sfa_cp_precision.py
+  s_480f842b4b95f0::t_7464f3538a9c42 141-143,299,375,467-469
+tests/ut/attention/test_sfa_dcp_compact.py
+  s_480f842b4b95f0::t_51c090e8617ceb 1-265
+tests/ut/attention/test_sfa_dcp_utils.py
+  s_480f842b4b95f0::t_179b85f49da84b 1-99
+tests/ut/attention/test_sfa_kv_offload.py
+  s_480f842b4b95f0::t_c3406ef17a37d1 34-36,78-80
+tests/ut/attention/test_sfa_nope_forward.py
+  s_480f842b4b95f0::t_be36fc74832fde 14,302,547-551
+tests/ut/attention/test_sfa_nope_prolog_cpu.py
+  s_480f842b4b95f0::t_b8e4e7b52c092f 1-333
+tests/ut/attention/test_sfa_v1.py
+  s_480f842b4b95f0::t_026d2a754439ed 720,742-743
+tests/ut/core/test_kv_cache_config_builder.py
+  s_480f842b4b95f0::t_231f3078cc17f9 22,31,39-43,131-158
+tests/ut/device/test_device_op.py
+  s_480f842b4b95f0::t_2ee007d13f10f3 8,373-562
+tests/ut/device/test_fla_gdn_prefill.py
+  s_480f842b4b95f0::t_06bb53057b5ad0 1-330
+tests/ut/device/test_hardware_profile.py
+  s_480f842b4b95f0::t_e40592a658db08 48,62,69,76,83,136,283-295
+tests/ut/distributed/ascend_store/test_ascend_store_connector.py
+  s_480f842b4b95f0::t_e6374d23885024 217,222-228,236,503,508,550-551,561-584
+tests/ut/distributed/ascend_store/test_glm53_store.py
+  s_480f842b4b95f0::t_532023acb198d0 489-490,534-535
+tests/ut/distributed/ascend_store/test_kv_transfer.py
+  s_480f842b4b95f0::t_1aa277c0c62622 426,451,465,474,483,517,522,533
+tests/ut/distributed/ascend_store/test_layerwise_cache_layout.py
+  s_480f842b4b95f0::t_3abd96f18e1809 1-4,9-16,19-20,22-23,28-41,45,47-52,54,58-59,65-68,71-72,75-82,86-93,106,113,115,117,119,123,164,173-175,195-228,230-268,271-284
+tests/ut/distributed/ascend_store/test_mooncake_layerwise.py
+  s_480f842b4b95f0::t_b5ecf9b05e2325 202,263-283
+tests/ut/distributed/ascend_store/test_pool_scheduler.py
+  s_480f842b4b95f0::t_d959f0e4dfe524 47-49,352-386,1002-1041,1094-1103,1117,1125-1134,1137-1139,1148,1246,1276,1317,2051-2071,2195
+tests/ut/distributed/ascend_store/test_pool_worker.py
+  s_480f842b4b95f0::t_a9867ba65473c8 286,292,294,372-383,394,396,451,460-468,486,489-490,1211-1222,1228,1433,2197,2239,2404,2815-2817,2873,2932,3002,3008-3010,3111-3138,3252,3255,3262,3270,3424,3886-3929
+tests/ut/distributed/ascend_store/test_reuse_publication_fence.py
+  s_480f842b4b95f0::t_691c6fc29f60f9 13-25
+tests/ut/distributed/ascend_store/test_reuse_snapshot_blocks.py
+  s_480f842b4b95f0::t_e6bc3984fdfcf9 35-38,50,56-58,126,132-133,136,145,147-157,168,235,237-238
+tests/ut/distributed/ascend_store/test_reuse_snapshot_identity.py
+  s_480f842b4b95f0::t_3bbe90f737c2ea 7,11,13-29,31-35
+tests/ut/distributed/expert_transfer/test_v2_hooks.py
+  s_480f842b4b95f0::t_354fde14243d1b 73-79,93-95
+tests/ut/distributed/kv_transfer/kv_p2p/mooncake/test_push_bilateral_dcp.py
+  s_480f842b4b95f0::t_21e2b3ff9528e4 346
+tests/ut/distributed/kv_transfer/kv_p2p/mooncake/test_scheduler_integration.py
+  s_480f842b4b95f0::t_5aa867210ca362 112-113,127
+tests/ut/distributed/kv_transfer/kv_p2p/test_mooncake_connector.py
+  s_480f842b4b95f0::t_2bd06e850adc29 1803-1804,1861,1871-1872,5332-5333,5345,5355-5358
+tests/ut/distributed/kv_transfer/sparse_kv_offload/test_sparse_kv_offload_manager.py
+  s_480f842b4b95f0::t_ff5757d4b2aa9f 6,22-26,154-163,675-1706
+tests/ut/distributed/kv_transfer/test_hisparse_foundation_cpu.py
+  s_480f842b4b95f0::t_2cd867eb2af7a8 6-7,13-14,35,80,202-288
+tests/ut/distributed/kv_transfer/test_hisparse_pcp_cpu.py
+  s_480f842b4b95f0::t_d383a4d1489635 1-469
+tests/ut/distributed/weight_transfer/test_e2e_weight_transfer_oracle.py
+  s_480f842b4b95f0::t_963c0f8d37fcc0 27,31,34-35,193-248
+tests/ut/kv_offload/mooncake_v2/helpers.py
+  s_480f842b4b95f0::t_fa4b1654d5caa4 226,229
+tests/ut/kv_offload/mooncake_v2/test_base_scheduler.py
+  s_480f842b4b95f0::t_5bad5e9e820d85 274-275,293,295
+tests/ut/kv_offload/mooncake_v2/test_pull_scheduler.py
+  s_480f842b4b95f0::t_b846351d5ff566 15-17,825-826,831,834,873-900,1830,1834-1841,1852-1857
+tests/ut/kv_offload/mooncake_v2/test_swa_handoff.py
+  s_480f842b4b95f0::t_9d10eca1485e52 20-23
+tests/ut/kv_offload/test_dspark_pd_context.py
+  s_480f842b4b95f0::t_6ddacf9a942d63 672-675,677-678
+tests/ut/kv_offload/test_dspark_resident_kv.py
+  s_480f842b4b95f0::t_eaa8ca3d879fad 4,10,15,239,265-267,502-503,507-510,521-541
+tests/ut/kv_offload/test_hybrid_prefix_truncation.py
+  s_480f842b4b95f0::t_7d4d70aa9a56ca 59,70,72,74
+tests/ut/kv_offload/test_pool_worker_pp_layer_count.py
+  s_480f842b4b95f0::t_7464e43c22d018 27-29,32-34,99,187
+tests/ut/kv_offload/test_sfa_pd_rd2h_connector.py
+  s_480f842b4b95f0::t_6c9757c88c8a73 542,1558,1586-1595,1599-1709,1729
+tests/ut/kv_transfer/test_layerwise_multi_cache_spec.py
+  s_480f842b4b95f0::t_062d52ab820014 1-2,4,7-8,10,12,16-39,41-52
+tests/ut/model_executor/test_deepseek_v4.py
+  s_480f842b4b95f0::t_5e5ef7533861a5 22
+tests/ut/models/qwen4_exp/test_lightning_indexer_v2.py
+  s_480f842b4b95f0::t_60ed8371ac9561 43
+tests/ut/models/qwen4_exp/test_qsa_upstream_abi.py
+  s_480f842b4b95f0::t_8287225acd9886 8-11,13,16,19-28,30,33,36-43,45-65,67-85,87-95,97-101,162-191,212-221,268-276,307-577
+tests/ut/models/test_deepseek_v41_decoder_replay_state.py
+  s_480f842b4b95f0::t_7a78a7cae92049 446,457,467,493-494,499
+tests/ut/models/test_deepseek_v41_hyper_connection.py
+  s_480f842b4b95f0::t_1d4332a6c888a3 89,101,125
+tests/ut/models/test_deepseek_v4_moe.py
+  s_480f842b4b95f0::t_2504fbc2d0f66d 18,40-64,109,175,267
+tests/ut/models/test_deepseek_v4_vision.py
+  s_480f842b4b95f0::t_544fe70a3dccbd 41,52,55-56,60-76,79,82-83,85,87-90
+tests/ut/models/test_deepseek_v4_vision_preprocess.py
+  s_480f842b4b95f0::t_d41fc046c13503 4-5,11-14,28-29,237-322
+tests/ut/models/test_glm5_dspark_flashmla.py
+  s_480f842b4b95f0::t_c59e8bff34490a 59-75
+tests/ut/models/test_glm5next_embedding_padding.py
+  s_480f842b4b95f0::t_4b88ce9930be4b 1-125
+tests/ut/models/test_glm5next_kda_dispatch.py
+  s_480f842b4b95f0::t_cb2a7b5e516876 88,91-106,109-110,120,162-173,175-177,179,190,204-205,209,212,216-271
+tests/ut/models/test_glm5next_kda_pcp.py
+  s_480f842b4b95f0::t_2bb1f317e6378b 170
+tests/ut/models/test_glm5next_kv_cache.py
+  s_480f842b4b95f0::t_8c83139030ddf3 13,121,234,290,362,413,457,463,467,480,533-639,648,696,777
+tests/ut/models/test_glm5next_pcp_metadata.py
+  s_480f842b4b95f0::t_8fe3a901380fea 1-128
+tests/ut/models/test_glm5next_pp.py
+  s_480f842b4b95f0::t_b6ec245a448f1a 17-19,21-22,43,75-141,219-264
+tests/ut/models/test_glm5next_recoverssm_metadata.py
+  s_480f842b4b95f0::t_dac81f1296c1cd 20-27
+tests/ut/models/test_kimi_k3_adapter.py
+  s_480f842b4b95f0::t_00517ad658e197 333-347
+tests/ut/models/test_kimi_recoverssm_metadata.py
+  s_480f842b4b95f0::t_1f992807a980ad 13,53,76,78,82,84,105
+tests/ut/models/test_qwen4_exp_source_regression.py
+  s_480f842b4b95f0::t_f4f7c9d2a9a4ad 79,88-89
+tests/ut/models/test_qwen4_exp_spec_cpu_length_sync.py
+  s_480f842b4b95f0::t_620cba96daf05f 9,49-68
+tests/ut/models/test_step5_model.py
+  s_480f842b4b95f0::t_c84f6a5ca1088f 217
+tests/ut/ops/test_dcp_a2a_combine.py
+  s_480f842b4b95f0::t_fdc3c71d51cecc 7,9,39-220
+tests/ut/ops/test_fused_mc2_sleep_state.py
+  s_480f842b4b95f0::t_966f4947556709 10,15,108-212
+tests/ut/ops/test_fused_moe.py
+  s_480f842b4b95f0::t_17230b47c50f9b 685,729-730,733,858,907
+tests/ut/ops/test_gdn_attn_builder.py
+  s_480f842b4b95f0::t_602bc6a903c4bf 5,9,26-28,226,236-353,482-497,520,544,550,875-876,1301,1337,1546-1548
+tests/ut/ops/test_gdn_chunk_meta.py
+  s_480f842b4b95f0::t_660a4fba60fc27 157,168-170,242-245
+tests/ut/ops/test_gdn_layerwise_kv.py
+  s_480f842b4b95f0::t_aec9b3268600c5 112-135
+tests/ut/ops/test_gdn_layout.py
+  s_480f842b4b95f0::t_0cc576869929c2 50,66-79,81
+tests/ut/ops/test_kimi_kda.py
+  s_480f842b4b95f0::t_36cf5c8f487fad 14-15,30
+tests/ut/ops/test_kimi_kda_pcp.py
+  s_480f842b4b95f0::t_f16eb0f1715e45 12-18,25-26,73-74,98,172,183,194-195,221,227-230,232,234,243-246,253-254,268-276,278-281,292-293,300-301,309,311,325-326,328
+tests/ut/ops/test_kimi_kda_pcp_context.py
+  s_480f842b4b95f0::t_a6893666ba40b7 16-17,28,31,43-48,57-62,65
+tests/ut/ops/test_layernorm.py
+  s_480f842b4b95f0::t_b46ba67d994ca9 83-110
+tests/ut/ops/test_mamba_align_block_table.py
+  s_480f842b4b95f0::t_95db3ab529b414 1-65
+tests/ut/ops/test_mega_moe_context.py
+  s_480f842b4b95f0::t_f23964da07a895 1-263
+tests/ut/ops/test_megamoe_shared_expert_int8.py
+  s_480f842b4b95f0::t_8424915c380d59 1-111
+tests/ut/ops/test_mla.py
+  s_480f842b4b95f0::t_93ed9f6b88b7f5 14,135,155-156,158-160,187,189
+tests/ut/ops/test_moe_comm_method.py
+  s_480f842b4b95f0::t_d26c71091ea831 1,71,73,85,104,123,227-230
+tests/ut/ops/test_moe_gating_map_router.py
+  s_480f842b4b95f0::t_767f509c888ed6 2-4,9-10,13-17,20-68,70-128,130-133,135-160,162-165
+tests/ut/ops/test_moe_mlp.py
+  s_480f842b4b95f0::t_5c15951668be25 606-607,609-610,613-614
+tests/ut/ops/test_moe_runtime_args.py
+  s_480f842b4b95f0::t_27784a3ccc950b 33,89-130
+tests/ut/ops/test_packaged_attention.py
+  s_480f842b4b95f0::t_c28e4337af4318 6-9,115-150
+tests/ut/ops/test_qwen4_exp_hc.py
+  s_480f842b4b95f0::t_22d02f7bf0cb58 1-132
+tests/ut/ops/test_token_dispatcher.py
+  s_480f842b4b95f0::t_2b00b6722d0eec 1063-1066,1116-1119,1125-1274
+tests/ut/patch/platform/test_patch_fused_moe.py
+  s_480f842b4b95f0::t_9e4ebfdcc5add5 306-344
+tests/ut/patch/platform/test_patch_speculative_config_dspark.py
+  s_480f842b4b95f0::t_740e7f62bab3cf 120,153-154,198-199,207-208,211-212,217
+tests/ut/patch/worker/test_patch_dspark_eplb.py
+  s_480f842b4b95f0::t_e1933c00cf91ea 51
+tests/ut/quantization/methods/w8a8/test_swiglu_mx_quant.py
+  s_480f842b4b95f0::t_ab8b83dfb946ed 126,141,157
+tests/ut/spec_decode/test_dflash2_v2.py
+  s_480f842b4b95f0::t_f42c0a19107f2b 30,37,599,601,620-625
+tests/ut/spec_decode/test_dspark_pcp_dcp_config.py
+  s_480f842b4b95f0::t_45734c4a83dc9f 1-151
+tests/ut/spec_decode/test_dspark_speculator.py
+  s_480f842b4b95f0::t_3e9475145ba46f 342,348,351-357
+tests/ut/spec_decode/test_dspark_valid_kv_lengths.py
+  s_480f842b4b95f0::t_afc4c8b17fed23 34,36,38,48-50,59-61,74-79,83-85,102-103,126-128
+tests/ut/spec_decode/test_mla_dspark.py
+  s_480f842b4b95f0::t_b81c5818eacc93 376,399-401,422
+tests/ut/test_ascend_config.py
+  s_480f842b4b95f0::t_e2f8fc0723971a 2079-2124,2192-2194,2203
+tests/ut/test_ascend_forward_context.py
+  s_480f842b4b95f0::t_7110422c435b2e 728-729
+tests/ut/test_platform.py
+  s_480f842b4b95f0::t_b288852b11ac1c 2,438-466
+tests/ut/worker/test_adaptive_verification.py
+  s_480f842b4b95f0::t_bd6ee656f57b9b 227,307,330
+tests/ut/worker/test_attn_utils_v2.py
+  s_480f842b4b95f0::t_1a44d63bc84547 1213,1215,1251-1259,1274-1280,3438-3493
+tests/ut/worker/test_dcp_speculator_metadata_v2.py
+  s_480f842b4b95f0::t_c2c092a193b595 7,16,27-28,122-124,230-232,234,239,417-423,447,451-521,529,545
+tests/ut/worker/test_layerwise_kv_allocation.py
+  s_480f842b4b95f0::t_b37068a8926009 8,12,53-57,59-62,64,66,70-79,84-85
+tests/ut/worker/test_model_runner_v2.py
+  s_480f842b4b95f0::t_6ad8072c6534f1 23-25,42-44,977-1069
+tests/ut/worker/test_model_runner_v2_layerwise_reuse.py
+  s_480f842b4b95f0::t_546cae95fa0a04 85-88,100,102,105,107-109
+tests/ut/worker/test_model_runner_v2_mamba.py
+  s_480f842b4b95f0::t_02c674093baf6e 522,583-584,596-602,604,621,625,634-636,705-707,715,719-720,774-775
+tests/ut/worker/test_mtp_pcp_speculator_v2.py
+  s_480f842b4b95f0::t_fce91d32713580 7,34,238-276
+tests/ut/worker/test_pcp_manager_v2.py
+  s_480f842b4b95f0::t_e9ca2d52cd3a50 37,123,175-185,201,207-208,272-289,314,319-320,324,327-442,869,932,936,947,1027,1119,1490,1580-1587,1700-1743
+tests/ut/worker/test_pcp_profile_budget.py
+  s_480f842b4b95f0::t_717bd2590b4c3c 19,29,39,41-47,50-51,90-92,98
+tests/ut/worker/test_worker_inheritance.py
+  s_480f842b4b95f0::t_75c448b6fd8449 107,109-117,152-153,193
+tests/ut/worker/v2/test_embedding_tp_dummy_inputs.py
+  s_480f842b4b95f0::t_16b42f0fdf5461 12,178,184-196
+tests/ut/worker/v2/test_sparse_kv_offload_metadata.py
+  s_480f842b4b95f0::t_a5439a69522c8a 15,18,50,53-63,130,140-143,289-330
+tools/aisbench.py
+  s_480f842b4b95f0::t_2bec6fad6d4d43 172-175,178,291,363,413-420
+vllm_ascend/ascend_config.py
+  s_480f842b4b95f0::t_27c27dcfb738e3 1061-1066,1207-1210,1253-1262,1271-1272,1322-1329
+vllm_ascend/attention/attention_v1.py
+  s_480f842b4b95f0::t_936435186e89cb 565
+vllm_ascend/attention/context_parallel/common_cp.py
+  s_480f842b4b95f0::t_746d789cf9af22 10-16
+vllm_ascend/attention/context_parallel/dsa_cp.py
+  s_480f842b4b95f0::t_74baa65e818128 112,537
+vllm_ascend/attention/context_parallel/sfa_cp.py
+  s_480f842b4b95f0::t_a7fa513c2eca3d 17,22,129,300-308,359-360,590-592,596-598,601-613,631-632,634,662-668,923
+vllm_ascend/attention/context_parallel/sfa_dcp_utils.py
+  s_480f842b4b95f0::t_98e0c5b7a41459 15,25-76
+vllm_ascend/attention/flash_attention_v3.py
+  s_480f842b4b95f0::t_57f9309cd1011d 10-15,40-51,72-73,105-148,174-177,340-367,399-400,440-447,451-452
+vllm_ascend/attention/flashmla.py
+  s_480f842b4b95f0::t_a3d68eb30f6640 323-326,329
+vllm_ascend/attention/indexer.py
+  s_480f842b4b95f0::t_68022911b40b83 1,10,35,39-41,53,90-189,236-238,407,945-949,1021-1058,1063,1128,1137,1206,1220,1233-1240,1242,1269-1274,1709-1730,1789-1790,1818,1820-1829
+vllm_ascend/attention/indexer_kpool.py
+  s_480f842b4b95f0::t_11b1f70971e1b4 200,204-209,211-215,217-220,305,482,486-488,492-493,498-500,669,694,698-700
+vllm_ascend/attention/mla_v1.py
+  s_480f842b4b95f0::t_9ef841db7cbb5f 69-71,191-196,380,1090,1149-1154
+vllm_ascend/attention/sfa_hisparse.py
+  s_480f842b4b95f0::t_64b105157931fd 12,21-31,44-50,52-58,132-137,157-158,162,165-171,208-209,278-279,282,290,294,306-322,353-364,366,378-399,403-404,412-413,416-447,457,463-464,478-479
+vllm_ascend/attention/sfa_kv_offload.py
+  s_480f842b4b95f0::t_d18e89c5817ac0 355-361,389,601-602,859-932,950-963,1013-1015
+vllm_ascend/attention/sfa_v1.py
+  s_480f842b4b95f0::t_9506ca67d2972a 53,71,98,566,848,908,910-911,1096-1097,1103-1105,1114,1128,1144-1160,1218-1222,1538-1539,1549-1550,1570,1588-1597,1638-1639,1650,1652-1657,1936-1938,2264,2270-2271
+vllm_ascend/attention/utils.py
+  s_480f842b4b95f0::t_6d1097c24be61a 398,477
+vllm_ascend/core/kv_cache_config_builder.py
+  s_480f842b4b95f0::t_f92b8af5b50cf1 38-46,140-142,144,160-175,579-580,593-603
+vllm_ascend/device/device_op.py
+  s_480f842b4b95f0::t_f3fc52ae60dcc1 38,57-64,587-588,613,628,1028-1036,1038-1039,1046,1049,1063,1065-1066,1068-1069,1072,1075,1159-1176,1886-1887,1923,1946,1966-1979,1982,1985-1988,1990-1996,2008,2021
+vllm_ascend/device/hardware_profile.py
+  s_480f842b4b95f0::t_fad2e4578bede9 71-76,99-100,156-157,181-184,336-338,391,401,409,436,456,493,543
+vllm_ascend/distributed/kv_transfer/ascend_multi_connector.py
+  s_480f842b4b95f0::t_efd6ed32ae2734 111-126
+vllm_ascend/distributed/kv_transfer/kv_p2p/mooncake/base_scheduler.py
+  s_480f842b4b95f0::t_9be611b752ff6d 42,538-545
+vllm_ascend/distributed/kv_transfer/kv_p2p/mooncake/pull_scheduler.py
+  s_480f842b4b95f0::t_5efb0fc45056be 386-395
+vllm_ascend/distributed/kv_transfer/kv_p2p/mooncake_connector.py
+  s_480f842b4b95f0::t_cdbf00e869db86 73,1936-1943
+vllm_ascend/distributed/kv_transfer/kv_p2p/mooncake_hybrid_connector.py
+  s_480f842b4b95f0::t_e9b8bf464754f7 66,1464-1471
+vllm_ascend/distributed/kv_transfer/kv_p2p/sfa_pd_rd2h/protocol.py
+  s_480f842b4b95f0::t_2f5489df3bb2a9 196-202
+vllm_ascend/distributed/kv_transfer/kv_p2p/sfa_pd_rd2h/scheduler.py
+  s_480f842b4b95f0::t_8d2f869ef647ea 302,516-517,534-557,562-567,569-576,579-582
+vllm_ascend/distributed/kv_transfer/kv_p2p/sfa_pd_rd2h/worker.py
+  s_480f842b4b95f0::t_7cfb399033e2b7 166-169,268-269,284-289,320,352,420,428-470
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/ascend_store_connector.py
+  s_480f842b4b95f0::t_aa642fc9a70116 139-142,155
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/layerwise/cache_planner.py
+  s_480f842b4b95f0::t_64cc8b65837020 1-307
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/layerwise/kv_transfer.py
+  s_480f842b4b95f0::t_b6eca235c7b4da 971-982,986-987,1055-1056
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/layerwise/layerwise_cache_layout.py
+  s_480f842b4b95f0::t_94214d96ebf7cc 1-4,7-10,15,25-79,122-190,206-207,211-229,231-267
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/layerwise/metadata.py
+  s_480f842b4b95f0::t_84ec6e561a92e8 171-172
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/layerwise/planes/block_key.py
+  s_480f842b4b95f0::t_ccc20a17db763b 115-120
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/layerwise/planes/gva.py
+  s_480f842b4b95f0::t_081ab0b7369607 79,86-89,99,138-139,144-152,160,169,185-207,248,329,351-352,366-374,381-393,395-396,404,432-434,437-449,453,457-472,516-517,521,528,585,591
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/layerwise/pool_scheduler.py
+  s_480f842b4b95f0::t_baff0e34ab4ca6 15,51-53,125-129
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/layerwise/pool_worker.py
+  s_480f842b4b95f0::t_6ee2b6b81d60fc 48,50,65,116-117,188-189,196,198,233,236,251,308,311-316,318,320,322-334,367-369,371-374,510,618-620,700,781-807,1003,1063-1064,1066,1168-1169,1175-1176,1199,1238,1241-1244,1246,1314-1319,1323,1325-1330,1334,1336,1401-1403,1407-1437,1451,1482-1483,1487,1535-1536,1539-1540,1569-1570,1581,1692,1719,1749,1752,1755-1756,1759-1763
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/metadata.py
+  s_480f842b4b95f0::t_f6adb8ad13f88b 23-24
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/pool_scheduler.py
+  s_480f842b4b95f0::t_fbb869a59cf9f9 82,90,262,561-562,629
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/pool_worker.py
+  s_480f842b4b95f0::t_dde5eb5f374781 203
+vllm_ascend/distributed/kv_transfer/sparse_kv_offload/copy_sfa_topk_slots.py
+  s_480f842b4b95f0::t_ba6e969a192699 84-87,107,113-114,118-119,162-163,180-181
+vllm_ascend/distributed/kv_transfer/sparse_kv_offload/sparse_kv_offload_manager.py
+  s_480f842b4b95f0::t_e6f9945aed5a90 51-63,552-559,602,828-850,879-882,936-938,1561-2165,2190-2260
+vllm_ascend/distributed/kv_transfer/utils/utils.py
+  s_480f842b4b95f0::t_78468777f4f320 7,15-18,27-33
+vllm_ascend/hisparse/cache_ops.py
+  s_480f842b4b95f0::t_002785cd86a155 261,280,286
+vllm_ascend/hisparse/host_mirror.py
+  s_480f842b4b95f0::t_c3c23e5120f0ad 175-176,182-183,253,256-259,268,281
+vllm_ascend/hisparse/host_pool.py
+  s_480f842b4b95f0::t_bb74cabf14f81c 3,7,16,18-19,24-26,29,33,39,43-58,102-106,110,113,120-156,164-178,180,184,195-197
+vllm_ascend/hisparse/pcp.py
+  s_480f842b4b95f0::t_0a874f8a5afc6f 1-184
+vllm_ascend/logger.py
+  s_480f842b4b95f0::t_6f10df218b9b35 295-296,298
+vllm_ascend/model_executor/warmup/kernel_warmup.py
+  s_480f842b4b95f0::t_048a7e9bacd367 165-166
+vllm_ascend/models/__init__.py
+  s_480f842b4b95f0::t_3927f2652384d2 5-8
+vllm_ascend/models/deepseek_v4/model.py
+  s_480f842b4b95f0::t_e9376238c9fde8 57-61,308-315,421-428,799-800
+vllm_ascend/models/deepseek_v4/vl_model.py
+  s_480f842b4b95f0::t_09426afa185749 162-168
+vllm_ascend/models/deepseek_v41/decoder_replay_state.py
+  s_480f842b4b95f0::t_4ee23b97666883 520-521
+vllm_ascend/models/deepseek_v41/engram/common.py
+  s_480f842b4b95f0::t_72ca74048ada09 118-140,157
+vllm_ascend/models/deepseek_v41/engram/layer.py
+  s_480f842b4b95f0::t_105ffa6b397480 12,42-49
+vllm_ascend/models/deepseek_v41/model.py
+  s_480f842b4b95f0::t_6521aface3d6e4 35-39,242-249,347-354,1130
+vllm_ascend/models/glm5_dspark.py
+  s_480f842b4b95f0::t_72709b48e3731a 143,160-171,173-176
+vllm_ascend/models/glm5next/cache_reuse.py
+  s_480f842b4b95f0::t_454dd5917511c0 1-20
+vllm_ascend/models/glm5next/kda.py
+  s_480f842b4b95f0::t_86b01c592066d7 5,43-44,51-117,119-125,128,409,599-601,603,606-609,662,666-669,673,677
+vllm_ascend/models/glm5next/model.py
+  s_480f842b4b95f0::t_83ade16e9c290c 73,599-600,632-633,746-748,770-780,786,793,800,982-987,1147-1149
+vllm_ascend/models/glm5next/recoverssm_metadata.py
+  s_480f842b4b95f0::t_6b5c545938324a 12,22-24,177-186
+vllm_ascend/models/kimi_k3/kimi_k3.py
+  s_480f842b4b95f0::t_79fdcdb1e49ca1 94,804,1352,1462
+vllm_ascend/models/kimi_k3/kimi_k3_dspark.py
+  s_480f842b4b95f0::t_1ee4764235cdca 219,224-229,232-242,248-250,256
+vllm_ascend/models/kimi_k3/recoverssm_metadata.py
+  s_480f842b4b95f0::t_8bcf1b7fb92f0f 6,10
+vllm_ascend/models/lfm2_vl.py
+  s_480f842b4b95f0::t_5504b12c686472 2,4-6,9-20,23-29,31,33-137
+vllm_ascend/models/qwen4_exp/lightning_indexer.py
+  s_480f842b4b95f0::t_985ca61f63725e 10,19-20,85-86,88,109-120
+vllm_ascend/models/qwen4_exp/model.py
+  s_480f842b4b95f0::t_08718f10fcca60 38,65-76,78-97,115-123,151-154
+vllm_ascend/models/qwen4_exp/model_state.py
+  s_480f842b4b95f0::t_a93daa7ba9bc5a 47-48,59-65,95-112
+vllm_ascend/models/qwen4_exp/ple.py
+  s_480f842b4b95f0::t_9f98e80adc9559 26,28-32,36,302-308,310-312,317-320,328-346
+vllm_ascend/models/qwen4_exp/qsa.py
+  s_480f842b4b95f0::t_daab869f8e06e2 17,19,22-23,35,39,45,59-73,78-79,85-86,98-106,113-116,134,214-242,276-284,295-296,300,302,359-362,375,390,412-415,428,456-467,477-494,520,670,686-688,724-745,764,781-784,839-908,912-923,959-961,982,993-998,1001-1002
+vllm_ascend/models/step5/model.py
+  s_480f842b4b95f0::t_da767508c03022 29-30,36,45-46,49,86,109-114,140-205,348-350,491-493,504-510,512-523,526-527,576-580,582-586,588,590-591,593-602,672-702,704-731,739,800-805,831-850,1204
+vllm_ascend/models/step5/sparse_attention.py
+  s_480f842b4b95f0::t_21026ad96460ab 369,396,432,482,494,496,533
+vllm_ascend/ops/fused_moe/dataclass/moe_mlp.py
+  s_480f842b4b95f0::t_1b6ce89c3d1ffb 56-57,80-86,116
+vllm_ascend/ops/fused_moe/gate_linear.py
+  s_480f842b4b95f0::t_577746cf683afb 52
+vllm_ascend/ops/fused_moe/mega_moe_context.py
+  s_480f842b4b95f0::t_5cb6773d86005c 1-109
+vllm_ascend/ops/fused_moe/moe_comm_method.py
+  s_480f842b4b95f0::t_f413d79ab60576 23,36,293,344,360-404,489-497,582-585,604-606,608
+vllm_ascend/ops/fused_moe/moe_mlp.py
+  s_480f842b4b95f0::t_c9a6d844b3765c 105-107
+vllm_ascend/ops/fused_moe/router/fused_topk_router.py
+  s_480f842b4b95f0::t_0dfc13c91e86aa 26,122-123,143-166,175-176,211-214,235,254
+vllm_ascend/ops/fused_moe/shared_experts.py
+  s_480f842b4b95f0::t_e8a780ab56053c 192-193,195-207,210-219,226,229,288-293,411-421,423-424,427-444,450-452,456-457,462-465,467-480,509-523,541-552,577-610,659-665
+vllm_ascend/ops/fused_moe/token_dispatcher.py
+  s_480f842b4b95f0::t_41364455689311 483-485,509-535,646-649,654-655,669-684,697-701,707-708,713-714,719-721,724-727,731-734
+vllm_ascend/ops/gdn.py
+  s_480f842b4b95f0::t_0576756b1625ee 48,140-194,431-432,446-448,516-517,519,541-544,621-622,627,638,898-904,912
+vllm_ascend/ops/gdn_attn_builder.py
+  s_480f842b4b95f0::t_8ed64b544816a1 35,42-44,144,298,300-305,309,311,361,1133-1146,1431,1433
+vllm_ascend/ops/head_parallel.py
+  s_480f842b4b95f0::t_bf4040169940d6 3,14,18,23,29,33,40,58,70,80,90
+vllm_ascend/ops/kimi_kda.py
+  s_480f842b4b95f0::t_001875a1db4bc8 24,39-45,47-48,72-78,102,216-237,263,325-326,341,350,361,375,399,402
+vllm_ascend/ops/layernorm.py
+  s_480f842b4b95f0::t_4848046cfd7f08 57-63
+vllm_ascend/ops/packaged_attention.py
+  s_480f842b4b95f0::t_2f76fb806eb20c 619-632,636-638
+vllm_ascend/ops/recurrent_pcp.py
+  s_480f842b4b95f0::t_9d99dbbdec544c 3,6,13-18,21,24,34-35,38,40-46,53,55,57,82-84,87-88,90-93,99,103-107,112,120-121,123,126-127,129
+vllm_ascend/ops/triton/README.md
+  s_480f842b4b95f0::t_be3d9aef9c6d6c 51,87,131,157-158,166-167
+vllm_ascend/ops/triton/dcp/dcp_a2a.py
+  s_480f842b4b95f0::t_56c5e02dbd0f6a 8,12,19-22,27-80,513-599
+vllm_ascend/ops/triton/dcp/dcp_a2a_rank_tiled.py
+  s_480f842b4b95f0::t_f77b6c6708751d 1-151
+vllm_ascend/ops/triton/dcp/dcp_warmup.py
+  s_480f842b4b95f0::t_077fa35f1d17ec 11,17,19-20,26-29,48-49,75-76,78,193-195,201-204,216-229,231-248
+vllm_ascend/ops/triton/docs/dcp_a2a_fused.md
+  s_480f842b4b95f0::t_99dfe6b35ee4e6 83
+vllm_ascend/ops/triton/docs/engram.md
+  s_480f842b4b95f0::t_e8481bc69c99a2 15,23-26,40-55
+vllm_ascend/ops/triton/docs/fused_dcp_lse_combine.md
+  s_480f842b4b95f0::t_f25a2326c9261e 3,50-60
+vllm_ascend/ops/triton/docs/kda_recoverssm.md
+  s_480f842b4b95f0::t_7abdd307a49a19 11-13,207-208
+vllm_ascend/ops/triton/docs/mamba_align_block_table.md
+  s_480f842b4b95f0::t_c0224f95e9d0d1 1,5-27,31-32,35-39,43-56,60-70,74-92,94-95
+vllm_ascend/ops/triton/docs/qsa_rmsnorm_mrope.md
+  s_480f842b4b95f0::t_a8f3d7b268540e 27,43-44,63-72
+vllm_ascend/ops/triton/docs/qwen4_exp_hc_gate_mix.md
+  s_480f842b4b95f0::t_61efb4f7cbd34b 1-216
+vllm_ascend/ops/triton/docs/step5_gated_scale.md
+  s_480f842b4b95f0::t_b859f7c776d56f 1,5-55,59-65,69-92,96-120,124-138,141
+vllm_ascend/ops/triton/docs/step5_indexer_qkz_norm_rope.md
+  s_480f842b4b95f0::t_4c365429160387 1,5-71,75-93,97-121,125-142,146-160,163
+vllm_ascend/ops/triton/engram_gate.py
+  s_480f842b4b95f0::t_6f1fa0a8e7799a 3,12,20-21,28,38-41,46,48,55-56,60,62-68,74-76,79,87-88,93
+vllm_ascend/ops/triton/fla/chunk.py
+  s_480f842b4b95f0::t_89db3d12ba096c 158-159,164-167
+vllm_ascend/ops/triton/kda/recoverssm.py
+  s_480f842b4b95f0::t_ecdf3b1eb6f9d4 21,38-43,45-50,89,91,150,238-239,305-306,583,603,670,769,797,830,832-833,878,981,1163,1553
+vllm_ascend/ops/triton/linearnorm/qsa_rmsnorm_mrope.py
+  s_480f842b4b95f0::t_a805b4bdc37f58 40,94,97,99
+vllm_ascend/ops/triton/linearnorm/split_qkv_rmsnorm_mrope.py
+  s_480f842b4b95f0::t_3efa36b3e029e9 124-130
+vllm_ascend/ops/triton/mamba/align_block_table.py
+  s_480f842b4b95f0::t_8f8bc4fc7f30e0 2-3,5-20,24,27-37,39-62,65-71,73-74,76-83,85-97,99
+vllm_ascend/ops/triton/qwen4_exp/hc.py
+  s_480f842b4b95f0::t_48eadd979dfbdd 17-18,186-249,266-298
+vllm_ascend/ops/triton/qwen4_exp/qsa.py
+  s_480f842b4b95f0::t_407be799c71fd3 197-201,234-238,250,345-346,382-387,389,432
+vllm_ascend/ops/triton/step5/gated_scale.py
+  s_480f842b4b95f0::t_84f04c442500f3 1-144
+vllm_ascend/ops/triton/step5/indexer_qkz_norm_rope.py
+  s_480f842b4b95f0::t_260f0440d0056e 1-584
+vllm_ascend/patch/__init__.py
+  s_480f842b4b95f0::t_f9dc1d55682a16 223-226,250-262,1535-1551,1611
+vllm_ascend/patch/platform/patch_fused_moe.py
+  s_480f842b4b95f0::t_354668ca40fd71 77-79,143-153
+vllm_ascend/patch/worker/patch_dspark.py
+  s_480f842b4b95f0::t_9a98f9e5af361c 38-42,47,51,57,62-134,168,180-184
+vllm_ascend/patch/worker/patch_model_runner.py
+  s_480f842b4b95f0::t_24cca579cdba29 18,105-108
+vllm_ascend/platform.py
+  s_480f842b4b95f0::t_93ddaf125d09c7 639-640,1563,1789,1795-1796,1884,1900-1907,1927-1934,1936
+vllm_ascend/quantization/methods/w8a8/w8a8_dynamic.py
+  s_480f842b4b95f0::t_9c4c15474ab2e0 370-371,379-382,394-400,408-411
+vllm_ascend/quantization/methods/w8a8/w8a8_mxfp8.py
+  s_480f842b4b95f0::t_c37727ab7b582d 729-730
+vllm_ascend/utils.py
+  s_480f842b4b95f0::t_d1208d76665d31 93-95
+vllm_ascend/worker/v2/attn_utils.py
+  s_480f842b4b95f0::t_7ce9b8f0d90183 44,87,89-90,360,494,511-513,517-518,520-524,1078,1080-1088,2203-2204
+vllm_ascend/worker/v2/model_runner.py
+  s_480f842b4b95f0::t_e9709858415895 92,96-97,99,102,400,503-510,515,605,774,988,1023-1028,1149,1162
+vllm_ascend/worker/v2/model_states/default.py
+  s_480f842b4b95f0::t_2fbe415463b509 83-85,97-98,130-135,477-481,559,567-595,651,667-682
+vllm_ascend/worker/v2/model_states/mamba_hybrid.py
+  s_480f842b4b95f0::t_c8d7108d86fba6 270,337-340,357,361-370,372-373
+vllm_ascend/worker/v2/pcp_manager.py
+  s_480f842b4b95f0::t_d2289d178bd657 67-68,208,628-630,633,637,659,692
+vllm_ascend/worker/v2/spec_decode/dflash/speculator.py
+  s_480f842b4b95f0::t_4bf29aa9a50492 26,375,378-381
+vllm_ascend/worker/v2/spec_decode/dspark/speculator.py
+  s_480f842b4b95f0::t_83bacb23109c14 18-19,58,64,279-288,292-294,296-306,316-321,455,458-462,471
+vllm_ascend/worker/v2/spec_decode/pcp_utils.py
+  s_480f842b4b95f0::t_64e5742cdc332d 8,10,12-38
+vllm_ascend/worker/v2/spec_decode/target_dependent_ar/sparse_kv_offload.py
+  s_480f842b4b95f0::t_d647aef80656ef 80,86-90
+vllm_ascend/worker/v2/spec_decode/target_dependent_ar/speculator.py
+  s_480f842b4b95f0::t_6d99fc4e4399c8 173-176,248-250,260-262
+vllm_ascend/worker/worker.py
+  s_480f842b4b95f0::t_90350ee9e0dd92 101-104,106,220,223,1365,1375,1378-1388
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b6b5e600055b82ac48e2a10d7930cb05a1fcfa1d",
+  "prompts": {},
+  "sessions": {
+    "s_480f842b4b95f0": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "7f96548e-9703-4091-aab9-2de7749a032e",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}
