@@ -3,6 +3,8 @@ vllm_ascend/distributed/kv_transfer/kv_p2p/mooncake_connector.py
 tests/ut/distributed/kv_transfer/kv_p2p/test_mooncake_connector.py
   s_b4d3bfe9c28898::t_bfccba828c965d 5364-5366
   s_b4d3bfe9c28898::t_bcd8e185c9b38a 5350
+  s_b4d3bfe9c28898::t_475a45ed699791 2595-2597
+  s_b4d3bfe9c28898::t_c9db93ffbcb89f 1862
 ---
 {
   "schema_version": "authorship/3.0.0",
