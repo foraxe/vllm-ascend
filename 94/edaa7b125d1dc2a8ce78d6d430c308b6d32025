@@ -1,0 +1,93 @@
+release_notes/fragments/21638.yaml
+  s_2c7c0a259eff1f::t_fbe2f8a0a26b07 1-4
+  s_2c7c0a259eff1f::t_49434ff409a68c 5-6
+vllm_ascend/models/deepseek_v41/engram/shared_rdma.py
+  s_2c7c0a259eff1f::t_465b9483c90e37 233-235
+  s_2c7c0a259eff1f::t_1e4f4758ea793b 244,488-489,491,511-526
+vllm_ascend/models/qwen4_exp/ple_embedding.py
+  s_2c7c0a259eff1f::t_a0a48fa6de1b6f 150-151,270,273,275,456-457,467
+  s_2c7c0a259eff1f::t_2ee0651c82bc5f 288-289,347-348
+  s_2c7c0a259eff1f::t_ac288c10ecf37b 10,201-210,232-236,237-238,242-243,261-262,284-287,290,294-303,307-310,314-321,329,335-346,351,359-363,366,370-371,393-394,458-459,466,493
+  s_2c7c0a259eff1f::t_465b9483c90e37 14,27,43-47,73-75,114-117,138-140,174-180,291-293,304-306,311-313,322-328,330-334,352-356,358,484,486-490,492,505,507-509,513
+  s_2c7c0a259eff1f::t_fbe2f8a0a26b07 163-166,460-465
+  s_2c7c0a259eff1f::t_b1fb46ada81b8e 4-9,11,32-42,48-60,62,64-70,72,76-78,81-97,99-113,118-137,141-149,152-156,160-162,167-173,181-187,190-198
+  s_2c7c0a259eff1f::t_1d2f8c9af693df 61,63,71,79-80,98
+  s_2c7c0a259eff1f::t_ba64fbde1d3a5c 188-189,199-200,349-350,357,367-369
+  s_2c7c0a259eff1f::t_2a455b46621f69 271-272,274
+  s_2c7c0a259eff1f::t_ccd9ec964b2114 157-159
+  s_2c7c0a259eff1f::t_b2ef7e9af96f7f 482
+tests/ut/models/test_ple_shared_reuse.py
+  s_2c7c0a259eff1f::t_7c82fc6c05c11c 1-13,15-34,40-88,90-121,123-124,126-132,134-139,150-151,153
+  s_2c7c0a259eff1f::t_5cde1a49268ad3 307-310,312-315,316-381,383-386,388-400
+  s_2c7c0a259eff1f::t_008fe30f29e853 422-454
+  s_2c7c0a259eff1f::t_6bbaef65451488 311,382,387
+  s_2c7c0a259eff1f::t_c98ec500c4eedb 237-260,262-266,269,273-280,282-284,286-287
+  s_2c7c0a259eff1f::t_2ee0651c82bc5f 35-39,401-421
+  s_2c7c0a259eff1f::t_9931eb6e67f63f 155-162,164-236
+  s_2c7c0a259eff1f::t_48d145bdfb5611 288-306
+  s_2c7c0a259eff1f::t_fbe2f8a0a26b07 89
+  s_2c7c0a259eff1f::t_1998e504363b1c 125,267-268,270-272
+  s_2c7c0a259eff1f::t_2a455b46621f69 122,133,140-149,152,154
+  s_2c7c0a259eff1f::t_037df8bbfbcd72 14
+docs/source/user_guide/feature_guide/index.md
+  s_2c7c0a259eff1f::t_fbe2f8a0a26b07 6-7
+vllm_ascend/models/deepseek_v41/engram/shared_host.py
+  s_2c7c0a259eff1f::t_1e4f4758ea793b 97-98
+vllm_ascend/shared_engram_rdma.py
+  s_2c7c0a259eff1f::t_465b9483c90e37 42-44
+  s_2c7c0a259eff1f::t_f846fb6be5d691 40,45,55
+  s_2c7c0a259eff1f::t_2364e6f324e166 32,41
+vllm_ascend/ops/triton/qwen4_exp/ple_lookup.py
+  s_2c7c0a259eff1f::t_1e4f4758ea793b 16,24,31,37
+vllm_ascend/shared_engram.py
+  s_2c7c0a259eff1f::t_465b9483c90e37 17-22,75-80,83,89-92
+vllm_ascend/models/deepseek_v41/engram/shared_pool.py
+  s_2c7c0a259eff1f::t_465b9483c90e37 47-54
+  s_2c7c0a259eff1f::t_1e4f4758ea793b 19,182
+vllm_ascend/models/qwen4_exp/model.py
+  s_2c7c0a259eff1f::t_465b9483c90e37 39
+  s_2c7c0a259eff1f::t_a0a48fa6de1b6f 113,116-119,153-155,158-160
+  s_2c7c0a259eff1f::t_79086fcf57be9b 161
+vllm_ascend/models/qwen4_exp/model_state.py
+  s_2c7c0a259eff1f::t_a0a48fa6de1b6f 53,62-65,74,97-98,100,104-107
+  s_2c7c0a259eff1f::t_cd403c5c1cbf42 75-76
+docs/source/user_guide/feature_guide/qwen_shared_ple.md
+  s_2c7c0a259eff1f::t_fbe2f8a0a26b07 1-4,6-25
+  s_2c7c0a259eff1f::t_9f2c0022e8d7f8 5
+vllm_ascend/models/host_offload.py
+  s_2c7c0a259eff1f::t_2a455b46621f69 21,25-26
+csrc/engram_hixl/native.cpp
+  s_2c7c0a259eff1f::t_49434ff409a68c 16,85-88,93-99
+vllm_ascend/patch/worker/__init__.py
+  s_2c7c0a259eff1f::t_08979ae5b1bd48 93-94
+tests/ut/models/test_external_weight_filter_patch.py
+  s_2c7c0a259eff1f::t_fe98e44f6f4e01 114-127,129-169
+  s_2c7c0a259eff1f::t_2c90c8d7aba738 1-5,7-17,28-35,39,41-45,55-59,61,67-68,70-76,80-88,95-113
+  s_2c7c0a259eff1f::t_ccd9ec964b2114 18-27,46-54,62-66,77-79,89-94
+  s_2c7c0a259eff1f::t_7e54ed1dae0527 6,36-38,40
+  s_2c7c0a259eff1f::t_ec74291a2a9e60 60,69,128
+vllm_ascend/patch/worker/patch_external_weight_filter.py
+  s_2c7c0a259eff1f::t_6e11098d704fbd 52
+  s_2c7c0a259eff1f::t_08979ae5b1bd48 1-24,31,38-39,46-51,58-65
+  s_2c7c0a259eff1f::t_ccd9ec964b2114 25-30,32-37,40-45,53-57
+vllm_ascend/patch/__init__.py
+  s_2c7c0a259eff1f::t_2364e6f324e166 1722-1736
+tests/ut/models/test_ple_offload.py
+  s_2c7c0a259eff1f::t_bb4b845aca8213 66,231
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "94edaa7b125d1dc2a8ce78d6d430c308b6d32025",
+  "prompts": {},
+  "sessions": {
+    "s_2c7c0a259eff1f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1cb69-b458-77a2-a7f7-ef64f39725f8",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}
