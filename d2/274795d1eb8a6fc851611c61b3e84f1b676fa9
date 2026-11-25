@@ -1,0 +1,27 @@
+tests/ut/ops/test_route_before_gather.py
+  s_1ca3cc9a501d06::t_9e44550c0d872d 1-254
+vllm_ascend/ascend_forward_context.py
+  s_1ca3cc9a501d06::t_42a09192c0471c 484
+vllm_ascend/ops/fused_moe/route_before_gather.py
+  s_1ca3cc9a501d06::t_cac822d019f4f4 1-109
+vllm_ascend/ops/fused_moe/routed_experts.py
+  s_1ca3cc9a501d06::t_0c28333acf8c54 33-38,57-61,737-764,767,784-801
+vllm_ascend/ops/fused_moe/router/fused_topk_router.py
+  s_1ca3cc9a501d06::t_483356b2e2bc88 166-172
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d2274795d1eb8a6fc851611c61b3e84f1b676fa9",
+  "prompts": {},
+  "sessions": {
+    "s_1ca3cc9a501d06": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "eae451be-048d-4614-8afa-c18fb31ff5ac",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}
