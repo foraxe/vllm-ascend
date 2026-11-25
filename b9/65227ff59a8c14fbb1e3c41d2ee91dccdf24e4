@@ -1,0 +1,29 @@
+tests/ut/ops/test_prepare_prequant.py
+  s_1ca3cc9a501d06::t_affba75cb1dd2a 1-607
+vllm_ascend/ops/fused_moe/moe_comm_method.py
+  s_1ca3cc9a501d06::t_b28e9410e74ab2 119,126
+vllm_ascend/ops/fused_moe/prepare_finalize.py
+  s_1ca3cc9a501d06::t_dd50dd1fda3260 29,34,37-43,48-79,107,120-122,179,303,434,443-450,452,454-456,459-463,465-473,512-513,519-528,533-553,562-567,571-574,584-588,598-602,609
+vllm_ascend/ops/fused_moe/prepare_prequant.py
+  s_1ca3cc9a501d06::t_5104b6a863fdf8 1-201
+vllm_ascend/ops/fused_moe/routed_experts.py
+  s_1ca3cc9a501d06::t_1a6fdab71ed101 51,733-737
+vllm_ascend/ops/fused_moe/token_dispatcher.py
+  s_1ca3cc9a501d06::t_fba8d25b9eff8b 52,399-401
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b965227ff59a8c14fbb1e3c41d2ee91dccdf24e4",
+  "prompts": {},
+  "sessions": {
+    "s_1ca3cc9a501d06": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "eae451be-048d-4614-8afa-c18fb31ff5ac",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}
