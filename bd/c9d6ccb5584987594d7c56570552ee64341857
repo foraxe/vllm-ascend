@@ -1,0 +1,22 @@
+tests/ut/distributed/ascend_store/test_pool_worker.py
+  s_480f842b4b95f0::t_c5c49c616b26b3 1503-1529
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/pool_worker.py
+  s_480f842b4b95f0::t_2b9a9b48d9d36d 1050-1056
+  s_480f842b4b95f0::t_73bd1e9467f3e8 1291-1294
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "bdc9d6ccb5584987594d7c56570552ee64341857",
+  "prompts": {},
+  "sessions": {
+    "s_480f842b4b95f0": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "7f96548e-9703-4091-aab9-2de7749a032e",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}
