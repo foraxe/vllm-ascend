@@ -1,0 +1,35 @@
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/kv_transfer.py
+  s_480f842b4b95f0::t_466bef2431f1d4 1100
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/pool_worker.py
+  s_480f842b4b95f0::t_584713a991f137 1944,1947
+  s_480f842b4b95f0::t_d486d8d179bf8e 1945-1946
+  s_480f842b4b95f0::t_2cbb66fa70ea73 1257-1262,1265-1269
+  s_480f842b4b95f0::t_68244dbdf840bb 1263-1264,1276-1286
+  s_480f842b4b95f0::t_f801b1a266665b 1734-1740
+  s_480f842b4b95f0::t_b03f76cc25cbec 1352-1361,1367-1380
+  s_480f842b4b95f0::t_38d7e3b394cc33 1337-1347
+  s_480f842b4b95f0::t_bebdb48dc23710 1253-1254,1270-1272,1274-1275
+  s_480f842b4b95f0::t_cc7e5fabcbe060 1252,1255-1256,1273
+vllm_ascend/attention/context_parallel/pcp_owner_vmm.py
+  s_480f842b4b95f0::t_4d461578bd466b 398-404
+tests/ut/distributed/ascend_store/test_pool_worker.py
+  s_480f842b4b95f0::t_4269e6d4372ac7 1731-1753
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/pool_scheduler.py
+  s_480f842b4b95f0::t_ad22d3d4b39a12 1060-1069,1073,1079-1091
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3933f8f1532826804c7516f787bb90ca10fec551",
+  "prompts": {},
+  "sessions": {
+    "s_480f842b4b95f0": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "7f96548e-9703-4091-aab9-2de7749a032e",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

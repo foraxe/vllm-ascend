@@ -1,0 +1,19 @@
+release_notes/fragments/23232.yaml
+  s_480f842b4b95f0::t_4dda908d342791 1-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "5e5ee931e9a456940b58ad72dde974eb721c559b",
+  "prompts": {},
+  "sessions": {
+    "s_480f842b4b95f0": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "7f96548e-9703-4091-aab9-2de7749a032e",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

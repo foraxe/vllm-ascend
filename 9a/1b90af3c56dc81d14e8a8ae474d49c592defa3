@@ -1,0 +1,28 @@
+tests/ut/attention/test_dsa_v41_swa_chunk_meta.py
+  s_480f842b4b95f0::t_a952f8cfc54646 209-213,220-224
+  s_1ca3cc9a501d06::t_453770959b7463 225-226
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9a1b90af3c56dc81d14e8a8ae474d49c592defa3",
+  "prompts": {},
+  "sessions": {
+    "s_1ca3cc9a501d06": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "eae451be-048d-4614-8afa-c18fb31ff5ac",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    },
+    "s_480f842b4b95f0": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "7f96548e-9703-4091-aab9-2de7749a032e",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}
