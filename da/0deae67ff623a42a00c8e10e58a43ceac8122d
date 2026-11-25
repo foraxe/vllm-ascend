@@ -1,0 +1,16 @@
+image/afd034-nightly-20261125/Dockerfile_arm64
+  h_77bd4dffd3013a 1-5
+image/afd034-nightly-20261125/image.aci.yml
+  h_77bd4dffd3013a 1-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "da0deae67ff623a42a00c8e10e58a43ceac8122d",
+  "prompts": {},
+  "humans": {
+    "h_77bd4dffd3013a": {
+      "author": "Zhou ziheng <jiaranran2@gmail.com>"
+    }
+  }
+}
