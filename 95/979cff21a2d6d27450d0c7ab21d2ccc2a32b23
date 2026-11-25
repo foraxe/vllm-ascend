@@ -1,0 +1,25 @@
+tests/ut/ops/test_per_layer_placement.py
+  s_1ca3cc9a501d06::t_980c82a2eb3b4d 1-237
+tools/build_per_layer_map.py
+  s_1ca3cc9a501d06::t_9667aba31887af 1-127
+vllm_ascend/ops/fused_moe/routed_experts.py
+  s_1ca3cc9a501d06::t_48ccdee672075b 17-18,392-407,455-461,594-731,911-912
+vllm_ascend/ops/fused_moe/token_dispatcher.py
+  s_1ca3cc9a501d06::t_1f49f81813de55 23,69-106,460-466,469,475
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "95979cff21a2d6d27450d0c7ab21d2ccc2a32b23",
+  "prompts": {},
+  "sessions": {
+    "s_1ca3cc9a501d06": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "eae451be-048d-4614-8afa-c18fb31ff5ac",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}
