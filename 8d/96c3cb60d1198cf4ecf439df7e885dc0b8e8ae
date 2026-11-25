@@ -8,6 +8,8 @@ vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/pool_worker.py
   s_480f842b4b95f0::t_f801b1a266665b 1734-1740
   s_480f842b4b95f0::t_b03f76cc25cbec 1352-1361,1367-1380
   s_480f842b4b95f0::t_38d7e3b394cc33 1337-1347
+  s_480f842b4b95f0::t_bebdb48dc23710 1253-1254,1270-1272,1274-1275
+  s_480f842b4b95f0::t_cc7e5fabcbe060 1252,1255-1256,1273
 vllm_ascend/attention/context_parallel/pcp_owner_vmm.py
   s_480f842b4b95f0::t_4d461578bd466b 398-404
 tests/ut/distributed/ascend_store/test_pool_worker.py
