@@ -1,0 +1,46 @@
+vllm_ascend/shared_engram_rdma.py
+  s_60cbb78615f812::t_0b4373dc170e9d 19-20,40-41,50
+vllm_ascend/ascend_config.py
+  s_60cbb78615f812::t_da133b193e00ed 405-406,412-420
+tests/ut/models/test_engram_shared_rdma.py
+  s_60cbb78615f812::t_e7c6dc29b563b1 211-219,228-238,242-245
+  s_60cbb78615f812::t_58fc4a6a88299a 157-160
+  s_60cbb78615f812::t_9f862a989ee855 220-227,239-241
+  s_60cbb78615f812::t_3f6b54fd1d3f1b 246-248,254-255,261
+  s_60cbb78615f812::t_a7416fdf83ef36 249-253,256-260,262-267
+  s_60cbb78615f812::t_8784025d39a7f7 154-156,161-162,167-172,186-197
+  s_60cbb78615f812::t_a93425f258e2f4 184
+  s_60cbb78615f812::t_b64a16beb8e851 13
+  s_60cbb78615f812::t_af97a2c060fcc5 10,148-153,163-166,173-183,198-208
+  s_60cbb78615f812::t_aa66d5b6ccc652 185
+  s_60cbb78615f812::t_fb348c7c75917f 209-210
+docs/source/user_guide/feature_guide/shared_engram_rdma.md
+  s_60cbb78615f812::t_ffc52a9c75fe98 64-92
+vllm_ascend/models/deepseek_v41/model.py
+  s_60cbb78615f812::t_da133b193e00ed 1046,1048-1049,1051
+  s_60cbb78615f812::t_af97a2c060fcc5 1055-1057
+vllm_ascend/models/deepseek_v41/engram/shared_rdma.py
+  s_60cbb78615f812::t_aa66d5b6ccc652 380,401-404,480-483
+  s_60cbb78615f812::t_58fc4a6a88299a 383-389
+  s_60cbb78615f812::t_fc86eb82375269 243-244
+  s_60cbb78615f812::t_0b4373dc170e9d 221,569-574,580,582-584,599-600,605-606,672
+  s_60cbb78615f812::t_23df74ba80e47e 197,227-237,379,396-397,433-434,454,484-495,499-504,506
+  s_60cbb78615f812::t_8784025d39a7f7 424-426,441-448,465-476,607-609
+  s_60cbb78615f812::t_cc0782e95f5f5d 371-378,381-382,390-395,398-400,405-423,427-432,435-440,449-453,455-464,477-479,496-498,505,507-511
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "bb8b26ae99414da5731311a3399ceedecc732ad7",
+  "prompts": {},
+  "sessions": {
+    "s_60cbb78615f812": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1b410-5955-7f23-9e47-7fd29d81e01a",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

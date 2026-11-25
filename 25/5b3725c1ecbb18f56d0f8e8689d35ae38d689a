@@ -1,0 +1,23 @@
+tests/ut/models/test_ple_shared_reuse.py
+  s_2c7c0a259eff1f::t_2a455b46621f69 121,132,139-148,151,153
+vllm_ascend/models/host_offload.py
+  s_2c7c0a259eff1f::t_2a455b46621f69 21,25-26
+vllm_ascend/models/qwen4_exp/ple_embedding.py
+  s_2c7c0a259eff1f::t_2a455b46621f69 221,252-253,255
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "255b3725c1ecbb18f56d0f8e8689d35ae38d689a",
+  "prompts": {},
+  "sessions": {
+    "s_2c7c0a259eff1f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1cb69-b458-77a2-a7f7-ef64f39725f8",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

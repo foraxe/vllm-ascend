@@ -1,0 +1,46 @@
+vllm_ascend/ascend_config.py
+  h_02e4646417b93d 400-418,589
+vllm_ascend/envs.py
+  h_02e4646417b93d 32-34
+vllm_ascend/models/deepseek_v41/vl_model.py
+  h_02e4646417b93d 58-67
+tests/ut/models/test_engram_v2_model_state.py
+  h_02e4646417b93d 575-577
+vllm_ascend/models/deepseek_v41/engram/shared_rdma.py
+  h_02e4646417b93d 1-474
+vllm_ascend/shared_engram_rdma.py
+  h_02e4646417b93d 1-75
+CMakeLists.txt
+  h_02e4646417b93d 230-241
+vllm_ascend/models/deepseek_v41/engram/embedding.py
+  h_02e4646417b93d 64,66-68,123,149-153,190-193,225-226,236-237,350-352,361-374,404,412-415
+vllm_ascend/ops/triton/engram_lookup.py
+  h_02e4646417b93d 20-47
+vllm_ascend/worker/worker.py
+  h_02e4646417b93d 455-458
+tests/ut/models/test_engram.py
+  h_02e4646417b93d 33-41
+tests/ut/models/test_engram_shared_rdma.py
+  h_02e4646417b93d 1-251
+csrc/engram_hixl/native.cpp
+  h_02e4646417b93d 1-142
+docs/source/user_guide/feature_guide/index.md
+  h_02e4646417b93d 4-5
+tests/ut/models/test_engram_defaults.py
+  h_02e4646417b93d 8,21-32
+docs/source/user_guide/feature_guide/shared_engram_rdma.md
+  h_02e4646417b93d 1-74
+vllm_ascend/models/deepseek_v41/model.py
+  h_02e4646417b93d 1036-1054,1084,1239-1253,1255,1261-1263,1268-1270,1311,1688-1699,1706
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7e12f46173849fddaf30feee49f96f8d43714c60",
+  "prompts": {},
+  "humans": {
+    "h_02e4646417b93d": {
+      "author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

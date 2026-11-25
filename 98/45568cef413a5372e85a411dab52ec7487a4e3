@@ -1,0 +1,29 @@
+research/cann_owner0_sdk/guarded_full_graph_reader.py
+  s_e7a51dcf069eaf::t_ef96a04ee85513 1-12
+research/cann_owner0_sdk/nine_rank_smoke.py
+  s_e7a51dcf069eaf::t_5c097893b657f1 1-56
+research/cann_owner0_sdk/analyze_full_graph.py
+  s_e7a51dcf069eaf::t_a5fd148cee60a5 1-32
+research/cann_owner0_sdk/NINE_RANK_PLAN.md
+  s_e7a51dcf069eaf::t_5c097893b657f1 1-5
+research/cann_owner0_sdk/full_graph_reader.py
+  s_e7a51dcf069eaf::t_ef96a04ee85513 1-129
+research/cann_owner0_sdk/FULL_GRAPH_PLAN.md
+  s_e7a51dcf069eaf::t_ef96a04ee85513 1-3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9845568cef413a5372e85a411dab52ec7487a4e3",
+  "prompts": {},
+  "sessions": {
+    "s_e7a51dcf069eaf": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a19a2f-aa6b-7033-8dd6-6934cca25f9b",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

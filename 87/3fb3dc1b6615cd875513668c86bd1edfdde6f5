@@ -1,0 +1,14 @@
+vllm_ascend/patch/platform/patch_kimi_structured_boundary.py
+  h_9b51eecdefb97c 18,23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "873fb3dc1b6615cd875513668c86bd1edfdde6f5",
+  "prompts": {},
+  "humans": {
+    "h_9b51eecdefb97c": {
+      "author": "linyafeng <linnea-lin-00638949@users.noreply.github.com>"
+    }
+  }
+}

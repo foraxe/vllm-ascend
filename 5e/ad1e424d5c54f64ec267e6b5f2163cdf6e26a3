@@ -1,0 +1,22 @@
+vllm_ascend/models/qwen4_exp/ple_rdma_embedding.py
+  s_2c7c0a259eff1f::t_dac4853ac71673 49-55
+tests/ut/models/qwen4_exp/test_ple_rdma_embedding.py
+  s_2c7c0a259eff1f::t_dac4853ac71673 91-119
+  s_2c7c0a259eff1f::t_23991694a3b8fa 120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "5ead1e424d5c54f64ec267e6b5f2163cdf6e26a3",
+  "prompts": {},
+  "sessions": {
+    "s_2c7c0a259eff1f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1cb69-b458-77a2-a7f7-ef64f39725f8",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

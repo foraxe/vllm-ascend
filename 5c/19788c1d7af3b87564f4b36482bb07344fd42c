@@ -1,0 +1,88 @@
+docs/source/user_guide/feature_guide/shared_engram.md
+  s_70fb834a8f513b::t_11d98ed0d7c438 1-189
+tests/ut/models/test_engram_memfabric_storage.py
+  s_70fb834a8f513b::t_11d98ed0d7c438 1-202
+vllm_ascend/shared_engram.py
+  s_70fb834a8f513b::t_0eec583b961c1c 8-15
+  s_70fb834a8f513b::t_11d98ed0d7c438 4-7,16
+release_notes/fragments/19528.yaml
+  s_70fb834a8f513b::t_11d98ed0d7c438 1-6
+tests/ut/test_ascend_config.py
+  s_70fb834a8f513b::t_c655a11ed15b30 84
+  s_70fb834a8f513b::t_11d98ed0d7c438 48,61,66-83,85-89
+  s_70fb834a8f513b::t_1b27ecfe2bcf08 62-65
+  s_70fb834a8f513b::t_911fea68038ab6 90-91
+vllm_ascend/ascend_config.py
+  s_70fb834a8f513b::t_0eec583b961c1c 457,464-472,797,802
+  s_70fb834a8f513b::t_11d98ed0d7c438 803-808
+tests/ut/models/test_engram_aicpu_init.py
+  s_70fb834a8f513b::t_11d98ed0d7c438 1-120
+tests/ut/models/test_engram_shared_rdma.py
+  s_70fb834a8f513b::t_ab010bfbd7aa97 38-39,45,47,49
+  s_70fb834a8f513b::t_31a2ef9159b7f3 42-44
+vllm_ascend/shared_engram_a3.py
+  s_70fb834a8f513b::t_0eec583b961c1c 1-97
+vllm_ascend/models/deepseek_v41/engram/common.py
+  s_70fb834a8f513b::t_11d98ed0d7c438 11,20-60
+  s_70fb834a8f513b::t_fa291e0f7f5fb3 61-62
+tests/ut/models/test_engram_unified_dispatch.py
+  s_9f41e3a32b69f3::t_fc3363f17aaa3c 101-110,112-139,145,150-152,154-156
+  s_9f41e3a32b69f3::t_bb0b9cf35358d8 1-7,9-34,47-94,96-100
+  s_9f41e3a32b69f3::t_435759173dc7a9 35
+  s_9f41e3a32b69f3::t_6230176f4487e2 140,144,146-149
+  s_9f41e3a32b69f3::t_9745bd6f947c9c 8,36-46,95,111,153
+  s_9f41e3a32b69f3::t_abd2e6b8eae6bc 141-143
+benchmarks/benchmark_shared_engram.py
+  s_70fb834a8f513b::t_11d98ed0d7c438 1-136
+vllm_ascend/models/deepseek_v41/engram/shared_pool.py
+  s_70fb834a8f513b::t_11d98ed0d7c438 1-299
+vllm_ascend/models/deepseek_v41/model.py
+  s_9f41e3a32b69f3::t_80df1c5ca0f7ae 1087-1088
+  s_70fb834a8f513b::t_11d98ed0d7c438 9,99,1090-1124,1126-1176,1785-1808
+  s_9f41e3a32b69f3::t_6230176f4487e2 1777-1778
+  s_9f41e3a32b69f3::t_8d7f3b2009e6f3 1056-1057,1125
+vllm_ascend/models/deepseek_v41/engram/embedding.py
+  s_70fb834a8f513b::t_11d98ed0d7c438 17,49-53,81-86,110-111,135-142,145-164,181-210,251-260,305-311
+  s_9f41e3a32b69f3::t_90fe9249a18023 70-72,75-76,144
+vllm_ascend/models/deepseek_v41/vl_model.py
+  s_70fb834a8f513b::t_11d98ed0d7c438 27,107-123
+tests/ut/worker/test_model_runner_v2.py
+  s_70fb834a8f513b::t_11d98ed0d7c438 1933-1994
+vllm_ascend/worker/v2/model_runner.py
+  s_70fb834a8f513b::t_11d98ed0d7c438 552-557,567-580
+tests/ut/models/test_engram_defaults.py
+  s_70fb834a8f513b::t_c655a11ed15b30 35,48-53
+tests/ut/models/test_engram_shared_pool.py
+  s_9f41e3a32b69f3::t_99bdadea4518e8 58-66,446,519,591,665
+  s_70fb834a8f513b::t_11d98ed0d7c438 1-57,67-249,251-445,447-518,520-590,593-664,666-808
+  s_70fb834a8f513b::t_0eec583b961c1c 250
+  s_9f41e3a32b69f3::t_e9aade6152e2ba 592
+vllm_ascend/models/deepseek_v41/engram/shared_host.py
+  s_70fb834a8f513b::t_11d98ed0d7c438 1-220
+mypy.ini
+  s_70fb834a8f513b::t_11d98ed0d7c438 62-64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "5c19788c1d7af3b87564f4b36482bb07344fd42c",
+  "prompts": {},
+  "sessions": {
+    "s_70fb834a8f513b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a187a5-6f72-79f1-ace7-ba82e7e303a4",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    },
+    "s_9f41e3a32b69f3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a09114-51d1-7b92-8410-0d9e206e4388",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

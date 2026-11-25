@@ -1,0 +1,14 @@
+vllm_ascend/models/deepseek_v41/engram/shared_rdma.py
+  h_02e4646417b93d 18,237,273,298,426
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f835a6641b8856589919b42859a11b3670d69927",
+  "prompts": {},
+  "humans": {
+    "h_02e4646417b93d": {
+      "author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

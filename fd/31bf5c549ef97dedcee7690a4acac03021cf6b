@@ -1,0 +1,23 @@
+research/cann_owner0_sdk/NINE_RANK_PLAN.md
+  s_ae878733767172::t_f70fa3b27b5487 12-24
+research/cann_owner0_sdk/run_nine_rank.py
+  s_ae878733767172::t_0ec951564361d1 120,126
+  s_ae878733767172::t_fffc76292307fd 195
+  s_ae878733767172::t_dbc8f74cfc6678 1-119,121-125,127-194,196-214
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "fd31bf5c549ef97dedcee7690a4acac03021cf6b",
+  "prompts": {},
+  "sessions": {
+    "s_ae878733767172": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "300c0aea-1854-45c9-925a-13d1c32c978c",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

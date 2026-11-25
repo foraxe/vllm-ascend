@@ -1,0 +1,98 @@
+tests/ut/models/test_engram_hixl_native_cpu.py
+  s_2c7c0a259eff1f::t_77b6e569b5e595 1-34
+vllm_ascend/models/qwen4_exp/ple_bm_reader.py
+  s_2c7c0a259eff1f::t_1547a73602205a 1-69
+tests/native/README.engram_hixl_cpu.md
+  s_2c7c0a259eff1f::t_77b6e569b5e595 1-22
+vllm_ascend/shared_ple_rdma.py
+  s_2c7c0a259eff1f::t_333369ba4232b7 1-66
+tests/native/engram_hixl_cpu_stubs/include/hixl/hixl.h
+  s_2c7c0a259eff1f::t_77b6e569b5e595 1-65
+docs/source/user_guide/feature_guide/qwen_shared_ple.md
+  s_2c7c0a259eff1f::t_bdffe73b810ca4 1-22,24-25
+  s_2c7c0a259eff1f::t_178b3dbd641c2c 23
+tests/native/test_engram_hixl_local_comm_res.cpp
+  s_2c7c0a259eff1f::t_77b6e569b5e595 1-52,55-75,79-84,87-95,98-107,110,112-120
+  s_2c7c0a259eff1f::t_bdffe73b810ca4 53-54,76-78,85-86,96-97,108-109,111
+vllm_ascend/shared_ple.py
+  s_2c7c0a259eff1f::t_333369ba4232b7 1-61
+tests/native/engram_hixl_cpu_stubs/include/acl/acl.h
+  s_2c7c0a259eff1f::t_77b6e569b5e595 1-29
+vllm_ascend/models/qwen4_exp/ple_rdma.py
+  s_2c7c0a259eff1f::t_333369ba4232b7 1-56,58-101,103-120,123-140,142-181
+  s_2c7c0a259eff1f::t_c2aa9466df8c49 57,102,121-122,141
+vllm_ascend/ascend_config.py
+  s_2c7c0a259eff1f::t_333369ba4232b7 651
+vllm_ascend/models/qwen4_exp/ple_rdma_embedding.py
+  s_2c7c0a259eff1f::t_333369ba4232b7 1-110
+vllm_ascend/models/qwen4_exp/ple_bm_embedding.py
+  s_2c7c0a259eff1f::t_333369ba4232b7 1-19,30-35,40-42,52-128
+  s_2c7c0a259eff1f::t_1547a73602205a 20-29
+  s_2c7c0a259eff1f::t_bdffe73b810ca4 36-39,48-51
+  s_2c7c0a259eff1f::t_6ba3818c35a27f 43-47
+vllm_ascend/models/deepseek_v41/engram/shared_host.py
+  s_2c7c0a259eff1f::t_0d6a99ddd92530 97
+docs/source/user_guide/feature_guide/index.md
+  s_2c7c0a259eff1f::t_bdffe73b810ca4 6-7
+csrc/engram_hixl/native.cpp
+  s_2c7c0a259eff1f::t_77b6e569b5e595 16
+  s_2c7c0a259eff1f::t_0d6a99ddd92530 85-88,93-99
+vllm_ascend/models/deepseek_v41/engram/shared_pool.py
+  s_2c7c0a259eff1f::t_333369ba4232b7 19,174
+release_notes/fragments/21638.yaml
+  s_2c7c0a259eff1f::t_e32995e74abe0c 1-4
+tests/ut/models/qwen4_exp/test_ple_bm_embedding.py
+  s_2c7c0a259eff1f::t_045f79658491d4 1-134
+tests/ut/models/qwen4_exp/test_ple_bm_layout.py
+  s_2c7c0a259eff1f::t_7f9bd8dd5a3446 1-45
+tests/ut/models/qwen4_exp/test_ple_bm_reader.py
+  s_2c7c0a259eff1f::t_568671d00be354 1-70
+tests/ut/models/qwen4_exp/test_ple_bm_table.py
+  s_2c7c0a259eff1f::t_6738efa298113d 1-52
+tests/ut/models/qwen4_exp/test_ple_checkpoint.py
+  s_2c7c0a259eff1f::t_eb85648197b757 1-63
+tests/ut/models/qwen4_exp/test_ple_external_weights.py
+  s_2c7c0a259eff1f::t_4ab11b4909700e 1-110
+tests/ut/models/qwen4_exp/test_ple_layout.py
+  s_2c7c0a259eff1f::t_e56491f55e86fd 1-29
+tests/ut/models/qwen4_exp/test_ple_model_state.py
+  s_2c7c0a259eff1f::t_2e46ec1a84325e 1-91
+tests/ut/models/qwen4_exp/test_ple_rdma.py
+  s_2c7c0a259eff1f::t_fe1ec696f6654e 1-64
+tests/ut/models/qwen4_exp/test_ple_rdma_embedding.py
+  s_2c7c0a259eff1f::t_7f4271283d0dad 1-86
+vllm_ascend/models/qwen4_exp/model.py
+  s_2c7c0a259eff1f::t_2e0bd1547b2689 38,80,83-88,113-115,118-123
+vllm_ascend/models/qwen4_exp/model_state.py
+  s_2c7c0a259eff1f::t_68cdd45a1615c9 40-82
+vllm_ascend/models/qwen4_exp/ple.py
+  s_2c7c0a259eff1f::t_d75ac0d2095818 344-364
+vllm_ascend/models/qwen4_exp/ple_bm_layout.py
+  s_2c7c0a259eff1f::t_a7e1883f6246e4 1-38
+vllm_ascend/models/qwen4_exp/ple_bm_table.py
+  s_2c7c0a259eff1f::t_85f814db75b2fc 1-39
+vllm_ascend/models/qwen4_exp/ple_checkpoint.py
+  s_2c7c0a259eff1f::t_1285f66beac9c6 1-90
+vllm_ascend/models/qwen4_exp/ple_external_weights.py
+  s_2c7c0a259eff1f::t_a9e42801422b54 1-30
+vllm_ascend/models/qwen4_exp/ple_layout.py
+  s_2c7c0a259eff1f::t_45dabc76b51962 1-43
+vllm_ascend/ops/triton/qwen4_exp/ple_shared.py
+  s_2c7c0a259eff1f::t_53be0eaaf920a2 1-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "956d5e04595291a49d1455ed26a91a81a0cacdc2",
+  "prompts": {},
+  "sessions": {
+    "s_2c7c0a259eff1f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1cb69-b458-77a2-a7f7-ef64f39725f8",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

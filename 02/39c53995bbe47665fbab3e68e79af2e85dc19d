@@ -1,0 +1,23 @@
+tests/ut/models/test_engram_shared_rdma.py
+  s_70fb834a8f513b::t_a5354963d26961 467-514
+vllm_ascend/models/deepseek_v41/engram/shared_rdma.py
+  s_70fb834a8f513b::t_f368f600926321 12
+  s_70fb834a8f513b::t_fe7293548e79e1 535-537
+  s_70fb834a8f513b::t_c5418c329c11fe 34-36,506-534,538
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0239c53995bbe47665fbab3e68e79af2e85dc19d",
+  "prompts": {},
+  "sessions": {
+    "s_70fb834a8f513b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a187a5-6f72-79f1-ace7-ba82e7e303a4",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

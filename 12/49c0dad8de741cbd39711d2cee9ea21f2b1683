@@ -1,0 +1,25 @@
+research/cann_owner0_sdk/GRAPH_PERF_PLAN.md
+  s_e7a51dcf069eaf::t_ff010cb38a3d79 1-5
+research/cann_owner0_sdk/guarded_graph_perf.py
+  s_e7a51dcf069eaf::t_ff010cb38a3d79 1-12
+research/cann_owner0_sdk/graph_perf_reader.py
+  s_e7a51dcf069eaf::t_ff010cb38a3d79 1-77
+research/cann_owner0_sdk/analyze_graph_perf.py
+  s_e7a51dcf069eaf::t_8636961388ba80 1-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "1249c0dad8de741cbd39711d2cee9ea21f2b1683",
+  "prompts": {},
+  "sessions": {
+    "s_e7a51dcf069eaf": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a19a2f-aa6b-7033-8dd6-6934cca25f9b",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

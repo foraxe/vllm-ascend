@@ -1,0 +1,14 @@
+cd_config/k3.yml
+  h_ae25d90d116dac 1-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "974968982713c4147261a1c484e49de1a8145eee",
+  "prompts": {},
+  "humans": {
+    "h_ae25d90d116dac": {
+      "author": "林雅凤 <lyf02488571@antgroup.com>"
+    }
+  }
+}

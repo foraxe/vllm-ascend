@@ -1,0 +1,28 @@
+docs/source/user_guide/feature_guide/shared_engram_rdma.md
+  s_70fb834a8f513b::t_dfdce08aa16cae 72
+tests/ut/models/test_engram_shared_rdma.py
+  s_70fb834a8f513b::t_0395675db694b6 84-107
+  s_70fb834a8f513b::t_9958356f6b60c9 112,129-132,134,159,181-190,194-199
+  s_70fb834a8f513b::t_3fd238d6541839 191-193
+  s_70fb834a8f513b::t_0a57221688f78f 393
+  s_70fb834a8f513b::t_32d06c1509d60e 200-201
+vllm_ascend/models/deepseek_v41/engram/shared_rdma.py
+  s_70fb834a8f513b::t_6e2f268a476cce 202-207,227-232,468,499,504,545-548
+  s_70fb834a8f513b::t_0d140894ea3a91 141
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d2c6c1f8c033a69da2dec736dee8947127c709e6",
+  "prompts": {},
+  "sessions": {
+    "s_70fb834a8f513b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a187a5-6f72-79f1-ace7-ba82e7e303a4",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

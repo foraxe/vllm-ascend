@@ -1,0 +1,31 @@
+vllm_ascend/attention/dsa_v41.py
+  s_480f842b4b95f0::t_6898985061f4c3 447
+tests/ut/attention/test_pcp_owner_kv.py
+  s_480f842b4b95f0::t_501d033994e712 545-555
+tests/ut/attention/test_pcp_owner_vmm_v1.py
+  s_480f842b4b95f0::t_b8af79979ffeac 1-454
+vllm_ascend/attention/context_parallel/pcp_owner_kv.py
+  s_480f842b4b95f0::t_a35b2bf37facf9 36-38,49-55,883-884,886-890
+vllm_ascend/attention/context_parallel/pcp_owner_vmm.py
+  s_480f842b4b95f0::t_8ddf7fd385da2a 44-45,63-68,73-80,82,95-105,108-109,137-153,254,256-261,264-271,275-284,286-287,334-349,371-373,378-388,393,410-418,427,429,431,441-445,449,452-454,471-490,501,665-808,877,884-896,916,928-930,945-962,981-1028,1092-1095,1121-1162,1384,1445-1473,1479-1481,1496,1500,1502,1504,1516-1517,1524-1526,1533,1535,1540-1558,1563,1573,1580,1593,1600,1609,1618-1619,1623-1625,1647,1649,1729-1730,1751-1752,1765-1769
+vllm_ascend/envs.py
+  s_480f842b4b95f0::t_6f6eae41af9a0b 83-99
+vllm_ascend/worker/v2/model_runner.py
+  s_480f842b4b95f0::t_4cfee3962e7969 723
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d9d121e8660fecd2308d4168213c5ae44b6a7b4c",
+  "prompts": {},
+  "sessions": {
+    "s_480f842b4b95f0": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "7f96548e-9703-4091-aab9-2de7749a032e",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

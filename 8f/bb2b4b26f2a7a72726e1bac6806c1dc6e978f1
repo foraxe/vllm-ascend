@@ -1,0 +1,22 @@
+tests/ut/models/test_engram_close_lifecycle.py
+  h_02e4646417b93d 1-285
+vllm_ascend/models/deepseek_v41/engram/shared_rdma.py
+  h_02e4646417b93d 50,92-97,293-294,298-303,321,331-336,340-342,359-368
+vllm_ascend/models/deepseek_v41/model.py
+  h_02e4646417b93d 1660-1661,1666-1675
+vllm_ascend/models/deepseek_v41/vl_model.py
+  h_02e4646417b93d 65-66
+vllm_ascend/worker/worker.py
+  h_02e4646417b93d 368,371-376,390-391,439-441
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "8fbb2b4b26f2a7a72726e1bac6806c1dc6e978f1",
+  "prompts": {},
+  "humans": {
+    "h_02e4646417b93d": {
+      "author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

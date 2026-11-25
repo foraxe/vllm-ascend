@@ -1,0 +1,21 @@
+vllm_ascend/models/deepseek_v41/engram/shared_rdma.py
+  s_60cbb78615f812::t_8daa1b73824bdf 238,360,379,442,494
+vllm_ascend/ascend_config.py
+  s_60cbb78615f812::t_8daa1b73824bdf 414
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c8fc8303fef3b98942c420c5a6a99b13a0915aa8",
+  "prompts": {},
+  "sessions": {
+    "s_60cbb78615f812": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1b410-5955-7f23-9e47-7fd29d81e01a",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

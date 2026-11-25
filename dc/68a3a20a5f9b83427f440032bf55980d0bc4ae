@@ -1,0 +1,20 @@
+0.30.0_ut.yml
+  s_b3218db91a34d9::t_96bdf381be87c2 72,174
+  s_b3218db91a34d9::t_50d160311d3db2 12,103-105,164,168,179-186
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "dc68a3a20a5f9b83427f440032bf55980d0bc4ae",
+  "prompts": {},
+  "sessions": {
+    "s_b3218db91a34d9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1bee9-6562-7882-88f6-7d3dcf033d11",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "zhengyoufu <zhengyoufu.zyf@antgroup.com>"
+    }
+  }
+}

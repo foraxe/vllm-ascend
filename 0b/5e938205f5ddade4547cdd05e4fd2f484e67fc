@@ -1,0 +1,50 @@
+vllm_ascend/models/deepseek_v41/model.py
+  s_9f41e3a32b69f3::t_81be0635ee15f8 100
+  s_9f41e3a32b69f3::t_0f13e4f2fabef3 1089,1687
+  s_9f41e3a32b69f3::t_e55c4644015094 1684-1686,1688-1707
+vllm_ascend/models/deepseek_v41/engram/shared_pool.py
+  s_9f41e3a32b69f3::t_b6842b31f1787f 161
+  s_9f41e3a32b69f3::t_0f13e4f2fabef3 6,21,23-24,26-32
+  s_9f41e3a32b69f3::t_942e241b18c185 11,22,25
+tests/ut/models/test_engram_memfabric_storage.py
+  s_9f41e3a32b69f3::t_63c035052d7b15 132-143
+tests/ut/models/test_engram_shared_pool.py
+  s_9f41e3a32b69f3::t_af784ad5dfb2ca 517-518
+  s_9f41e3a32b69f3::t_81af08797aea4c 148,150-152,154-166,172-173
+  s_9f41e3a32b69f3::t_29c5b1001bc931 427,467-468,480-485,499,508-514
+  s_9f41e3a32b69f3::t_7969db8e5a0984 145,147,168,170,179-205
+  s_9f41e3a32b69f3::t_79c167a1aaa6a3 149,153,169
+  s_9f41e3a32b69f3::t_df5bdee01f29b4 548
+  s_9f41e3a32b69f3::t_8049fbbdd4fbe4 502
+  s_9f41e3a32b69f3::t_6af0a45f8eca26 519-520,529-536,552-559
+  s_9f41e3a32b69f3::t_4b2e6816dc4694 479,528
+  s_9f41e3a32b69f3::t_46b3b121a00f4f 129,131,144,469-478,486-498,500-501,503-507,515-516
+  s_9f41e3a32b69f3::t_6d3e0bad0df865 126-128
+  s_9f41e3a32b69f3::t_031294be55af24 130
+  s_9f41e3a32b69f3::t_8fb024b1e83d66 132-134,141-143
+  s_9f41e3a32b69f3::t_ba358b4e07eb56 146
+  s_9f41e3a32b69f3::t_fe57b5822c088e 167
+  s_9f41e3a32b69f3::t_3b55fd7091b713 171
+  s_9f41e3a32b69f3::t_79bf745646905e 174-178
+docs/source/user_guide/feature_guide/shared_engram.md
+  s_9f41e3a32b69f3::t_6ed84e06276000 44-46
+vllm_ascend/models/deepseek_v41/engram/embedding.py
+  s_9f41e3a32b69f3::t_0f13e4f2fabef3 154-155,196
+  s_9f41e3a32b69f3::t_81be0635ee15f8 49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0b5e938205f5ddade4547cdd05e4fd2f484e67fc",
+  "prompts": {},
+  "sessions": {
+    "s_9f41e3a32b69f3": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a09114-51d1-7b92-8410-0d9e206e4388",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

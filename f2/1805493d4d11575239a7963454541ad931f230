@@ -1,0 +1,35 @@
+vllm_ascend/models/deepseek_v41/engram/local_shared_vmm.py
+  s_d6485b3d09302c::t_d98111e3df87b4 43-45
+  s_d6485b3d09302c::t_2cd62527270849 39,50,57
+tests/ut/distributed/kv_transfer/kv_p2p/test_mooncake_receiver_drain.py
+  s_d6485b3d09302c::t_7709dae1be9d23 29,151,205,222,227
+  s_d6485b3d09302c::t_3ad8bde4a21c0d 86
+tests/ut/models/test_engram_local_vmm_lifecycle.py
+  s_d6485b3d09302c::t_fa44ef1aa4717d 20
+  s_d6485b3d09302c::t_2cd62527270849 29
+vllm_ascend/distributed/kv_transfer/kv_p2p/mooncake_hybrid_connector.py
+  s_d6485b3d09302c::t_d98111e3df87b4 1291
+  s_d6485b3d09302c::t_2cd62527270849 531-532,1280-1281,1334
+tests/ut/models/test_engram_vmm_cleanup.py
+  s_d6485b3d09302c::t_2cd62527270849 15
+tests/ut/models/test_engram_vmm_local_publication.py
+  s_d6485b3d09302c::t_2cd62527270849 16
+tests/ut/models/test_engram_vmm_model_rollback.py
+  s_d6485b3d09302c::t_5672c21284707f 7,33-35,37,52,88-90,92,107,117,124,133,160,163
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f21805493d4d11575239a7963454541ad931f230",
+  "prompts": {},
+  "sessions": {
+    "s_d6485b3d09302c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c4b6-d8aa-7320-9579-f20711e7bf1b",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

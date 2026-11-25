@@ -1,0 +1,19 @@
+tests/ut/attention/test_pcp_owner_stage.py
+  s_02192fcd3e1eb5::t_913287c03b0ed0 118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "58835ab50760c492f539ce1542b8e91197c9e981",
+  "prompts": {},
+  "sessions": {
+    "s_02192fcd3e1eb5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1edd1-8477-77f2-b997-87ce778cdcbe",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

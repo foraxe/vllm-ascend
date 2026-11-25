@@ -1,0 +1,14 @@
+csrc/engram_vmm/native.cpp
+  h_02e4646417b93d 187-194,197-201,205-212,214-215
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a1a7cdb2c7147e3c60c4e90ae4d07494b442592c",
+  "prompts": {},
+  "humans": {
+    "h_02e4646417b93d": {
+      "author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

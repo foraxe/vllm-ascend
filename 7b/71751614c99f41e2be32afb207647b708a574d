@@ -1,0 +1,27 @@
+research/cann_owner0_sdk/perf/staged_actor.py
+  s_e7a51dcf069eaf::t_560d8254823e02 1-133
+research/cann_owner0_sdk/STAGING_PERF_PLAN.md
+  s_e7a51dcf069eaf::t_560d8254823e02 1-3
+research/cann_owner0_sdk/perf/cann_staging_reader.py
+  s_e7a51dcf069eaf::t_560d8254823e02 1-32
+research/cann_owner0_sdk/perf/analyze_staging.py
+  s_e7a51dcf069eaf::t_fe117e9899ef1b 1-41
+research/cann_owner0_sdk/perf/run_staging_all.sh
+  s_e7a51dcf069eaf::t_560d8254823e02 1-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7b71751614c99f41e2be32afb207647b708a574d",
+  "prompts": {},
+  "sessions": {
+    "s_e7a51dcf069eaf": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a19a2f-aa6b-7033-8dd6-6934cca25f9b",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

@@ -1,0 +1,42 @@
+vllm_ascend/models/deepseek_v41/engram/cann_shared_experimental.py
+  s_e7a51dcf069eaf::t_91e574a2719a4f 38-43,99,107,147-149
+research/cann_owner0_sdk/owner0_sdk.patch
+  s_e7a51dcf069eaf::t_31e19a4803088e 1-2,4-5,7-8,10-25,27-31,33-34,36-47,49-50
+  s_e7a51dcf069eaf::t_4a5bf9f046343a 3,6,9,26,32,35,48
+research/cann_owner0_sdk/test_write_contract.py
+  s_e7a51dcf069eaf::t_31e19a4803088e 7,22
+  s_e7a51dcf069eaf::t_9f6474247e85ff 1-6,8-21,23-71
+research/cann_owner0_sdk/smoke_owner0.py
+  s_e7a51dcf069eaf::t_13e86615c7dbb0 1-44
+research/cann_owner0_sdk/SMOKE_PLAN.md
+  s_e7a51dcf069eaf::t_13e86615c7dbb0 1-4
+  s_e7a51dcf069eaf::t_4ead0672a31a59 5
+tests/ut/models/test_deepseek_v41/test_cann_shared_slots.py
+  s_e7a51dcf069eaf::t_ffb4b14f81a692 49,51-56,161-162,270,277-279,302,309-310,312
+research/cann_owner0_sdk/.gitignore
+  s_e7a51dcf069eaf::t_31e19a4803088e 1-2
+research/cann_owner0_sdk/ADAPTER_PLAN.md
+  s_e7a51dcf069eaf::t_56b5585faa2e68 1-3
+research/cann_owner0_sdk/adapter_reader.py
+  s_e7a51dcf069eaf::t_56b5585faa2e68 1-27
+vllm_ascend/shared_engram_cann_experimental.py
+  s_e7a51dcf069eaf::t_91e574a2719a4f 19,72,90
+research/cann_owner0_sdk/README.md
+  s_e7a51dcf069eaf::t_3963be10b3317c 1-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "bc3dfb83cdb48aa5d6673259d777bc39fd495d9f",
+  "prompts": {},
+  "sessions": {
+    "s_e7a51dcf069eaf": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a19a2f-aa6b-7033-8dd6-6934cca25f9b",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

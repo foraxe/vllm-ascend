@@ -1,0 +1,70 @@
+moe_e2e_evidence/final_1122/run_arm.sh
+  s_c1fd1bcfc6f09b::t_7f8355e5536c44 1-27,30-101
+  s_c1fd1bcfc6f09b::t_7d4d33f6f15df0 28-29
+vllm_ascend/ops/fused_moe/token_dispatcher.py
+  s_c1fd1bcfc6f09b::t_33ab6ddb60447d 437-453
+moe_e2e_evidence/final_1122/summarize_arms.py
+  s_c1fd1bcfc6f09b::t_1345f7584f77ae 1-145
+  s_c1fd1bcfc6f09b::t_55bc0b47a60ca1 146-147
+moe_e2e_evidence/final_1122/parse_timing.py
+  s_c1fd1bcfc6f09b::t_923a2871c721c8 1-121
+  s_c1fd1bcfc6f09b::t_f9c96b3e1be994 122-123
+moe_e2e_evidence/final_1122/trim_single_layer_probe.py
+  s_c1fd1bcfc6f09b::t_51e698e2acf646 180-183,185
+  s_c1fd1bcfc6f09b::t_e09c5445b636c8 49
+  s_c1fd1bcfc6f09b::t_9434c8a75da490 1-7,9-10,15-25,28-31,34-35,37-39,41-48,50-55,58-69,96-102,105,107-108,110-119,121-124,139-144,151-179,196-214,230-237
+  s_c1fd1bcfc6f09b::t_431e23e069cec4 8,11-14,26-27,32-33,36,40,56-57,70-95,103-104,106,109,120,130,136-138,145-150,184,186-195,215-218,222-229
+  s_c1fd1bcfc6f09b::t_ed4db797bb287d 125-129,131-135
+  s_c1fd1bcfc6f09b::t_0543e51312a48c 219-221
+vllm_ascend/ops/fused_moe/moe_mlp.py
+  s_c1fd1bcfc6f09b::t_d0b634eb050090 30-35,38-59,66-72,80,83-86,89,92-94
+  s_c1fd1bcfc6f09b::t_c654f7f253837f 73-78
+  s_c1fd1bcfc6f09b::t_903766d94e7b43 60-65
+  s_c1fd1bcfc6f09b::t_08d2efbbab82e8 18-19,22
+  s_c1fd1bcfc6f09b::t_7bb48d8acdd4ce 139-143,145,150-154
+  s_c1fd1bcfc6f09b::t_85578a68209037 36-37
+  s_c1fd1bcfc6f09b::t_f91f0bdddf2fa9 91
+  s_c1fd1bcfc6f09b::t_315704b63f63bb 79,81-82,87-88,90
+vllm_ascend/ops/fused_moe/prepare_finalize.py
+  s_c1fd1bcfc6f09b::t_04aa813b86132f 110-113
+  s_c1fd1bcfc6f09b::t_f1de00b3eb5992 77-85,96,99,101-103,105-107,109,114,116-123,125,131-133,138-139,151-152,156-157
+  s_c1fd1bcfc6f09b::t_611d0ee240110c 140-143
+  s_c1fd1bcfc6f09b::t_069e3285010f5b 76,87-89,97,100,104,108,115,124,126-128,144-149,153-154,170,175
+  s_c1fd1bcfc6f09b::t_b716632e35a638 158-160,162
+  s_c1fd1bcfc6f09b::t_4d9974bf71cb13 161,163-169,171-174
+  s_c1fd1bcfc6f09b::t_64695adc657664 86
+  s_c1fd1bcfc6f09b::t_a4b004f0efcccb 90-95
+  s_c1fd1bcfc6f09b::t_fc3e9e7193e04c 98
+  s_c1fd1bcfc6f09b::t_fdd61fb216a725 129-130
+tests/ut/ops/test_pcp_replicated.py
+  s_c1fd1bcfc6f09b::t_9973f7c2fedcbb 1-50,60-107,111,116-172,175,178-179
+  s_c1fd1bcfc6f09b::t_17c546077825af 176-177
+  s_c1fd1bcfc6f09b::t_c57ecaaae558df 53-58
+  s_c1fd1bcfc6f09b::t_0b3515fc12407b 108-110,112-115
+  s_c1fd1bcfc6f09b::t_8058220c8105c5 173-174
+  s_c1fd1bcfc6f09b::t_ead51bfaa969b3 51-52,59
+JOURNAL.md
+  s_c1fd1bcfc6f09b::t_07a33beddbcb19 138-208
+moe_e2e_evidence/final_1122/findings_final.json
+  s_c1fd1bcfc6f09b::t_dbdd18d8e95da1 1-155
+moe_e2e_evidence/final_1122/trim_probe_2048.json
+  s_c1fd1bcfc6f09b::t_5fda330318fc3a 1-176
+moe_e2e_evidence/final_1122/trim_probe_8192.json
+  s_c1fd1bcfc6f09b::t_ebc71defebe1fd 1-200
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b76b108bf62faac0aa6219ae3fd512aeba2c639f",
+  "prompts": {},
+  "sessions": {
+    "s_c1fd1bcfc6f09b": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "55a01dbf-d46d-48f8-99ca-48ca41627699",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

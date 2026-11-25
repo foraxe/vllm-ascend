@@ -1,0 +1,19 @@
+cd_config/k3.yml
+  s_6e98188da883d9::t_5c5b78b17ffaba 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "490675d03f16111ce06fb9440eb7651a32175527",
+  "prompts": {},
+  "sessions": {
+    "s_6e98188da883d9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1d2e3-95a2-7e72-a171-83a4ac65dda0",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "林雅凤 <lyf02488571@antgroup.com>"
+    }
+  }
+}

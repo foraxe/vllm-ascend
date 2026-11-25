@@ -1,0 +1,19 @@
+cd_config/guian-dsv4flash-A2.yml
+  s_fabc83143ee318::t_735fbe366af9f1 19-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a4fe8e12d4c750a85cae7d6a11f373d0efa3a5c5",
+  "prompts": {},
+  "sessions": {
+    "s_fabc83143ee318": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_fabc83143ee318",
+        "model": "unknown"
+      },
+      "human_author": "lt <lt02596710@antgroup.com>"
+    }
+  }
+}

@@ -1,0 +1,27 @@
+research/cann_owner0_sdk/model_full_decode_ep8g_20261122/README.md
+  s_ae878733767172::t_d0f71cbaeb50a0 1-154
+research/cann_owner0_sdk/model_full_decode_ep8g_20261122/a5run.py
+  s_ae878733767172::t_564e418a0d4793 1-12
+research/cann_owner0_sdk/model_full_decode_ep8g_20261122/cann_reader_rootinfo_mode.patch
+  s_ae878733767172::t_ef41ccb2a86ec0 1-10
+research/cann_owner0_sdk/model_full_decode_ep8g_20261122/rootinfo_toggle_shim.c
+  s_ae878733767172::t_0905c61d40c56d 1-78
+research/cann_owner0_sdk/model_full_decode_ep8g_20261122/run_ep8g.py
+  s_ae878733767172::t_44666d06c7f08e 1-103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "430734eda404b93302e38a671c4597ec8eb06403",
+  "prompts": {},
+  "sessions": {
+    "s_ae878733767172": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "300c0aea-1854-45c9-925a-13d1c32c978c",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

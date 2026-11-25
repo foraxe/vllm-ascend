@@ -1,0 +1,22 @@
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_engram_host_lookup.py
+  s_2c7c0a259eff1f::t_33c9eae9a1158c 1-27,46-51
+  s_2c7c0a259eff1f::t_2be3ad20705571 28-45
+vllm_ascend/ops/triton/docs/engram.md
+  s_2c7c0a259eff1f::t_56ecd687d03b7b 45-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "eb59f7ccdaf2620c896aa721c4109ccc0c032881",
+  "prompts": {},
+  "sessions": {
+    "s_2c7c0a259eff1f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1cb69-b458-77a2-a7f7-ef64f39725f8",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

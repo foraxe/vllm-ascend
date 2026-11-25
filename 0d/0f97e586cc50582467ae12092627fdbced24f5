@@ -1,0 +1,49 @@
+.github/workflows/bot_ci_gate_comment.yaml
+  s_2c7c0a259eff1f::t_9874dfae7e26c4 44-53
+AGENTS.md
+  s_2c7c0a259eff1f::t_898bb5783c4101 178-211
+release_notes/README.md
+  s_2c7c0a259eff1f::t_b8186176ced4ef 16-17,32,34,52-55,60-63,83-89,93-178,182-184
+release_notes/TEMPLATE.yaml
+  s_2c7c0a259eff1f::t_9ca3e193f1fbaf 10-13
+tests/e2e/nightly/single_node/ops/singlecard_ops/test_hisparse_resolve_residency.py
+  s_2c7c0a259eff1f::t_b95178296e12ba 19,22,38-40,42
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_hisparse.py
+  s_2c7c0a259eff1f::t_89c472e57f9e7d 19,21-24
+tests/e2e/pull_request/one_card/test_hisparse_attention.py
+  s_2c7c0a259eff1f::t_9c7a87eeb8913b 14-17
+tests/e2e/pull_request/one_card/test_hisparse_integration.py
+  s_2c7c0a259eff1f::t_8b60699a8fb742 16,18-21
+tests/e2e/pull_request/one_card/test_hisparse_prefill_staging.py
+  s_2c7c0a259eff1f::t_be831fd35478e9 18,20-23
+tests/ut/kv_offload/mooncake_v2/test_pull_scheduler.py
+  s_2c7c0a259eff1f::t_aca881ac3114ea 1428-1543
+tests/ut/model_executor/test_dspark_head_loading.py
+  s_2c7c0a259eff1f::t_9f407999572c16 1-68
+tests/ut/quantization/methods/w8a8/test_swiglu_mx_quant.py
+  s_2c7c0a259eff1f::t_afecc198f90513 37,50,71-72,87-88,100-101,104-105,120-161
+vllm_ascend/distributed/kv_transfer/kv_p2p/mooncake/heartbeat.py
+  s_2c7c0a259eff1f::t_6c2aaab346e4fc 25,94-97,114-115,118-122,125-131
+vllm_ascend/distributed/kv_transfer/kv_p2p/mooncake/pull_scheduler.py
+  s_2c7c0a259eff1f::t_8bdddb0816ef18 89-90,98,102,107-120,125-127,190-197,199,204,208-227,229,231,240-241
+vllm_ascend/models/deepseek_v4/dspark.py
+  s_2c7c0a259eff1f::t_ba2386a19f469a 523-530,546,559-567
+vllm_ascend/quantization/methods/w8a8/w8a8_mxfp8.py
+  s_2c7c0a259eff1f::t_ce9e246b979052 367,715-716,719-737,740-742,746
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0d0f97e586cc50582467ae12092627fdbced24f5",
+  "prompts": {},
+  "sessions": {
+    "s_2c7c0a259eff1f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1cb69-b458-77a2-a7f7-ef64f39725f8",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

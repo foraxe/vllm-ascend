@@ -1,0 +1,23 @@
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/kv_transfer.py
+  s_1ca3cc9a501d06::t_ad48d43fee9f18 29-34
+  s_1ca3cc9a501d06::t_ed1fd924967714 804-895
+  s_1ca3cc9a501d06::t_127e28f97f0db6 4
+  s_1ca3cc9a501d06::t_7ab1a019a9b86b 931-932
+  s_1ca3cc9a501d06::t_a155e1f8d623bf 1143-1150,1152-1154,1156-1157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ea20b199cffb93b64a0bec6306adf5bc8eb9550b",
+  "prompts": {},
+  "sessions": {
+    "s_1ca3cc9a501d06": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "eae451be-048d-4614-8afa-c18fb31ff5ac",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

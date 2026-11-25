@@ -1,0 +1,20 @@
+docs/source/user_guide/feature_guide/structured_output.md
+  h_9b51eecdefb97c 39-49
+tests/ut/patch/platform/test_patch_kimi_structured_boundary.py
+  h_9b51eecdefb97c 4,6-7,9,12-13,21-41,56-63,72-81,174,176-177,187-188,191,202-222,224-302
+vllm_ascend/patch/__init__.py
+  h_9b51eecdefb97c 1665-1667
+vllm_ascend/patch/platform/patch_kimi_structured_boundary.py
+  h_9b51eecdefb97c 7-8,11-12,15,18-23,56,64-65,80,87,114-121,125-133,136
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3787fa0a3c32b8a3996ba41d382e7ebb2ccfbeba",
+  "prompts": {},
+  "humans": {
+    "h_9b51eecdefb97c": {
+      "author": "linyafeng <linnea-lin-00638949@users.noreply.github.com>"
+    }
+  }
+}

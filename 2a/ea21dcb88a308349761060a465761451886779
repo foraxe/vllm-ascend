@@ -1,0 +1,34 @@
+vllm_ascend/ascend_config.py
+  s_480f842b4b95f0::t_4cc735d32e4728 565-575
+  s_480f842b4b95f0::t_4e29c9ae78fa73 604-606
+tests/ut/models/test_engram_shared_rdma.py
+  s_480f842b4b95f0::t_5b59c62dc2a9ac 425-447
+  s_480f842b4b95f0::t_8288c6e8cd3d3e 419-420
+  s_480f842b4b95f0::t_7b64c3740d3058 448-449
+tests/ut/models/test_engram_defaults.py
+  s_480f842b4b95f0::t_eb367bc6d0e91d 63,68-80
+vllm_ascend/models/deepseek_v41/engram/shared_rdma.py
+  s_480f842b4b95f0::t_4852c44ee6f146 80-81
+  s_480f842b4b95f0::t_3eb3dfd27dad13 191
+  s_480f842b4b95f0::t_a4145501524a02 268
+  s_480f842b4b95f0::t_8a933f8af3ae42 638
+  s_480f842b4b95f0::t_4f008e3807b9c2 79,82-83
+  s_480f842b4b95f0::t_dbfdf92effd26b 30-58
+  s_480f842b4b95f0::t_42de468a490ee0 59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "2aea21dcb88a308349761060a465761451886779",
+  "prompts": {},
+  "sessions": {
+    "s_480f842b4b95f0": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "7f96548e-9703-4091-aab9-2de7749a032e",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

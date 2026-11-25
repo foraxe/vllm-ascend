@@ -1,0 +1,34 @@
+vllm_ascend/attention/dsa_v41.py
+  s_480f842b4b95f0::t_e6a9c3969c540b 787-789,791-795,798-807,809-813,829
+  s_480f842b4b95f0::t_f5f79f0f8e995b 640,642,647-651,656,661,670,672-673,680-688
+  s_480f842b4b95f0::t_c484d54d72478c 1358-1362,1366-1367
+  s_480f842b4b95f0::t_379fc69338411e 1369,1371-1375
+  s_480f842b4b95f0::t_242bd343dcffdf 692-701,706-720,733-762,764-765
+  s_480f842b4b95f0::t_a58605cd21567f 702-705
+  s_480f842b4b95f0::t_893f3efd899fe3 878-879
+  s_480f842b4b95f0::t_555c9765a76e01 721-732
+  s_480f842b4b95f0::t_a84243d2ff5c3f 763
+  s_480f842b4b95f0::t_c68957d5d3634b 863
+  s_480f842b4b95f0::t_6c902d97cac4f8 814,890-891,893-895,897-899,902-904
+  s_480f842b4b95f0::t_1a7b4bfb3ca911 815-817
+  s_480f842b4b95f0::t_53ee230f406c45 892,896,900
+vllm_ascend/attention/context_parallel/pcp_owner_stage.py
+  s_480f842b4b95f0::t_7e59f68b865646 229-230
+  s_480f842b4b95f0::t_2156d53128ea8e 306-307
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "072b84200162edaf30e53f7b543b1e6afbd5624b",
+  "prompts": {},
+  "sessions": {
+    "s_480f842b4b95f0": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "7f96548e-9703-4091-aab9-2de7749a032e",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

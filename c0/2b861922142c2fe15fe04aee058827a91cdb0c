@@ -1,0 +1,22 @@
+tests/ut/worker/test_model_runner_v2.py
+  s_d6485b3d09302c::t_72f91998d3d97f 2099-2110
+vllm_ascend/worker/v2/model_runner.py
+  s_d6485b3d09302c::t_4984c1100334ca 631-632
+  s_d6485b3d09302c::t_fdb2cd34442fab 606-607,613-615,627-630,633-634
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c02b861922142c2fe15fe04aee058827a91cdb0c",
+  "prompts": {},
+  "sessions": {
+    "s_d6485b3d09302c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c4b6-d8aa-7320-9579-f20711e7bf1b",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

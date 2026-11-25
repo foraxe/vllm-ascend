@@ -1,0 +1,26 @@
+research/cann_owner0_sdk/independent_world_reader.py
+  s_e7a51dcf069eaf::t_b5c7f6930a20ba 1-12,15-16,19-40
+  s_e7a51dcf069eaf::t_267a531dc2ee07 13-14,17-18
+research/cann_owner0_sdk/INDEPENDENT_WORLDS_PLAN.md
+  s_e7a51dcf069eaf::t_b5c7f6930a20ba 1-5
+research/cann_owner0_sdk/guarded_independent_reader.py
+  s_e7a51dcf069eaf::t_b5c7f6930a20ba 1-12
+research/cann_owner0_sdk/analyze_independent_worlds.py
+  s_e7a51dcf069eaf::t_a6141eb491b04c 1-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7bfec4432bc373f4bf3bcf3a48b35339b0d63322",
+  "prompts": {},
+  "sessions": {
+    "s_e7a51dcf069eaf": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a19a2f-aa6b-7033-8dd6-6934cca25f9b",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

@@ -1,0 +1,52 @@
+tests/ut/models/test_engram_local_vmm_lifecycle.py
+  s_d6485b3d09302c::t_85d0e06b76bb89 49-50,56-63,74-76,80-81
+  s_d6485b3d09302c::t_fd938bb95ed464 42-48,64-73,77-79
+  s_d6485b3d09302c::t_c2a478db7e06c4 182
+  s_d6485b3d09302c::t_a3766e98fea033 89-90
+  s_d6485b3d09302c::t_06fc367efb8e14 4,12,82-88,91-96
+vllm_ascend/models/deepseek_v41/engram/local_shared_vmm.py
+  s_d6485b3d09302c::t_fd938bb95ed464 129-130,133-136,153-154,157-159
+  s_d6485b3d09302c::t_b1705d1e845149 33,77-80,160
+  s_d6485b3d09302c::t_a479b57287b4f7 4,14,68-76,81-99,107,116-121,131-132,155-156,162,164-165,235-237
+  s_d6485b3d09302c::t_6a046ebbc0c932 10,32,34-37
+  s_d6485b3d09302c::t_8fefe575b63478 64-67,210,220
+  s_d6485b3d09302c::t_582e5f1c323183 113
+vllm_ascend/models/deepseek_v41/engram/embedding.py
+  s_d6485b3d09302c::t_4c67429b4d2545 129,255
+  s_d6485b3d09302c::t_9bc55fa933ed67 242,249-254,256-257
+  s_d6485b3d09302c::t_b1705d1e845149 243-248
+  s_d6485b3d09302c::t_67935f9287b5c1 38,299-306,409
+csrc/engram_vmm/native.cpp
+  s_d6485b3d09302c::t_c20bdecc09a170 307-309
+  s_d6485b3d09302c::t_fc95fee6b5c1db 401
+tests/ut/worker/test_model_runner_v2.py
+  s_d6485b3d09302c::t_5b08766fc66824 2086-2098
+vllm_ascend/worker/v2/model_runner.py
+  s_d6485b3d09302c::t_16866b100f67af 624-636
+vllm_ascend/models/deepseek_v41/model.py
+  s_d6485b3d09302c::t_8fefe575b63478 99-104,123,128-129,134-136
+tests/ut/models/test_engram_vmm_model_rollback.py
+  s_d6485b3d09302c::t_c2a478db7e06c4 25-28,63-64,76-77,86-94,175,286
+  s_d6485b3d09302c::t_db36b68b8f1b97 97-99,103-117,121,123-124,126,131-134
+  s_d6485b3d09302c::t_a3766e98fea033 78-85
+  s_d6485b3d09302c::t_19341ce0b128d1 100-101,118-120
+  s_d6485b3d09302c::t_44d199cefcb540 230-243
+docs/source/user_guide/feature_guide/engram_local_vmm.md
+  s_d6485b3d09302c::t_dff587f00fcd06 19-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3a49fc8cc9c25a51b4742fdaf665ebeaa989c7cb",
+  "prompts": {},
+  "sessions": {
+    "s_d6485b3d09302c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c4b6-d8aa-7320-9579-f20711e7bf1b",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

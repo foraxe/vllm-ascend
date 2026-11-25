@@ -1,0 +1,21 @@
+vllm_ascend/ascend_forward_context.py
+  s_1ca3cc9a501d06::t_84854af6391abd 2,30-31,315-340,359-372,486-498
+vllm_ascend/ops/fused_moe/token_dispatcher.py
+  s_1ca3cc9a501d06::t_b88d915a4c6c7a 23,497-530,532-533,565-566,577-582,663,666,688-700,707-711,716-718,722,735-736
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "326788c3dbd58f2affc063b8bab097732c62da52",
+  "prompts": {},
+  "sessions": {
+    "s_1ca3cc9a501d06": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "eae451be-048d-4614-8afa-c18fb31ff5ac",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

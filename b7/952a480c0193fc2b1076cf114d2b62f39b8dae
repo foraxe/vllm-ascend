@@ -1,0 +1,31 @@
+vllm_ascend/patch/worker/__init__.py
+  s_2c7c0a259eff1f::t_08979ae5b1bd48 98-99
+tests/ut/models/test_external_weight_filter_patch.py
+  s_2c7c0a259eff1f::t_fe98e44f6f4e01 111-165
+  s_2c7c0a259eff1f::t_2c90c8d7aba738 1-16,27-43,53-59,65-73,77-85,92-110
+  s_2c7c0a259eff1f::t_ccd9ec964b2114 17-26,44-52,60-64,74-76,86-91
+vllm_ascend/models/qwen4_exp/ple_embedding.py
+  s_2c7c0a259eff1f::t_ccd9ec964b2114 156-158
+docs/source/user_guide/feature_guide/qwen_shared_ple.md
+  s_2c7c0a259eff1f::t_9f2c0022e8d7f8 5
+vllm_ascend/patch/worker/patch_external_weight_filter.py
+  s_2c7c0a259eff1f::t_6e11098d704fbd 52
+  s_2c7c0a259eff1f::t_08979ae5b1bd48 1-24,31,38-39,46-51,58-65
+  s_2c7c0a259eff1f::t_ccd9ec964b2114 25-30,32-37,40-45,53-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b7952a480c0193fc2b1076cf114d2b62f39b8dae",
+  "prompts": {},
+  "sessions": {
+    "s_2c7c0a259eff1f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1cb69-b458-77a2-a7f7-ef64f39725f8",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

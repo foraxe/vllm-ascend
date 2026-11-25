@@ -1,0 +1,533 @@
+vllm_ascend/attention/dsa_v41.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 28,30,33-38,46,393,642,649,664,667,701,709,742,831-837,1184,1771-1781,1822,1827-1828
+recipes/tools/validate-ascend.mjs
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 7,15-16,45-47,58,83,89,91-142,149-150,165-192,229-230,235,270-273,298,303
+tests/ut/tools/test_aisbench.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 13,29,52
+vllm_ascend/distributed/kv_transfer/kv_p2p/mooncake/push_scheduler.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 27,148
+tests/ut/ops/test_linear.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 238-266
+vllm_ascend/models/kimi_k3/kimi_k3.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 104,1053,1056-1070,1167-1173,1256-1258,1260,1452-1458
+  s_2c7c0a259eff1f::t_3c47ec655d488c 1459
+tests/ut/runtime_guard/_helpers.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 110
+tests/ut/kv_offload/utils.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 32-33,263
+vllm_ascend/distributed/weight_transfer/hccl_engine.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 12,14,158-163,167
+vllm_ascend/patch/__init__.py
+  s_2c7c0a259eff1f::t_f8c0346fcac011 1794-1796
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 168,170-172,174-176,178,180-181,205-208,475-478,605-608,610-611,613,615-616,678,848-862,884,886-893,895-898,900,902-903,1701-1717,1797-1826
+tests/ut/patch/platform/release_scheduler_fixture.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 1-148
+vllm_ascend/models/glm5next/kda.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 3,223-225,237-264,276,398-404,406-408,469-489,664
+tests/ut/models/test_glm5next_mtp_embedding.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 15-21,55,64,74
+vllm_ascend/attention/sfa_hisparse.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 163,167,204-207,210-211,213-215
+tests/ut/patch/platform/test_patch_swa_bounded_replay.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 30,38,49-64,182-191
+vllm_ascend/hisparse/c8.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 16-17,43-44
+tests/ut/patch/platform/test_patch_pp_mtp.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 11,28-39,355-357
+vllm_ascend/kv_trace/kv_trace_state.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 10-11,43-44
+vllm_ascend/worker/v2/spec_decode/target_dependent_ar/speculator.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 61-63,221-226
+tests/ut/worker/test_pcp_manager_v2.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 271
+vllm_ascend/observability/runtime_guard/detector/spec_acceptance.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 119-122
+tests/ut/test_ascend_forward_context.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 8,55,64-65,68,719-776
+tests/ut/_310p/ops/test_mrope_state_310.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 1-35
+vllm_ascend/patch/worker/patch_deepseek_v2.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 26,43,338-364
+vllm_ascend/worker/worker.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 23-24,26,28,52,76,78,83,123,126-132,157-177,225-249,289-377,571-574,1543-1547
+vllm_ascend/observability/runtime_guard/processor.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 175
+tests/ut/patch/worker/test_patch_v2_gumbel.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 119-155
+vllm_ascend/device/device_op.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 1660-1665,1670-1671,1673-1676,1678,1680
+vllm_ascend/hisparse/host_mirror.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 37,96-97,99-103,107,260,273
+tests/ut/models/minimax_m3/test_msa_m3.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 221-223,2261-2263,2826-2828
+vllm_ascend/models/glm5next/attention.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 106,267,270-278
+vllm_ascend/patch/platform/patch_engram_config.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 17,23
+vllm_ascend/patch/platform/patch_balance_schedule.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 61,82-86,189-195,205,353-354,401-402,747-748,786,809-810,816,819-834,836,865-870,878
+vllm_ascend/worker/v2/attn_utils.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 59,71,1386-1546,1565-1567,1581,1605
+tests/ut/ops/test_mla_weight_processing.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 35
+docs/source/tutorials/models/Qwen-VL-Dense.md
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 403
+tests/ut/models/test_qwen4_exp_cache_config.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 159-161,620-622,677
+tests/e2e/pull_request/four_card/test_data_parallel_tp2.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 26,107-108
+tests/ut/models/minimax_m3/test_minimax_m3.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 131-181,471-520
+  s_2c7c0a259eff1f::t_71a9d0a34fb87b 521
+tests/ut/models/test_deepseek_v41_dspark.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 246,264
+tests/e2e/pull_request/one_card/test_hisparse_integration.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 508,681,712-716,718
+tests/ut/models/test_glm5next_kda_dispatch.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 52-54,244-246,249
+tests/ut/core/test_scheduler_connector_block_state.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 45
+vllm_ascend/distributed/kv_transfer/kv_p2p/mooncake/base_worker.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 488-500
+vllm_ascend/ops/kimi_kda.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 57,86-88,308-309
+.github/workflows/scripts/estimated_times.yaml
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 12-13,25-26
+tests/ut/worker/test_worker_v2.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 17,308-310
+csrc/attention/hisparse_resolve_residency/op_host/hisparse_resolve_residency_infershape.cpp
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 1-38
+tests/e2e/pull_request/one_card/test_cpu_weight_offload.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 112,114-115
+tests/ut/core/test_dyntra_lb_scheduler.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 2,36,683-687,1109-1121
+  s_2c7c0a259eff1f::t_562ff2a2c0d0be 1122
+tests/ut/ops/test_kimi_kda_pcp.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 14,90,104-149
+  s_2c7c0a259eff1f::t_9c4467c51ea718 150-151
+vllm_ascend/_310p/fused_moe/fused_moe.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 170-171,185-186
+csrc/attention/hisparse_resolve_residency/op_host/hisparse_resolve_residency_tiling.cpp
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 1-257
+csrc/attention/hisparse_resolve_residency/op_host/CMakeLists.txt
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 1-15
+vllm_ascend/attention/dsa_v1.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 1-2,16,35-39,42,100-104,325-345,792-809,828,876,879,1594-1595,1763,2033
+vllm_ascend/models/qwen4_exp/cache_config.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 571-575
+vllm_ascend/distributed/ec_transfer/ec_connector/mooncake/store_backend.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 34,119-122
+docs/source/user_guide/release_notes.md
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 79
+tests/e2e/pull_request/one_card/spec_decode/test_eagle.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 12,71
+tests/ut/worker/test_pcp_profile_budget.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 8,10,12,15,19,23-27,33,42-44,51,59-60,66,73-76,82,105,152-231
+vllm_ascend/patch/platform/patch_kimi_k31_config.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 5-10,15-31,38-44,66-69
+tests/ut/patch/worker/test_deepseek_pp_embedding.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 19,25-28,112
+tests/ut/models/minimax_m3/test_minimax_dspark_adapter.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 46,123-149
+  s_2c7c0a259eff1f::t_899ceb6c0e15dd 150-151
+vllm_ascend/models/deepseek_v41/dspark.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 269,282
+vllm_ascend/observability/runtime_guard/detector/logits_finite.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 148-150
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_rejection_sample_v2.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 14,17-21
+  s_2c7c0a259eff1f::t_af993e36dd8400 22
+vllm_ascend/patch/platform/patch_fused_moe.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 46,128-129,140-158,210
+tests/ut/attention/test_dsa_v41.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 225,303,350
+tests/ut/runtime_guard/test_detectors_and_kv.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 155
+csrc/attention/hisparse_resolve_residency/op_kernel/hisparse_resolver_kernel.h
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 1-569
+tests/ut/distributed/ascend_store/test_layerwise_keys.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 342-348
+tests/ut/worker/v2/test_spec_decode.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 4,6,8,13,15,59-62,288-299,302-303,305-348
+vllm_ascend/hisparse/binding.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 77,84,95-96,101,107-108,111,116,118-121,127,137-144,147,150
+vllm_ascend/worker/v2/model_states/default.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 525-530
+vllm_ascend/models/deepseek_v41/cache_config.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 3,271-273,276,278,280-293,295-297
+vllm_ascend/patch/worker/patch_model_runner.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 162
+tests/e2e/pull_request/one_card/spec_decode/test_mtp_eagle_correctness.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 30,69
+tests/ut/ops/test_kimi_kda.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 24-50
+tests/ut/patch/worker/test_patch_deepseek_v2.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 10,19,35-56,193,213-214,216
+vllm_ascend/ascend_forward_context.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 22,272-274
+tests/ut/models/test_kimi_k3_eplb.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 316
+tests/ut/worker/test_worker_inheritance.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 1-330
+docs/source/tutorials/models/Qwen3.8-Flash-Next.md
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 239
+vllm_ascend/observability/runtime_guard/processor_bus.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 59-60,81-85,100-105,111-115,120,212-214,235,273,282,286,296,306,315-319
+tests/ut/spec_decode/test_dflash_model_loading.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 4-7,10-18,20-23,26-28,31-42,44-141,144-177
+tests/ut/worker/test_worker_v1.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 92,108-109,881-884,890,1162,2417-2418
+tests/ut/distributed/device_communicators/test_mxfp8_all_reduce.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 1-232
+vllm_ascend/distributed/device_communicators/quantized_all_reduce.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 16,28-31,37,44-45,47-50,54-60,63-64,71-73,75-77,86,88,91,101-102,112,114-126,128-130,132,134-144,147-158,162-173
+  s_2c7c0a259eff1f::t_ecf6987f9c8824 174
+release_notes/fragments/22108.yaml
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 1-4
+vllm_ascend/models/deepseek_v41/compressor.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 5-6,60,64,67-69
+vllm_ascend/utils.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 90-135
+csrc/attention/hisparse_resolve_residency/op_host/hisparse_resolve_residency_tiling.h
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 1-48
+tests/ut/attention/test_flash_attn.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 19,393-398
+tests/ut/distributed/ascend_store/test_mooncake_pipeline.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 307-309
+tests/ut/patch/platform/test_patch_use_v2_model_runner.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 9,39-42
+tests/ut/compilation/test_acl_graph.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 319,377-380,399,461,521-524,546,608,671,745-748,756,822-825,874
+vllm_ascend/compilation/compiler_interface.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 26,39,276,287-295
+vllm_ascend/_310p/worker/v2/model_runner.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 843
+vllm_ascend/observability/runtime_config/config.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 521-522,655,684-687,728-730,753-763,1333,1344-1345,1349-1354,1360-1365
+tests/ut/attention/test_dsa_metadata_builders.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 55-57,101,111
+vllm_ascend/ops/fused_moe/fused_moe.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 44,100-101,103-111,124
+vllm_ascend/patch/worker/__init__.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 20
+vllm_ascend/patch/worker/patch_mamba_utils.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 9,50-51,53,55-62,64
+vllm_ascend/ops/fused_moe/routed_experts.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 380-384
+  s_2c7c0a259eff1f::t_d1591b3f235198 379
+tests/ut/distributed/kv_transfer/test_hisparse_foundation_cpu.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 69,71,78,86,383-384,387,394-395,398,417,419,432,439,500-505,510,512,523,532,538-539,553,560-561
+.github/vllm-main-verified.commit
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 1
+tests/ut/patch/platform/test_patch_balance_schedule.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 103,679,1123
+tests/ut/test_mrv2_utils.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 59
+vllm_ascend/models/deepseek_v41/engram/hash_state.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 29-33,83-91,100-101
+release_notes/fragments/21137.yaml
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 1-9
+vllm_ascend/platform.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 74-75,82-83,511-519,672,880-885,2227-2244
+  s_2c7c0a259eff1f::t_bd14763edeb966 2245-2246
+tests/ut/worker/test_idle_dummy_config.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 28
+vllm_ascend/ascend_config.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 52-53,417-429,434,453,460-468,547-549,786,806,811-812,949,959,1911,1975-1976,1978-1979,2087-2088,2092
+vllm_ascend/worker/v2/aclgraph_utils.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 50,220,232
+tests/ut/worker/test_mtp_pcp_speculator_v2.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 6,121,124-126,272,276-279,288-289,551,555-558
+vllm_ascend/worker/v2/model_states/mamba_hybrid.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 228-230
+tests/ut/models/test_glm5next_kda_weight_reload.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 1-71
+tests/ut/kv_offload/mooncake_v2/test_v2_dispatch_cpu.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 14-15,130-133
+tests/e2e/nightly/single_node/ops/singlecard_ops/test_hisparse_arch22_ops.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 1-1082
+tests/e2e/nightly/single_node/ops/singlecard_ops/test_hisparse_resolve_residency.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 6
+tests/ut/ops/test_fused_moe.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 54,603,2111-2112,2123-2126,3030-3038,3061-3062,3074-3077,3103-3104,3108-3124,3378-3400
+tests/ut/worker/test_model_runner_v2.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 15,18-19,35,56,821,1028-1059,1097,1156-1224,1242-1243,1340-1343
+docs/source/locale/zh_CN/LC_MESSAGES/developer_guide/Design_Documents/disaggregated_prefill.po
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 334,337
+vllm_ascend/ops/triton/sample/categorical_sample.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 427,436-440
+vllm_ascend/observability/runtime_guard/detector/base.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 68-75,80-86,106-110,114-120,126,128-131,134-135
+tests/deepseek_v41_utils.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 316-320,323-335
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/ascend_store_connector.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 5,121-127
+tests/ut/distributed/ascend_store/test_pool_worker.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 168-171
+release_notes/fragments/21508.yaml
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 1-11
+.github/CODEOWNERS
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 5,7-18,21,31,37,148,154,156,169,171,174-175,209,236
+tests/ut/runtime_config/test_runtime_config_core.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 529-532,547-551,557-562
+tests/ut/spec_decode/test_mla_dspark.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 7,250-253,264-277
+  s_2c7c0a259eff1f::t_492b75c8187e38 278-279
+tests/ut/core/test_recompute_scheduler.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 27,413-415
+tests/ut/patch/platform/test_patch_mamba_config.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 28,248,254-259,264-276
+vllm_ascend/core/dyntra_lb_scheduler.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 33-37,423-429,442,592-593,649-650,1048-1049,1087,1110-1111,1117,1120-1135,1137,1174-1178,1187
+vllm_ascend/distributed/kv_transfer/kv_p2p/mooncake_hybrid_connector.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 119-121,125,157-158,160-177
+vllm_ascend/observability/runtime_guard/detector/token_repeat.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 186-190
+tests/e2e/pull_request/two_card/spec_decode/test_spec_decode.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 35,123-125
+tests/ut/models/minimax_m3/test_minimax_m3_vit.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 99-100,114
+vllm_ascend/patch/worker/patch_worker_profiler.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 1-28
+tests/ut/kv_offload/mooncake_v2/test_push_scheduler.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 18,233-242,247,249,255,258
+vllm_ascend/worker/v2/model_runner.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 36,100,112,180-185,849
+csrc/attention/hisparse_resolve_residency/op_kernel/arch22/hisparse_resolver_kernel.h
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 1-626
+recipes/tools/ascend-checks.mjs
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 85,94,105-106
+vllm_ascend/distributed/eplb/eplb_state.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 39-42,321-325,328,737-741
+.github/workflows/pr_test.yaml
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 284-290
+  s_2c7c0a259eff1f::t_1e6c7ce389f8fe 291
+tests/ut/spec_decode/test_dflash2_v2.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 104-105,626-632,640,653,672,691,694-711
+vllm_ascend/_310p/worker/v2/rope.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 16,100-113
+docs/source/developer_guide/Design_Documents/disaggregated_prefill.md
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 191
+vllm_ascend/compilation/acl_graph.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 25,33-38,197-198
+vllm_ascend/worker/v2/spec_decode/dflash/speculator.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 19,68,87,100-102,142-210,220,228
+tests/ut/test_platform.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 17,25,199-226
+  s_2c7c0a259eff1f::t_2ebb486c384274 227-228
+tests/ut/worker/v2/test_speculator.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 32-34,806-808,816-821
+csrc/attention/hisparse_resolve_residency/hisparse_resolve_residency_torch_adpt.h
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 1-121
+tests/ut/test_ascend_config.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 22,52,151-152,154-160,168-170,177-233,1960,2011,2014-2016,2020,2022,2024-2025,2027-2034
+vllm_ascend/ops/linear.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 45,278,280-283,287,289,293,305-309
+tests/ut/attention/test_dsa_cache_views.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 1-71
+recipes/tools/test-ascend-integration.mjs
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 46-192,206-235,255,260,275,280,284-285,343,347,350-352,354,358,366,415-417
+  s_2c7c0a259eff1f::t_9a9c3648c724b0 418
+tests/ut/ops/test_gdn_attn_builder.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 202
+vllm_ascend/models/glm5next/model.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 806-808
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/backend/mooncake_layerwise.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 17-20,75-83,87-88,91
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/features/pd_disaggregation_mooncake_multi_node.po
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 550-551,600-601,645-646
+tests/ut/models/test_glm5next_indexer_backend.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 5,7,11,61-103
+tests/ut/models/test_deepseek_v41_cache.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 7,26,54,62-64,68,205,227-228,231-233,258-259,261-263,265-266,274-276,284,299-306,310-312,317-334,342-343,345-363,365-381,384-398,465-466,469-470,500,509-510,526,545-546,560-561,633-689,1068,1086,1351,1394,1744-1836
+vllm_ascend/distributed/device_communicators/npu_communicator.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 24,70-71,73,75-77,79-98
+tests/e2e/pull_request/one_card/test_hisparse_int8_prolog.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 1-126
+vllm_ascend/patch/platform/patch_pp_mtp.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 347-348
+vllm_ascend/attention/mla_v1.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 91,98-105,786-787,856,861,1207
+tests/ut/models/test_kimi_k3_pp_sp.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 227-229,338-419
+  s_2c7c0a259eff1f::t_d624752bd9bc1c 420-421
+tests/e2e/pull_request/one_card/test_qwen3_8b_w8a8.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 24,48
+tests/ut/patch/platform/test_patch_speculative_config_dspark.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 107-109
+vllm_ascend/attention/context_parallel/dsa_v41_cp.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 680
+vllm_ascend/distributed/device_communicators/mxfp8_all_reduce.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 1-154
+vllm_ascend/ops/kda_parallel.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 9,12-13,60-64,66-69,74-78
+tools/aisbench.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 66-67,290-291,364-377,379
+examples/offline_DSD_k_tuner/generate_config.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 20-21,239-241,268-270,397-402
+tests/ut/distributed/kv_transfer/kv_p2p/mooncake/test_push_bilateral_dcp.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 199-204,331-334
+tests/ut/distributed/device_communicators/test_quantized_all_reduce.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 29-33,37,41,47-49,56,68,72-74,80-83,86-88,101-109,139,146-147,162-165,173-175,179-180,195-196,201-329,350
+tests/ut/models/test_glm5next_kda_pcp.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 232,235
+tests/ut/models/test_kimi_k31.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 12,15,22,59-96
+  s_2c7c0a259eff1f::t_f93e62261777ab 97-98
+tests/ut/runtime_guard/test_review_regressions.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 2189-2190,2323-2324,2332,2335,2364-2371,2376,2389,2409,2412,2415-2499
+tests/ut/kv_trace/test_kv_trace_state.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 11-13,15-18,20-27
+vllm_ascend/ops/dsa.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 224-234,236
+tests/ut/worker/test_attn_utils_v2.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 55,350-356,441-443,1310,1317,1353-1354,1364,1613,1948,2043-2045,2696,2709,2720,2722
+vllm_ascend/attention/utils.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 7,39,55-75,744-750,753
+vllm_ascend/hisparse/cache_ops.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 22,31-33,160-163,397-410,421,444
+tests/ut/models/test_kimi_k3_adapter.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 484
+docs/source/user_guide/feature_guide/hisparse.md
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 7-9,24-28,34-35,37,46,56,63-72
+  s_2c7c0a259eff1f::t_d7cd83e9622abe 73
+.github/workflows/schedule_release_code_and_wheel.yml
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 158,164,168-178,258,264,268-278,352,358,362-372,447,453,457-467,481,494-495,509-513,530-562,564,566
+docs/source/tutorials/features/pd_disaggregation_mooncake_multi_node.md
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 14,123,125,151,206,249,969,971,1162
+csrc/attention/hisparse_resolve_residency/op_kernel/hisparse_resolve_residency.cpp
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 1-181
+docs/source/user_guide/configuration/additional_config.md
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 332-379
+vllm_ascend/attention/indexer_kpool.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 782-783,834,854-863,932,934,1060-1064,1069-1070,1075-1076,1085-1088
+vllm_ascend/ops/triton/docs/hisparse.md
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 15-16,47-53,62,144,175
+tests/ut/kv_trace/test_kv_trace_runtime.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 15-16,22,28-31,58
+csrc/attention/hisparse_resolve_residency/op_host/hisparse_resolve_residency_def.cpp
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 1-82
+tests/ut/attention/test_dsa_v41_cp.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 835,896,992,1111,1118,1125,1148,1450-1452,1493
+vllm_ascend/observability/runtime_guard/state.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 584-597
+tests/e2e/pull_request/four_card/context_parallel/test_accuracy_v2.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 34,540
+tests/ut/patch/worker/test_patch_worker_profiler.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 1-78
+vllm_ascend/patch/platform/patch_speculative_config.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 127-138
+tests/ut/attention/test_dsa_v1.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 33-34,45-49,204-231,292,482,704,745,821-822,859-860,880-888,894,908,1124,1402,2924-2925,2951
+csrc/attention/hisparse_resolve_residency/op_kernel/resolver_scratch.h
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 1-66
+vllm_ascend/distributed/weight_transfer/npu_ipc_engine.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 7,10,31,204-209,211
+tests/e2e/nightly/single_node/ops/singlecard_ops/test_hisparse_int8_attention.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 1-104
+.github/workflows/scripts/wheel/auto_exclude.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 35
+vllm_ascend/worker/v2/spec_decode/__init__.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 37-38
+tests/e2e/pull_request/one_card/test_dsv41_adaptive_graph.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 1-184
+tests/ut/distributed/weight_transfer/test_npu_ipc_engine.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 43-44,46,355-372,374-381,397-398
+tests/ut/patch/platform/test_patch_fused_moe.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 5,8,230-305
+tests/ut/graph_dispatch_fixture.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 1-59
+tests/ut/kv_offload/mooncake_v2/test_base_worker.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 157-185
+vllm_ascend/attention/sfa_v1.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 20,83,539-554,776-780,788,1155-1157
+tests/ut/worker/test_adaptive_verification.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 60,129-130,226-228,350
+vllm_ascend/models/deepseek_v41/indexer.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 123,127
+tests/ut/attention/test_gqa_dcp_split.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 439-442
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/lookup_key.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 14-29
+  s_2c7c0a259eff1f::t_25477d5a6f835a 30
+vllm_ascend/core/recompute_scheduler.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 23,50-54,222-228,245,433-434,487-488,889-890,927,950-951,957,960-975,977,1009-1013,1022,1033-1037
+tests/e2e/pull_request/four_card/test_sparse_hccl_checkpoint.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 305-309
+vllm_ascend/patch/worker/patch_spec_decode_310.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 34
+csrc/torch_binding.cpp
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 59
+vllm_ascend/ops/triton/hisparse.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 114-140,172,184-187
+tests/e2e/pull_request/two_card/rlhf/weight_transfer/ipc/test_glm_ipc.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 7-9,21-98
+tests/ut/models/test_glm5next_kpool_model_backend.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 212,242-271,276-281,470,510-512,562-574,629-638,713
+vllm_ascend/hisparse/backend.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 72,165
+vllm_ascend/attention/mla_prefill.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 1-51
+vllm_ascend/models/minimax_m3/minimax_m3.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 119,593-597,707-709,993-997,1020-1032,1199-1202,1250-1253
+tests/ut/kv_offload/test_mooncake_hybrid_connector.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 186,477,513-515,528-560
+tests/e2e/pull_request/one_card/test_hisparse_int8.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 1-224
+tests/ut/models/test_kimi_k3_gate_loading.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 24-25,45
+tests/ut/attention/test_attention_utils.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 112,160-187
+  s_2c7c0a259eff1f::t_667d812ed58ba2 188-191
+recipes/tools/test-ascend-checks.mjs
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 18,22,30,34-62
+vllm_ascend/core/scheduler_output.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 1-33
+vllm_ascend/observability/runtime_guard/detector/manager.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 117-121,125-128
+  s_2c7c0a259eff1f::t_563ab5c2f3a9c2 129
+tests/ut/core/test_score_encoder_cache_scheduler.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 17,88-96,100-103,135,140-141,162,205
+.github/workflows/dockerfiles/Dockerfile.buildwheel.a5
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 41-45,50-52,54-55
+tests/ut/patch/worker/test_patch_dspark_eplb.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 16,49-50,54-55
+tests/ut/distributed/eplb/test_state.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 22-25,35,38-42,229,237-241
+vllm_ascend/patch/platform/patch_swa_bounded_replay.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 56-57,155
+tests/ut/distributed/ascend_store/test_request_lifecycle.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 267-270
+tests/ut/worker/test_turboquant_v2.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 7,17-33,38,49,70,102,191,200-318
+csrc/build_aclnn.sh
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 130,181,188,224
+vllm_ascend/ec_manager/score_ec_manager.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 8-16,32
+vllm_ascend/models/minimax_m3/minimax_m3_dspark.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 35,260-263
+tests/ut/attention/test_mla_v1.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 9,37-49,1131-1134
+tests/ut/runtime_guard/test_bus_worker.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 144,206,212,298,347,440-555
+tests/ut/device/test_device_op.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 2,307-371
+tests/ut/models/test_deepseek_v41_preprocess.py
+  s_2c7c0a259eff1f::t_f66d7abe4a27a6 165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a049704642629a984247f2de9723ca946e500ee6",
+  "prompts": {},
+  "sessions": {
+    "s_2c7c0a259eff1f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1cb69-b458-77a2-a7f7-ef64f39725f8",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

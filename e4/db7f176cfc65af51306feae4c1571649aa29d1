@@ -1,0 +1,57 @@
+csrc/engram_hixl/native.cpp
+  s_60cbb78615f812::t_6c40040022d4c4 9,20,41,43,45-53,64-98,100-103,113,126,136,144,153
+  s_e7a51dcf069eaf::t_bd07c4abb68422 9,20,41,43,45-48,50-53,64-98,100-103,113,126,136,144,153
+  s_e7a51dcf069eaf::t_2d773236b53ce8 49
+docs/source/user_guide/feature_guide/shared_engram_rdma.md
+  s_60cbb78615f812::t_b7bfb2392a3780 3,13-14,21-24,68,71,75-76
+  s_e7a51dcf069eaf::t_bd07c4abb68422 3,13-14,21-24,71
+  s_e7a51dcf069eaf::t_4e3c6c9ff1a6df 68,75
+  s_e7a51dcf069eaf::t_2b4ef5d344b98b 76
+tests/ut/models/test_engram.py
+  s_60cbb78615f812::t_76b391be810236 165-195
+  s_e7a51dcf069eaf::t_bd07c4abb68422 165-195
+tests/ut/models/test_engram_defaults.py
+  s_60cbb78615f812::t_37d465aa4fcd5f 33-44
+  s_e7a51dcf069eaf::t_bd07c4abb68422 33-44
+tests/ut/models/test_engram_shared_rdma.py
+  s_60cbb78615f812::t_536c8d71c27e0f 58,126-136,149-150,164-165,184-205,274-275,283-284,295,339-355
+  s_e7a51dcf069eaf::t_bd07c4abb68422 58,126-136,149-150,164-165,184-205,274-275,283-284,295,339-355
+vllm_ascend/ascend_config.py
+  s_60cbb78615f812::t_7bd6bc9efd859e 709-712
+  s_e7a51dcf069eaf::t_bd07c4abb68422 709-712
+vllm_ascend/models/deepseek_v41/engram/embedding.py
+  s_60cbb78615f812::t_0b09ca771f4baf 67-70
+  s_e7a51dcf069eaf::t_bd07c4abb68422 67-70
+vllm_ascend/models/deepseek_v41/engram/shared_rdma.py
+  s_60cbb78615f812::t_489088da2a1750 2,9,12,29-53,92-102,107,113,121-124,138,141,201-202,236,238-240,291,298-300,304,330-335,344-362,441,459-460
+  s_e7a51dcf069eaf::t_bd07c4abb68422 2,9,12,29-50,52-53,92,99-102,107,113,121-124,138,141,201-202,236,238-240,291,304,344-362,441,459-460
+  s_e7a51dcf069eaf::t_d7151c05a18876 51,93-98,298-300,330-335
+vllm_ascend/ops/triton/engram_lookup.py
+  s_60cbb78615f812::t_1a27de187f2aba 21-23,26-29,37,40-41,51-57
+  s_e7a51dcf069eaf::t_d7151c05a18876 21-23,51-57
+  s_e7a51dcf069eaf::t_bd07c4abb68422 26-29,37,40-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e4db7f176cfc65af51306feae4c1571649aa29d1",
+  "prompts": {},
+  "sessions": {
+    "s_60cbb78615f812": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1b410-5955-7f23-9e47-7fd29d81e01a",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    },
+    "s_e7a51dcf069eaf": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a19a2f-aa6b-7033-8dd6-6934cca25f9b",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

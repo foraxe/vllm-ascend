@@ -1,0 +1,37 @@
+docs/source/user_guide/feature_guide/shared_engram_rdma.md
+  s_70fb834a8f513b::t_33abd9b532d134 23,45,61
+  s_70fb834a8f513b::t_f81d7efc925bb3 62
+vllm_ascend/ascend_config.py
+  s_70fb834a8f513b::t_e35f46bf04c496 408-409,418-421
+vllm_ascend/models/deepseek_v41/model.py
+  s_70fb834a8f513b::t_e35f46bf04c496 1053-1054
+tests/ut/models/test_engram_shared_rdma.py
+  s_70fb834a8f513b::t_a6a1bcd827e63c 57-75,78-83
+  s_70fb834a8f513b::t_31800b7a5c769d 76-77
+  s_70fb834a8f513b::t_92db1a5b97b77d 91-93,99-100,109,161
+tests/ut/models/test_engram_defaults.py
+  s_70fb834a8f513b::t_92db1a5b97b77d 35-45
+csrc/engram_hixl/native.cpp
+  s_70fb834a8f513b::t_e35f46bf04c496 34,47,55,73,80,86,91
+vllm_ascend/shared_engram_rdma.py
+  s_70fb834a8f513b::t_e35f46bf04c496 19-22,42-44
+vllm_ascend/models/deepseek_v41/engram/shared_rdma.py
+  s_70fb834a8f513b::t_e35f46bf04c496 147,153,166-171,173-174,205,240-244,246,442-451,453,459-464,490,501-505,507
+  s_70fb834a8f513b::t_90e6eb10be428b 172,245,452,506
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ca17b4ddb3ea5b7a4b6a231ae1c6ecb9d28b16cb",
+  "prompts": {},
+  "sessions": {
+    "s_70fb834a8f513b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a187a5-6f72-79f1-ace7-ba82e7e303a4",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

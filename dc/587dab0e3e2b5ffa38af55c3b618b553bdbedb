@@ -1,0 +1,33 @@
+tests/native/engram_hixl_cpu_stubs/include/acl/acl.h
+  s_2c7c0a259eff1f::t_e22d724d44d551 1-29
+tests/native/engram_hixl_cpu_stubs/include/hixl/hixl.h
+  s_2c7c0a259eff1f::t_e22d724d44d551 1-65
+csrc/engram_hixl/native.cpp
+  s_2c7c0a259eff1f::t_4e1b379e94871b 16,85-88,93-99
+release_notes/fragments/00000.yaml
+  s_2c7c0a259eff1f::t_4e1b379e94871b 1-5
+tests/native/README.engram_hixl_cpu.md
+  s_2c7c0a259eff1f::t_54383184514717 20
+  s_2c7c0a259eff1f::t_e22d724d44d551 1-19,21-22
+tests/native/test_engram_hixl_local_comm_res.cpp
+  s_2c7c0a259eff1f::t_e22d724d44d551 1-73,75-78,80-118,120-123
+  s_2c7c0a259eff1f::t_54383184514717 74,79,119
+tests/ut/models/test_engram_hixl_native_cpu.py
+  s_2c7c0a259eff1f::t_e22d724d44d551 1-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "dc587dab0e3e2b5ffa38af55c3b618b553bdbedb",
+  "prompts": {},
+  "sessions": {
+    "s_2c7c0a259eff1f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1cb69-b458-77a2-a7f7-ef64f39725f8",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

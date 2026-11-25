@@ -1,0 +1,16 @@
+CMakeLists.txt
+  h_02e4646417b93d 238
+vllm_ascend/models/deepseek_v41/engram/embedding.py
+  h_02e4646417b93d 318
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "cbd722d4e97c1d05832ee8456d02996c05976d1e",
+  "prompts": {},
+  "humans": {
+    "h_02e4646417b93d": {
+      "author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

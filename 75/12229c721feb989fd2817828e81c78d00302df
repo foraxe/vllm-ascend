@@ -1,0 +1,37 @@
+vllm_ascend/attention/context_parallel/dsa_v41_cp.py
+  s_480f842b4b95f0::t_ffbc97c1c1977a 152
+  s_480f842b4b95f0::t_df475b6c39bdf1 338,409
+vllm_ascend/attention/context_parallel/pcp_owner_stage.py
+  s_480f842b4b95f0::t_0a77abb6dc0d78 608
+  s_480f842b4b95f0::t_63f7cc04e4ddf4 314,431,481,558,591
+tests/ut/models/test_engram_vmm_model_rollback.py
+  s_480f842b4b95f0::t_23ceb599098535 107-108
+vllm_ascend/attention/context_parallel/pcp_owner_kv.py
+  s_480f842b4b95f0::t_9e998fdb78c772 527,695
+vllm_ascend/attention/context_parallel/pcp_owner_vmm.py
+  s_480f842b4b95f0::t_f04c54e1879eb7 740,957,961,990,1272
+vllm_ascend/attention/dsa_v41.py
+  s_480f842b4b95f0::t_88bf07ce7d75cb 378,446,591
+vllm_ascend/models/deepseek_v41/cache_config.py
+  s_480f842b4b95f0::t_5b001a84390148 290
+vllm_ascend/worker/v2/attn_utils.py
+  s_480f842b4b95f0::t_ff927ae2453e0f 1216,1753-1755,2036
+vllm_ascend/worker/v2/model_runner.py
+  s_480f842b4b95f0::t_17e7bc40b2a465 723
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7512229c721feb989fd2817828e81c78d00302df",
+  "prompts": {},
+  "sessions": {
+    "s_480f842b4b95f0": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "7f96548e-9703-4091-aab9-2de7749a032e",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

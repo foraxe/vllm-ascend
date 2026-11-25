@@ -1,0 +1,19 @@
+image/dev-v0.30.0.1013/Dockerfile_arm64
+  s_2f4069cbc7747f::t_7da1111746a99b 84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9894ee93d27be2b32cd87855afb11dc2b199c6ae",
+  "prompts": {},
+  "sessions": {
+    "s_2f4069cbc7747f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a19a46-75cb-7ed0-82e8-62ba023df23b",
+        "model": "gpt-6.2-sol"
+      },
+      "human_author": "zhengchao <zhengchao@U-T60N2XX7-1836.local>"
+    }
+  }
+}

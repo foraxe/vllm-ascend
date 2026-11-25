@@ -1,0 +1,29 @@
+tests/ut/attention/test_pcp_owner_stage.py
+  s_480f842b4b95f0::t_a84143fc6b46d5 111-126,128-140,144-149,151-171
+  s_480f842b4b95f0::t_22c85d48c985c7 127
+  s_480f842b4b95f0::t_7ac84e81ab3020 141-143,150
+vllm_ascend/attention/context_parallel/pcp_owner_stage.py
+  s_480f842b4b95f0::t_616066ad9a7377 154-186
+vllm_ascend/attention/dsa_v41.py
+  s_480f842b4b95f0::t_71b091df40e6af 1686-1690
+  s_480f842b4b95f0::t_ad2ac2859b09be 1567-1571
+  s_480f842b4b95f0::t_d22282b102b8aa 660-665,668-669,673-674
+  s_480f842b4b95f0::t_24e22ef1834a59 768-781
+  s_480f842b4b95f0::t_cec029acaef619 1038-1041,1047
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ecd9476616ea48e07bedeef2fac4641243497c86",
+  "prompts": {},
+  "sessions": {
+    "s_480f842b4b95f0": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "7f96548e-9703-4091-aab9-2de7749a032e",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

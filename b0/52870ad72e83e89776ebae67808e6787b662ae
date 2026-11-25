@@ -1,0 +1,36 @@
+vllm_ascend/envs.py
+  s_480f842b4b95f0::t_82414e4a5f2a26 75-92
+vllm_ascend/attention/context_parallel/dsa_v41_cp.py
+  s_480f842b4b95f0::t_598782631ad958 332-334,341-347,352-359
+  s_480f842b4b95f0::t_3d6a9b0d316091 379-382,384
+  s_480f842b4b95f0::t_26b98c8ba0e702 383
+  s_480f842b4b95f0::t_a7d146c47a63e2 311-313
+  s_480f842b4b95f0::t_8539672a7ba589 335-340,348-351
+  s_480f842b4b95f0::t_13e1cc290a8eb7 13
+  s_480f842b4b95f0::t_e69f1c02bf1a64 314
+  s_480f842b4b95f0::t_dbb3c4c2c317d8 378
+  s_480f842b4b95f0::t_9c6f7a384d5342 377
+tests/ut/attention/test_dsa_v41_cp.py
+  s_480f842b4b95f0::t_47470e8be9d0a2 949,951-965
+  s_480f842b4b95f0::t_01feee8ea7ed4b 538-550,552-562
+  s_480f842b4b95f0::t_7bc094fd683628 551
+  s_480f842b4b95f0::t_cd30a0a00ab857 564-571
+  s_480f842b4b95f0::t_bfc2c8b8a20076 868,871-873,875-878
+  s_480f842b4b95f0::t_98c71f57fd83da 563
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b052870ad72e83e89776ebae67808e6787b662ae",
+  "prompts": {},
+  "sessions": {
+    "s_480f842b4b95f0": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "7f96548e-9703-4091-aab9-2de7749a032e",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": null
+    }
+  }
+}

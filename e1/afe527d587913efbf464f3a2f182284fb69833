@@ -1,0 +1,18 @@
+docs/source/user_guide/feature_guide/shared_engram.md
+  h_02e4646417b93d 48-49,61-63
+tests/ut/models/test_engram_shared_pool.py
+  h_02e4646417b93d 236-286
+vllm_ascend/shared_engram_launch.py
+  h_02e4646417b93d 110-111,124-127,162-165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e1afe527d587913efbf464f3a2f182284fb69833",
+  "prompts": {},
+  "humans": {
+    "h_02e4646417b93d": {
+      "author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

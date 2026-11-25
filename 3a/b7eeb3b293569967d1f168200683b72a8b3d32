@@ -1,0 +1,27 @@
+tests/ut/models/qwen4_exp/test_ple_rdma_embedding.py
+  s_2c7c0a259eff1f::t_f35b612ca668fd 13-28,61
+vllm_ascend/models/qwen4_exp/ple_bm_embedding.py
+  s_2c7c0a259eff1f::t_f602474140b0a3 13-14
+tests/ut/models/qwen4_exp/test_ple_bm_embedding.py
+  s_2c7c0a259eff1f::t_f602474140b0a3 12
+tests/ut/models/qwen4_exp/test_ple_external_weights.py
+  s_2c7c0a259eff1f::t_f35b612ca668fd 3-4,37-46,78-79
+  s_2c7c0a259eff1f::t_76ae6fc0895d34 23-36
+  s_2c7c0a259eff1f::t_7c73311e78bfcc 80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3ab7eeb3b293569967d1f168200683b72a8b3d32",
+  "prompts": {},
+  "sessions": {
+    "s_2c7c0a259eff1f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1cb69-b458-77a2-a7f7-ef64f39725f8",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+release_notes/fragments/20612.yaml
+  h_02e4646417b93d 4,6
+tests/ut/models/test_engram_shared_rdma.py
+  h_02e4646417b93d 4,674-702
+vllm_ascend/ascend_config.py
+  h_02e4646417b93d 402
+vllm_ascend/shared_engram_rdma.py
+  h_02e4646417b93d 2
+vllm_ascend/worker/worker.py
+  h_02e4646417b93d 457,459-462,481-482
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a89a6008277fddfce0d4749031050538ea36592c",
+  "prompts": {},
+  "humans": {
+    "h_02e4646417b93d": {
+      "author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

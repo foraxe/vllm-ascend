@@ -1,0 +1,14 @@
+release_notes/fragments/20612.yaml
+  h_02e4646417b93d 1-6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "60a4011da8fb51fa157d73514d5c15ff56a49fa0",
+  "prompts": {},
+  "humans": {
+    "h_02e4646417b93d": {
+      "author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+tests/ut/models/test_kimi_k3_cache_import_compat.py
+  s_2c7c0a259eff1f::t_35cd6783201a3c 30-31
+  s_2c7c0a259eff1f::t_fa8e0d21b090c7 1-6,9-29,38-60,62-64,66,71
+  s_2c7c0a259eff1f::t_0ab34bb21bb656 8,32-37,61,65,67-70,72
+  s_2c7c0a259eff1f::t_48462a8ca68ffb 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e83b2e747a982f01df7b50e75ac0a4c5dded2b9c",
+  "prompts": {},
+  "sessions": {
+    "s_2c7c0a259eff1f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1cb69-b458-77a2-a7f7-ef64f39725f8",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

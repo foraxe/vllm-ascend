@@ -1,0 +1,27 @@
+tests/ut/quantization/methods/w4a8/test_w4a8.py
+  s_c1fd1bcfc6f09b::t_0e529b4489b7c2 254-277
+  s_c1fd1bcfc6f09b::t_210ebf6d3d6fac 14-15,17
+vllm_ascend/quantization/methods/w4a8/w4a8.py
+  s_c1fd1bcfc6f09b::t_c2909fc705c27a 418-430
+  s_c1fd1bcfc6f09b::t_d037f109eb967c 372
+  s_c1fd1bcfc6f09b::t_7a8079081622f5 34,37
+  s_c1fd1bcfc6f09b::t_21690bbd328d53 52-99
+  s_c1fd1bcfc6f09b::t_1a890db5944d96 332,338-347
+  s_c1fd1bcfc6f09b::t_f7863a82387182 373-381
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "6ee45412db3c23f0ed958b36c0ed6da00456e7e9",
+  "prompts": {},
+  "sessions": {
+    "s_c1fd1bcfc6f09b": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "55a01dbf-d46d-48f8-99ca-48ca41627699",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

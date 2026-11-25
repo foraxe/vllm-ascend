@@ -1,0 +1,18 @@
+tests/ut/ops/test_linear.py
+  h_9b51eecdefb97c 5,30-34,50,399-419
+tests/ut/patch/platform/test_patch_kimi_structured_boundary.py
+  h_9b51eecdefb97c 174-195
+vllm_ascend/patch/platform/patch_kimi_structured_boundary.py
+  h_9b51eecdefb97c 62-63,66-68,84-85,118-119
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "be753764236f74cbcf6de1dfca78eaab63347c40",
+  "prompts": {},
+  "humans": {
+    "h_9b51eecdefb97c": {
+      "author": "linyafeng <linnea-lin-00638949@users.noreply.github.com>"
+    }
+  }
+}

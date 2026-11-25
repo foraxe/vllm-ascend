@@ -1,0 +1,23 @@
+tests/ut/models/qwen4_exp/conftest.py
+  s_2c7c0a259eff1f::t_7c668215f192d0 1-18
+tests/ut/models/qwen4_exp/test_ple_bm_embedding.py
+  s_2c7c0a259eff1f::t_c3c07783dce5c4 12,32,51-53,123,140
+tests/ut/models/qwen4_exp/test_ple_rdma_embedding.py
+  s_2c7c0a259eff1f::t_250932e69c76ba 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "bbf400dd35a6d37da058fafb0eb7b1d4f33ca972",
+  "prompts": {},
+  "sessions": {
+    "s_2c7c0a259eff1f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1cb69-b458-77a2-a7f7-ef64f39725f8",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

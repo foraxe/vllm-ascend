@@ -1,0 +1,14 @@
+cd_config/kimik25-dycp.yml
+  h_ae25d90d116dac 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "588392f02ce3d6271c3c823c4ace7990c887cad2",
+  "prompts": {},
+  "humans": {
+    "h_ae25d90d116dac": {
+      "author": "林雅凤 <lyf02488571@antgroup.com>"
+    }
+  }
+}

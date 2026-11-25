@@ -1,0 +1,46 @@
+hixl_probe.py
+  s_c1fd1bcfc6f09b::t_f690a721d07e72 1-22
+launch_p_debug.sh
+  s_c1fd1bcfc6f09b::t_ed5def3b7290ad 1-57
+launch_p_prof.sh
+  s_c1fd1bcfc6f09b::t_a0fd61e0616acc 1-58
+vllm_ascend/ops/fused_moe/token_dispatcher.py
+  s_c1fd1bcfc6f09b::t_6c5f6e304ced13 505-509
+  s_c1fd1bcfc6f09b::t_57a710870b322f 70-76
+  s_c1fd1bcfc6f09b::t_05a271954d8f3a 370-372
+  s_c1fd1bcfc6f09b::t_106852a374fb52 454-471
+  s_c1fd1bcfc6f09b::t_cb834a64531ce7 23,31
+  s_c1fd1bcfc6f09b::t_3c7a1e1dc7595a 472
+  s_c1fd1bcfc6f09b::t_c05e2c16bf95d4 473-489
+JOURNAL.md
+  s_c1fd1bcfc6f09b::t_9cf3fffd053d43 1-104
+vllm_ascend/platform.py
+  s_c1fd1bcfc6f09b::t_312c5c1e9d440a 740-751
+vllm_ascend/ops/fused_moe/prepare_finalize.py
+  s_c1fd1bcfc6f09b::t_ce11d380e2d178 83-94
+  s_c1fd1bcfc6f09b::t_365cde14d6fda4 52,54,56-69,80,104,113
+  s_c1fd1bcfc6f09b::t_19690117e8ed2c 41-51,53,55,70-71,81-82,95-96,99-103,105-112,114-116
+  s_c1fd1bcfc6f09b::t_0935581259de9e 551-556,589
+  s_c1fd1bcfc6f09b::t_b434ed8989729b 588
+  s_c1fd1bcfc6f09b::t_cea187ea5b516b 674-680,682,686,691
+  s_c1fd1bcfc6f09b::t_a195c8578ac66c 17,30
+  s_c1fd1bcfc6f09b::t_2e69c121c8b8af 681
+  s_c1fd1bcfc6f09b::t_767bfde9e692af 72-79,97-98
+  s_c1fd1bcfc6f09b::t_399da31a1df83d 530-538,575-587
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "5d34fbcdd0a4d93224fa769169c0900cdf9e27bb",
+  "prompts": {},
+  "sessions": {
+    "s_c1fd1bcfc6f09b": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "55a01dbf-d46d-48f8-99ca-48ca41627699",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

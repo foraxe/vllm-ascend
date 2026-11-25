@@ -1,0 +1,23 @@
+docs/source/user_guide/feature_guide/shared_engram.md
+  s_2c7c0a259eff1f::t_cd8c80db1517fa 214-216
+tests/ut/models/test_engram_shared_pool.py
+  s_2c7c0a259eff1f::t_95febc7cfd8ecb 829,859-860,873,892,973-1005
+vllm_ascend/models/deepseek_v41/engram/shared_pool.py
+  s_2c7c0a259eff1f::t_172a50d5fc79ae 83-86,251-252,444-445,495
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "91c2db7c75addc9eedf1ace1ee5cb84f16b6a4db",
+  "prompts": {},
+  "sessions": {
+    "s_2c7c0a259eff1f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1cb69-b458-77a2-a7f7-ef64f39725f8",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

@@ -1,0 +1,197 @@
+vllm_ascend/ops/fused_moe/token_dispatcher.py
+  s_c1fd1bcfc6f09b::t_3a4d1e96e330f5 77-117
+  s_c1fd1bcfc6f09b::t_306c2d2e4ff948 474-480,488,498,501,507
+moe_e2e_evidence/balance_1122/balanced_placement_probe.py
+  s_c1fd1bcfc6f09b::t_8cd8c3a87d198d 1-316
+  s_c1fd1bcfc6f09b::t_bdc530d0ffdf27 317-329
+moe_e2e_evidence/balance_1122/run_arm_balanced.sh
+  s_c1fd1bcfc6f09b::t_0e076d9c71bdb1 1-103
+  s_c1fd1bcfc6f09b::t_291b62db758d2c 104-107
+vllm_ascend/ops/fused_moe/routed_experts.py
+  s_c1fd1bcfc6f09b::t_8ca57445f1b7f3 653-666,669,674-675,679,696,702,705,715,995,1006
+  s_c1fd1bcfc6f09b::t_50d13b7ff00af9 420
+  s_c1fd1bcfc6f09b::t_0c756959b6034d 460-461
+  s_c1fd1bcfc6f09b::t_95831e41542a37 17
+  s_c1fd1bcfc6f09b::t_a1e5835c6bad62 56-76
+  s_c1fd1bcfc6f09b::t_7d6ac1cc629b32 594-632,634-640,642-652
+  s_c1fd1bcfc6f09b::t_d442d3f2763e03 633,641
+  s_c1fd1bcfc6f09b::t_a8cdcd6c98950b 667-668,670-673,676-678,680-695,697-701,703-704,706-714,716-736,974-994,996-1005,1007-1022
+moe_e2e_evidence/balance_1122/findings_final.json
+  s_c1fd1bcfc6f09b::t_1e2587b51a6cae 1-129
+JOURNAL.md
+  s_c1fd1bcfc6f09b::t_dde09971ba66b1 209-290
+moe_e2e_evidence/balance_1122/balanced_probe_2048_384x16.json
+  s_c1fd1bcfc6f09b::t_24f9be11c7cc0c 1-644
+moe_e2e_evidence/balance_1122/probe_routing_semantics.py
+  s_c1fd1bcfc6f09b::t_bfa50311419a59 1-109
+moe_e2e_evidence/balance_1122/results/balanced_allranks2_r0.json
+  s_c1fd1bcfc6f09b::t_68f6677e34f54a 1-122
+moe_e2e_evidence/balance_1122/results/balanced_allranks2_r1.json
+  s_c1fd1bcfc6f09b::t_7fee532b2bce87 1-122
+moe_e2e_evidence/balance_1122/results/balanced_allranks2_r10.json
+  s_c1fd1bcfc6f09b::t_b966025e8dfb17 1-122
+moe_e2e_evidence/balance_1122/results/balanced_allranks2_r11.json
+  s_c1fd1bcfc6f09b::t_8c11f070470cca 1-122
+moe_e2e_evidence/balance_1122/results/balanced_allranks2_r12.json
+  s_c1fd1bcfc6f09b::t_59179080ae40c8 1-122
+moe_e2e_evidence/balance_1122/results/balanced_allranks2_r13.json
+  s_c1fd1bcfc6f09b::t_750dc09cebed08 1-122
+moe_e2e_evidence/balance_1122/results/balanced_allranks2_r14.json
+  s_c1fd1bcfc6f09b::t_f7655b237b745a 1-122
+moe_e2e_evidence/balance_1122/results/balanced_allranks2_r15.json
+  s_c1fd1bcfc6f09b::t_5a365d15bf83d3 1-122
+moe_e2e_evidence/balance_1122/results/balanced_allranks2_r2.json
+  s_c1fd1bcfc6f09b::t_c2952153a031fc 1-122
+moe_e2e_evidence/balance_1122/results/balanced_allranks2_r3.json
+  s_c1fd1bcfc6f09b::t_3744de80d0ea12 1-122
+moe_e2e_evidence/balance_1122/results/balanced_allranks2_r4.json
+  s_c1fd1bcfc6f09b::t_d50728d49e33d4 1-122
+moe_e2e_evidence/balance_1122/results/balanced_allranks2_r5.json
+  s_c1fd1bcfc6f09b::t_511949883d4459 1-122
+moe_e2e_evidence/balance_1122/results/balanced_allranks2_r6.json
+  s_c1fd1bcfc6f09b::t_11913370008a6c 1-122
+moe_e2e_evidence/balance_1122/results/balanced_allranks2_r7.json
+  s_c1fd1bcfc6f09b::t_d50331c767b27d 1-122
+moe_e2e_evidence/balance_1122/results/balanced_allranks2_r8.json
+  s_c1fd1bcfc6f09b::t_04e6d3aa09db03 1-122
+moe_e2e_evidence/balance_1122/results/balanced_allranks2_r9.json
+  s_c1fd1bcfc6f09b::t_a81889a9d8f7fe 1-122
+moe_e2e_evidence/balance_1122/results/balanced_allranks_r0.json
+  s_c1fd1bcfc6f09b::t_785ba16af6c34b 1-122
+moe_e2e_evidence/balance_1122/results/balanced_allranks_r1.json
+  s_c1fd1bcfc6f09b::t_8083017de83201 1-122
+moe_e2e_evidence/balance_1122/results/balanced_allranks_r10.json
+  s_c1fd1bcfc6f09b::t_00a932616415d6 1-122
+moe_e2e_evidence/balance_1122/results/balanced_allranks_r11.json
+  s_c1fd1bcfc6f09b::t_244bd4906d0ccc 1-122
+moe_e2e_evidence/balance_1122/results/balanced_allranks_r12.json
+  s_c1fd1bcfc6f09b::t_6c6e2d561a4ecb 1-122
+moe_e2e_evidence/balance_1122/results/balanced_allranks_r13.json
+  s_c1fd1bcfc6f09b::t_44556802a8d5de 1-122
+moe_e2e_evidence/balance_1122/results/balanced_allranks_r14.json
+  s_c1fd1bcfc6f09b::t_e456e1da17e2c9 1-122
+moe_e2e_evidence/balance_1122/results/balanced_allranks_r15.json
+  s_c1fd1bcfc6f09b::t_2c9882fe12d412 1-122
+moe_e2e_evidence/balance_1122/results/balanced_allranks_r2.json
+  s_c1fd1bcfc6f09b::t_5811eba9d9c95b 1-122
+moe_e2e_evidence/balance_1122/results/balanced_allranks_r3.json
+  s_c1fd1bcfc6f09b::t_e2c4079136ba86 1-122
+moe_e2e_evidence/balance_1122/results/balanced_allranks_r4.json
+  s_c1fd1bcfc6f09b::t_175c14710a0f75 1-122
+moe_e2e_evidence/balance_1122/results/balanced_allranks_r5.json
+  s_c1fd1bcfc6f09b::t_0bf6a97c37102e 1-122
+moe_e2e_evidence/balance_1122/results/balanced_allranks_r6.json
+  s_c1fd1bcfc6f09b::t_85f69b032fbb33 1-122
+moe_e2e_evidence/balance_1122/results/balanced_allranks_r7.json
+  s_c1fd1bcfc6f09b::t_cced32a7f4ec36 1-122
+moe_e2e_evidence/balance_1122/results/balanced_allranks_r8.json
+  s_c1fd1bcfc6f09b::t_1d45680d797e80 1-122
+moe_e2e_evidence/balance_1122/results/balanced_allranks_r9.json
+  s_c1fd1bcfc6f09b::t_ea10184f005da6 1-122
+moe_e2e_evidence/balance_1122/results/balanced_rr.json
+  s_c1fd1bcfc6f09b::t_ce53e6e56bd2cd 1-12
+moe_e2e_evidence/balance_1122/results/balanced_rr_allranks.json
+  s_c1fd1bcfc6f09b::t_1e1ff898100ba7 1-12
+moe_e2e_evidence/balance_1122/results/balanced_rr_allranks2.json
+  s_c1fd1bcfc6f09b::t_5f3f73e33c1184 1-12
+moe_e2e_evidence/balance_1122/results/balanced_rr_r0.json
+  s_c1fd1bcfc6f09b::t_f5e0f71dc3fbc6 1-122
+moe_e2e_evidence/balance_1122/results/balanced_rr_r15.json
+  s_c1fd1bcfc6f09b::t_d78629fd158458 1-122
+moe_e2e_evidence/balance_1122/results/balanced_rr_r7.json
+  s_c1fd1bcfc6f09b::t_411aedbd670bcf 1-122
+moe_e2e_evidence/balance_1122/results/base_linear.json
+  s_c1fd1bcfc6f09b::t_f3777917d38128 1-12
+moe_e2e_evidence/balance_1122/results/base_linear_r0.json
+  s_c1fd1bcfc6f09b::t_210d207a6ab79a 1-122
+moe_e2e_evidence/balance_1122/results/base_linear_r15.json
+  s_c1fd1bcfc6f09b::t_7145c32af80fef 1-122
+moe_e2e_evidence/balance_1122/results/base_linear_r7.json
+  s_c1fd1bcfc6f09b::t_33dd4316e06d7a 1-122
+moe_e2e_evidence/balance_1122/results/baseline_allranks.json
+  s_c1fd1bcfc6f09b::t_e45f05e157b101 1-12
+moe_e2e_evidence/balance_1122/results/baseline_allranks_r0.json
+  s_c1fd1bcfc6f09b::t_ed56e1bd187f03 1-122
+moe_e2e_evidence/balance_1122/results/baseline_allranks_r1.json
+  s_c1fd1bcfc6f09b::t_731ca233898365 1-122
+moe_e2e_evidence/balance_1122/results/baseline_allranks_r10.json
+  s_c1fd1bcfc6f09b::t_ceb7234dd3034f 1-122
+moe_e2e_evidence/balance_1122/results/baseline_allranks_r11.json
+  s_c1fd1bcfc6f09b::t_bd29bebb5633c2 1-122
+moe_e2e_evidence/balance_1122/results/baseline_allranks_r12.json
+  s_c1fd1bcfc6f09b::t_2c62e58aa2a37e 1-122
+moe_e2e_evidence/balance_1122/results/baseline_allranks_r13.json
+  s_c1fd1bcfc6f09b::t_ee60828ad049ff 1-122
+moe_e2e_evidence/balance_1122/results/baseline_allranks_r14.json
+  s_c1fd1bcfc6f09b::t_60f53c3c2859ca 1-122
+moe_e2e_evidence/balance_1122/results/baseline_allranks_r15.json
+  s_c1fd1bcfc6f09b::t_b480fd783d8e15 1-122
+moe_e2e_evidence/balance_1122/results/baseline_allranks_r2.json
+  s_c1fd1bcfc6f09b::t_3a541ed9df8482 1-122
+moe_e2e_evidence/balance_1122/results/baseline_allranks_r3.json
+  s_c1fd1bcfc6f09b::t_b8e9e0126391d0 1-122
+moe_e2e_evidence/balance_1122/results/baseline_allranks_r4.json
+  s_c1fd1bcfc6f09b::t_fa5601bab6b120 1-122
+moe_e2e_evidence/balance_1122/results/baseline_allranks_r5.json
+  s_c1fd1bcfc6f09b::t_c55dcfb2b3fe81 1-122
+moe_e2e_evidence/balance_1122/results/baseline_allranks_r6.json
+  s_c1fd1bcfc6f09b::t_79e6fb7b1758ae 1-122
+moe_e2e_evidence/balance_1122/results/baseline_allranks_r7.json
+  s_c1fd1bcfc6f09b::t_5d212b361c6d89 1-122
+moe_e2e_evidence/balance_1122/results/baseline_allranks_r8.json
+  s_c1fd1bcfc6f09b::t_dce3812e7c47cd 1-122
+moe_e2e_evidence/balance_1122/results/baseline_allranks_r9.json
+  s_c1fd1bcfc6f09b::t_7ed2e45829bfec 1-122
+moe_e2e_evidence/balance_1122/results/equiv_balanced.json
+  s_c1fd1bcfc6f09b::t_ecebce7363ff66 1-12
+moe_e2e_evidence/balance_1122/results/equiv_balanced2.json
+  s_c1fd1bcfc6f09b::t_f2974bae5ea949 1-12
+moe_e2e_evidence/balance_1122/results/equiv_balanced3.json
+  s_c1fd1bcfc6f09b::t_77d44b6b374900 1-12
+moe_e2e_evidence/balance_1122/results/equiv_linear.json
+  s_c1fd1bcfc6f09b::t_ae73a5752a3e81 1-12
+moe_e2e_evidence/balance_1122/results/equiv_linear2.json
+  s_c1fd1bcfc6f09b::t_72cbf3d6f63f48 1-12
+moe_e2e_evidence/balance_1122/results/equiv_linear3.json
+  s_c1fd1bcfc6f09b::t_de46cef9be6bda 1-12
+moe_e2e_evidence/balance_1122/results/equiv_linear4.json
+  s_c1fd1bcfc6f09b::t_d92a3384ecb84d 1-12
+moe_e2e_evidence/balance_1122/results/equiv_probe.json
+  s_c1fd1bcfc6f09b::t_868128c3ec17ac 1-12
+moe_e2e_evidence/balance_1122/results/linear_local_control.json
+  s_c1fd1bcfc6f09b::t_979ba52d59fd10 1-12
+moe_e2e_evidence/balance_1122/results/linear_local_r0.json
+  s_c1fd1bcfc6f09b::t_3aeec23dfd9371 1-122
+moe_e2e_evidence/balance_1122/results/linear_local_r15.json
+  s_c1fd1bcfc6f09b::t_c2baec7993be4a 1-122
+moe_e2e_evidence/balance_1122/results/load_balanced.json
+  s_c1fd1bcfc6f09b::t_b4e3f38ba11841 1-12
+moe_e2e_evidence/balance_1122/results/load_linear.json
+  s_c1fd1bcfc6f09b::t_de951012142dbc 1-12
+moe_e2e_evidence/balance_1122/results/load_map_verdict.json
+  s_c1fd1bcfc6f09b::t_54217be48151fc 1-155
+moe_e2e_evidence/balance_1122/results/oracle_linear2.json
+  s_c1fd1bcfc6f09b::t_820d60493272ce 1-8
+moe_e2e_evidence/balance_1122/verify_load_map.py
+  s_c1fd1bcfc6f09b::t_f8a332258f8872 1-105
+moe_e2e_evidence/final_1122/findings_final.json
+  s_c1fd1bcfc6f09b::t_0acd02166bc755 154-169
+tests/ut/ops/test_token_dispatcher.py
+  s_c1fd1bcfc6f09b::t_b5d1fdbb418d04 1149-1411
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "30604316a73fde2a870d949331cc2c4d7b8c5568",
+  "prompts": {},
+  "sessions": {
+    "s_c1fd1bcfc6f09b": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "55a01dbf-d46d-48f8-99ca-48ca41627699",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

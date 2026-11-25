@@ -1,0 +1,36 @@
+vllm_ascend/models/deepseek_v41/engram/shared_pool.py
+  s_2c7c0a259eff1f::t_d83d7052e4d751 416,531
+vllm_ascend/ascend_config.py
+  s_2c7c0a259eff1f::t_d83d7052e4d751 501
+vllm_ascend/models/deepseek_v41/engram/embedding.py
+  s_2c7c0a259eff1f::t_d83d7052e4d751 59,133,247-251
+  s_2c7c0a259eff1f::t_413fee4fc364fc 252
+tests/ut/models/test_engram_shared_rdma.py
+  s_2c7c0a259eff1f::t_6ae8b236795c4c 588-590
+  s_2c7c0a259eff1f::t_15544ab9305fc8 587,591
+  s_2c7c0a259eff1f::t_4690d45c2700f2 653,976
+vllm_ascend/models/deepseek_v41/engram/shared_host.py
+  s_2c7c0a259eff1f::t_d83d7052e4d751 40-42,63-65
+vllm_ascend/models/deepseek_v41/engram/shared_rdma.py
+  s_2c7c0a259eff1f::t_d83d7052e4d751 288,431,505,559
+vllm_ascend/shared_engram.py
+  s_2c7c0a259eff1f::t_d83d7052e4d751 43
+tests/ut/models/test_engram_shared_pool.py
+  s_2c7c0a259eff1f::t_c183dff346e539 13,1026
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "bb067872da7c9ee20c76ea9f8597f7410a835b59",
+  "prompts": {},
+  "sessions": {
+    "s_2c7c0a259eff1f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1cb69-b458-77a2-a7f7-ef64f39725f8",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

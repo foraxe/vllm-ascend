@@ -1,0 +1,21 @@
+tests/ut/kv_offload/test_mooncake_hybrid_connector.py
+  s_b4d3bfe9c28898::t_5d03f007d2c1df 982-1010
+vllm_ascend/distributed/kv_transfer/kv_p2p/mooncake_hybrid_connector.py
+  s_b4d3bfe9c28898::t_44f8b5016f15ed 723-743,818-822
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7a204823f03307f110ddb8298fe76cd1d48b5588",
+  "prompts": {},
+  "sessions": {
+    "s_b4d3bfe9c28898": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "9c5e86c0-26a8-438d-a20f-fd4f831fe050",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

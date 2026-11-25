@@ -1,0 +1,23 @@
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_dcp_a2a.py
+  s_808287fb18d6f5::t_c943120eb86dc3 9
+  s_808287fb18d6f5::t_b764e9db7f340d 422-425
+  s_808287fb18d6f5::t_119a7d73fae8a9 445-456
+  s_808287fb18d6f5::t_d140cf61569a53 486-529,531-534,548-549,557-666
+  s_808287fb18d6f5::t_3f34f56ad52fdf 485
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "788b01db5af033d3cc1883d900c9e035a8e1ab05",
+  "prompts": {},
+  "sessions": {
+    "s_808287fb18d6f5": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "e754b7c9-f459-4ad0-9196-7d19c4b9f766",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+research/cann_owner0_sdk/full_reader6.py
+  s_ae878733767172::t_f3eda411028b8f 1-85
+research/cann_owner0_sdk/guarded_full_reader6.py
+  s_ae878733767172::t_bb868498668460 1-12
+research/cann_owner0_sdk/FULL_OWNER0_PLAN.md
+  s_ae878733767172::t_b4b2c19e3ccf6a 6-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3fbf9765454bd106f72a70a1260fd83ca7e1e384",
+  "prompts": {},
+  "sessions": {
+    "s_ae878733767172": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "300c0aea-1854-45c9-925a-13d1c32c978c",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

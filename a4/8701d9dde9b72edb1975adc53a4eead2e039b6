@@ -1,0 +1,19 @@
+.aci/single_quality.yml
+  s_3e626dc0875115::t_ab26b32eebe827 1-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a48701d9dde9b72edb1975adc53a4eead2e039b6",
+  "prompts": {},
+  "sessions": {
+    "s_3e626dc0875115": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1ced7-ea4c-7300-ae6d-47c388496d21",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "zhengyoufu <zhengyoufu.zyf@antgroup.com>"
+    }
+  }
+}

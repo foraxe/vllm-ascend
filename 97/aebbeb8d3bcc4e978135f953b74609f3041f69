@@ -1,0 +1,37 @@
+vllm_ascend/ops/triton/dcp/dcp_a2a_rank_tiled.py
+  s_808287fb18d6f5::t_e5a63d40eb619f 44-119
+vllm_ascend/ops/triton/dcp/dcp_a2a.py
+  s_808287fb18d6f5::t_1f2fb559d34106 39-45,47-50
+  s_808287fb18d6f5::t_f8ab549a43e383 11
+  s_808287fb18d6f5::t_e4ece52259bb11 51
+  s_808287fb18d6f5::t_57f266bda6908b 18-21,26-38,46
+  s_808287fb18d6f5::t_648c1b35556038 500
+  s_808287fb18d6f5::t_12c69451052596 496-499,501-528
+tests/ut/ops/test_dcp_a2a_combine.py
+  s_808287fb18d6f5::t_a0a53a25643ea5 70-71,74-80
+  s_808287fb18d6f5::t_31403222bec9de 103,105,109-146
+vllm_ascend/ops/triton/dcp/dcp_warmup.py
+  s_808287fb18d6f5::t_4dab98251c361a 12,19,25-28
+  s_808287fb18d6f5::t_1c6eba656698e6 10
+  s_808287fb18d6f5::t_acd490266a994f 209-213,215-221,223,238-245
+  s_808287fb18d6f5::t_b918846ae47f95 214
+  s_808287fb18d6f5::t_c9a68ca7d7b76d 48
+vllm_ascend/ops/triton/docs/fused_dcp_lse_combine.md
+  s_808287fb18d6f5::t_95d4055ffc33c9 51-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "97aebbeb8d3bcc4e978135f953b74609f3041f69",
+  "prompts": {},
+  "sessions": {
+    "s_808287fb18d6f5": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "e754b7c9-f459-4ad0-9196-7d19c4b9f766",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

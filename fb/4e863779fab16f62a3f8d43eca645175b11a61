@@ -1,0 +1,26 @@
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_dcp_a2a.py
+  s_808287fb18d6f5::t_af19d944f9fa91 472-475
+  s_808287fb18d6f5::t_3f34f56ad52fdf 489
+  s_808287fb18d6f5::t_d140cf61569a53 490-533,535-538,552-553,561-660,662-670
+  s_808287fb18d6f5::t_de72ce6cec436e 661
+  s_808287fb18d6f5::t_c943120eb86dc3 10
+  s_808287fb18d6f5::t_b764e9db7f340d 423-426
+  s_808287fb18d6f5::t_119a7d73fae8a9 446-457
+  s_808287fb18d6f5::t_80c5a60644f04b 427
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "fb4e863779fab16f62a3f8d43eca645175b11a61",
+  "prompts": {},
+  "sessions": {
+    "s_808287fb18d6f5": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "e754b7c9-f459-4ad0-9196-7d19c4b9f766",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": null
+    }
+  }
+}

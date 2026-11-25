@@ -1,0 +1,25 @@
+vllm_ascend/models/deepseek_v41/engram/local_shared_vmm.py
+  s_d6485b3d09302c::t_70646c3ffd4662 16-21,90
+tests/ut/models/test_engram_vmm_model_rollback.py
+  s_d6485b3d09302c::t_4bc33114975ce9 24-28,51-52,70-71,73-76,78
+  s_d6485b3d09302c::t_3b80d494e0bb3c 57
+  s_d6485b3d09302c::t_70646c3ffd4662 58-63
+vllm_ascend/models/deepseek_v41/engram/embedding.py
+  s_d6485b3d09302c::t_70646c3ffd4662 35,172-181
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f2a11b876fa28d147108f5d977110f90641f0b05",
+  "prompts": {},
+  "sessions": {
+    "s_d6485b3d09302c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c4b6-d8aa-7320-9579-f20711e7bf1b",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

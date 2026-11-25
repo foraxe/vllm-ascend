@@ -1,0 +1,25 @@
+csrc/engram_hixl/masked_plan.h
+  s_e7a51dcf069eaf::t_cbc4a068c46826 1-71
+csrc/engram_hixl/native.cpp
+  s_e7a51dcf069eaf::t_7433c4ca9b569c 14,175-214
+tests/ut/models/test_engram_shared_rdma.py
+  s_e7a51dcf069eaf::t_bd33ec00d491a0 326-333,344-346,358
+vllm_ascend/models/deepseek_v41/engram/shared_rdma.py
+  s_e7a51dcf069eaf::t_721ae3b5841637 194-205,256,261-264,313,315,319-327,330,332-341,343
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "5b1a47a326e87a18674c895777657d31477caade",
+  "prompts": {},
+  "sessions": {
+    "s_e7a51dcf069eaf": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a19a2f-aa6b-7033-8dd6-6934cca25f9b",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

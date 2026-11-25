@@ -1,0 +1,14 @@
+cd_config/guian.yml
+  h_84ea86c168828b 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "fe7448163ee8a4c59cf5eb40363dd228e2f87d71",
+  "prompts": {},
+  "humans": {
+    "h_84ea86c168828b": {
+      "author": "123 <123>"
+    }
+  }
+}

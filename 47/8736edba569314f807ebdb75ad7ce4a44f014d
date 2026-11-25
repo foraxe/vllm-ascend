@@ -1,0 +1,32 @@
+vllm_ascend/models/qwen4_exp/ple_bm_embedding.py
+  s_2c7c0a259eff1f::t_db0ef5a8e4d467 9
+  s_2c7c0a259eff1f::t_505ce8261e479b 109
+  s_2c7c0a259eff1f::t_aa09752a5c1d8c 10
+tests/ut/models/qwen4_exp/test_ple_bm_embedding.py
+  s_2c7c0a259eff1f::t_97f3f8232c96fa 135-147,151-187
+  s_2c7c0a259eff1f::t_db0ef5a8e4d467 148-150
+vllm_ascend/models/qwen4_exp/ple_bm_reader.py
+  s_2c7c0a259eff1f::t_505ce8261e479b 6-7,28-29
+tests/ut/models/qwen4_exp/test_ple_bm_reader.py
+  s_2c7c0a259eff1f::t_505ce8261e479b 54-58,76-80
+  s_2c7c0a259eff1f::t_db0ef5a8e4d467 59
+tests/ut/models/qwen4_exp/test_ple_rdma_embedding.py
+  s_2c7c0a259eff1f::t_db0ef5a8e4d467 36-38
+  s_2c7c0a259eff1f::t_505ce8261e479b 32-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "478736edba569314f807ebdb75ad7ce4a44f014d",
+  "prompts": {},
+  "sessions": {
+    "s_2c7c0a259eff1f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1cb69-b458-77a2-a7f7-ef64f39725f8",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

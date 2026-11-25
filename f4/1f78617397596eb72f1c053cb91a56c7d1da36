@@ -1,0 +1,21 @@
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/metadata.py
+  s_1ca3cc9a501d06::t_85d7282bc18523 1133-1138
+  s_1ca3cc9a501d06::t_ef6b460ea8cd4b 29-45
+  s_1ca3cc9a501d06::t_de83016568c413 4,7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f41f78617397596eb72f1c053cb91a56c7d1da36",
+  "prompts": {},
+  "sessions": {
+    "s_1ca3cc9a501d06": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "eae451be-048d-4614-8afa-c18fb31ff5ac",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+research/cann_owner0_sdk/model_perf_cann_vs_hixl_20261123/a5run.py
+  s_ae878733767172::t_d82f30dab464ad 1-12
+research/cann_owner0_sdk/model_perf_cann_vs_hixl_20261123/perf_analyze.py
+  s_ae878733767172::t_c70866cc64b42d 1-21
+research/cann_owner0_sdk/model_perf_cann_vs_hixl_20261123/perf_client.py
+  s_ae878733767172::t_f7b8932a94b4a0 1-91
+research/cann_owner0_sdk/model_perf_cann_vs_hixl_20261123/run_perf_arms.py
+  s_ae878733767172::t_3ddc098c77f2e4 1-200
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d08159e66522bb63c8e6ddd29fd0c5895489aafc",
+  "prompts": {},
+  "sessions": {
+    "s_ae878733767172": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "300c0aea-1854-45c9-925a-13d1c32c978c",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

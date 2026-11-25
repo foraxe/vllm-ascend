@@ -1,0 +1,32 @@
+vllm_ascend/ops/triton/dcp/dcp_a2a.py
+  s_808287fb18d6f5::t_281631227aae35 516-519,524-533,538,541-542,544-551,556-561,579
+  s_808287fb18d6f5::t_ed7ab679bc65dc 8
+  s_808287fb18d6f5::t_22c393dc2bc366 27-32,35-48,50-53,56-60,62-81
+  s_808287fb18d6f5::t_fd04d8d4b400c8 543,552-555
+vllm_ascend/ops/triton/docs/fused_dcp_lse_combine.md
+  s_808287fb18d6f5::t_5b903399d53f19 55-58
+tests/ut/ops/test_dcp_a2a_combine.py
+  s_808287fb18d6f5::t_4b37cf5ee6d3ed 112-116,124-129,142-144,146-149,151,154,157-170
+vllm_ascend/model_executor/warmup/kernel_warmup.py
+  s_808287fb18d6f5::t_e3e53fa6f19360 165-166
+vllm_ascend/ops/triton/dcp/dcp_warmup.py
+  s_808287fb18d6f5::t_76ee705693deba 193-195,201-204
+  s_808287fb18d6f5::t_6c63544404219b 216-218,220-229,231-248
+  s_808287fb18d6f5::t_da71ecf4c7fb51 17,19-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3a42076eb98b2210221710e87324b525dd8dfc19",
+  "prompts": {},
+  "sessions": {
+    "s_808287fb18d6f5": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "e754b7c9-f459-4ad0-9196-7d19c4b9f766",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

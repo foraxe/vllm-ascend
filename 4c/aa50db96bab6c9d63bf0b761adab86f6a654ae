@@ -1,0 +1,76 @@
+vllm_ascend/shared_engram_registry.py
+  s_128bc83b4eb0d9::t_4f7a3f7557a11d 1-151
+vllm_ascend/ascend_config.py
+  s_128bc83b4eb0d9::t_25d1639f39b22c 574-575,672-673,702-706
+  s_128bc83b4eb0d9::t_4f7a3f7557a11d 573,576-577,700-701
+vllm_ascend/shared_engram.py
+  s_128bc83b4eb0d9::t_7c921eafada6fb 16-17,21,38-44,47-48,55,58-60,70-71,74,76-80,92,95-101,113-115
+  s_128bc83b4eb0d9::t_25d1639f39b22c 1-15,18-20,22-37,45-46,49-54,56-57,61-69,72-73,75,81-91,93-94,102-112,116-120
+CMakeLists.txt
+  s_128bc83b4eb0d9::t_25d1639f39b22c 230-254
+docs/source/user_guide/feature_guide/sharded_engram.md
+  s_128bc83b4eb0d9::t_4f7a3f7557a11d 1-28,30-39,42-67,69-83,88-204
+  s_128bc83b4eb0d9::t_65280c009b57fb 29,40-41,68,84-87
+tests/e2e/pull_request/one_card/aclgraph/test_engram_sp_direct.py
+  s_128bc83b4eb0d9::t_4f7a3f7557a11d 1-95
+vllm_ascend/ops/triton/engram_lookup.py
+  s_128bc83b4eb0d9::t_4f7a3f7557a11d 85-87,95-103
+vllm_ascend/models/deepseek_v41/model.py
+  s_128bc83b4eb0d9::t_25d1639f39b22c 1062-1063,1065-1068,1107-1109
+  s_128bc83b4eb0d9::t_4f7a3f7557a11d 7,13,31,1058-1061,1064,1069-1077,1110-1111,1274-1278,1281-1293,1426-1428,1439-1445,1694
+vllm_ascend/models/deepseek_v41/engram/shared_pool.py
+  s_128bc83b4eb0d9::t_7c921eafada6fb 8,21,28-42,92,97,109,145-148,153-177,183,205,208-209,219-220,242,261-264,269-273,282,301-305,314
+  s_128bc83b4eb0d9::t_25d1639f39b22c 1-7,9-20,22-27,43-91,93-96,98-108,110-144,149-152,178-182,184-204,206-207,210-218,221-241,243-260,265-268,274-281,283-300,306-313,315-320
+vllm_ascend/engram_shard_layout.py
+  s_128bc83b4eb0d9::t_4f7a3f7557a11d 1-58
+vllm_ascend/models/deepseek_v41/engram/shared_shards.py
+  s_128bc83b4eb0d9::t_4f7a3f7557a11d 1-242
+vllm_ascend/worker/worker.py
+  s_128bc83b4eb0d9::t_4f7a3f7557a11d 461-468,993-1002
+vllm_ascend/patch/platform/patch_engine_shutdown.py
+  s_128bc83b4eb0d9::t_4f7a3f7557a11d 1-21
+csrc/engram_vmm/native.cpp
+  s_128bc83b4eb0d9::t_7c921eafada6fb 176-188,190-191,197-204,207-211,215-222,224-225
+  s_128bc83b4eb0d9::t_25d1639f39b22c 1-175,189,192-196,205-206,212-214,223,226-447
+tests/ut/patch/platform/test_patch_engine_shutdown.py
+  s_128bc83b4eb0d9::t_4f7a3f7557a11d 1-38
+tests/ut/models/test_engram_sp_direct.py
+  s_128bc83b4eb0d9::t_4f7a3f7557a11d 1-192
+vllm_ascend/models/deepseek_v41/engram/npu.py
+  s_128bc83b4eb0d9::t_4f7a3f7557a11d 224-225,235-237,260,268-270
+vllm_ascend/models/deepseek_v41/engram/shared_host.py
+  s_128bc83b4eb0d9::t_25d1639f39b22c 1-19,24-52,60-107,109-112,114-125,127-132,134-136,138-149
+  s_128bc83b4eb0d9::t_7c921eafada6fb 20-23,53-59,108,113,126,133,137
+tests/ut/models/test_engram_shared_shards.py
+  s_128bc83b4eb0d9::t_4f7a3f7557a11d 1-540,542-636
+  s_128bc83b4eb0d9::t_3e17274c4ffd2c 541
+tests/ut/models/test_engram_shared_pool.py
+  s_128bc83b4eb0d9::t_3e17274c4ffd2c 5-7,37,91-121,146-300
+  s_128bc83b4eb0d9::t_25d1639f39b22c 1-4,8-36,38-90,122-145
+docs/source/user_guide/feature_guide/shared_engram.md
+  s_128bc83b4eb0d9::t_25d1639f39b22c 1-105
+vllm_ascend/patch/platform/__init__.py
+  s_128bc83b4eb0d9::t_4f7a3f7557a11d 45,139-154
+vllm_ascend/shared_engram_launch.py
+  s_128bc83b4eb0d9::t_7c921eafada6fb 1-466
+vllm_ascend/models/deepseek_v41/engram/embedding.py
+  s_128bc83b4eb0d9::t_4f7a3f7557a11d 67-68,70,100-102,128-138,175-180,427-428,452-480
+  s_128bc83b4eb0d9::t_25d1639f39b22c 64-66,71-76,171-174,181-202,239-247,288-292
+  s_128bc83b4eb0d9::t_e06c7f0a503811 481
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "4caa50db96bab6c9d63bf0b761adab86f6a654ae",
+  "prompts": {},
+  "sessions": {
+    "s_128bc83b4eb0d9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1864f-13f3-7213-aaf3-9a0b0f231ea4",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

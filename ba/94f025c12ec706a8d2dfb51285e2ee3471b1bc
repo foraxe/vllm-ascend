@@ -1,0 +1,169 @@
+moe_e2e_evidence/megamoe_a2_1122/run_arm_perlayer.sh
+  s_c1fd1bcfc6f09b::t_2f87cad29ecb04 1-34,38-42,44-45,47-113
+  s_c1fd1bcfc6f09b::t_42a5aa2dfb97c2 35-37
+  s_c1fd1bcfc6f09b::t_92a978bd1702cc 43,46
+moe_e2e_evidence/megamoe_a2_1122/verify_per_layer_load_map.py
+  s_c1fd1bcfc6f09b::t_45f2a4c7182c85 1-46,48-56,67-75,77-88
+  s_c1fd1bcfc6f09b::t_c749a6eef7691c 47,57-65,76
+  s_c1fd1bcfc6f09b::t_66c7a712943d94 66
+moe_e2e_evidence/megamoe_a2_1122/build_per_layer_map.py
+  s_c1fd1bcfc6f09b::t_b69a087d3bc4f2 39-40
+  s_c1fd1bcfc6f09b::t_8e387dd6735dd4 1-38,41-46,48-51,55-95
+  s_c1fd1bcfc6f09b::t_e602ee867a4b57 47,52-54
+moe_e2e_evidence/megamoe_a2_1122/run_arm_megamoe.sh
+  s_c1fd1bcfc6f09b::t_1a4ddd29fdba03 1-101
+moe_e2e_evidence/megamoe_a2_1122/probe_megamoe_op.py
+  s_c1fd1bcfc6f09b::t_21d56944870ccb 1-46,53-63,70-101,105-217
+  s_c1fd1bcfc6f09b::t_b4e972437bc61a 47-52
+  s_c1fd1bcfc6f09b::t_d8af13f4386650 64-69
+  s_c1fd1bcfc6f09b::t_8e95c9d088d639 102-104
+moe_e2e_evidence/megamoe_a2_1122/findings_final.json
+  s_c1fd1bcfc6f09b::t_76e902cb2d8e9d 1-177
+  s_c1fd1bcfc6f09b::t_8e8b81431005d8 178-250
+vllm_ascend/device/hardware_profile.py
+  s_c1fd1bcfc6f09b::t_b9aa1b7694ef59 316-321
+  s_c1fd1bcfc6f09b::t_d5a80d78dce81d 71-74
+vllm_ascend/ops/fused_moe/routed_experts.py
+  s_c1fd1bcfc6f09b::t_03006423b9a160 413-415
+  s_c1fd1bcfc6f09b::t_24d870b68b0ca9 611-619,624-649
+  s_c1fd1bcfc6f09b::t_f425855314c244 416-428
+  s_c1fd1bcfc6f09b::t_cd7f2c2c2ed5b5 650-688,690-705
+  s_c1fd1bcfc6f09b::t_c8d6c7535d9c6e 620-623
+  s_c1fd1bcfc6f09b::t_6fcf98e8239e71 797-800,803
+  s_c1fd1bcfc6f09b::t_ffe41cb9baf2fa 1034-1035
+  s_c1fd1bcfc6f09b::t_9806326894154e 1103
+  s_c1fd1bcfc6f09b::t_26b51b8c7e3b28 17
+  s_c1fd1bcfc6f09b::t_7ee4c9b15a8c9f 689
+  s_c1fd1bcfc6f09b::t_218de5d85edee9 722-723
+vllm_ascend/ops/fused_moe/token_dispatcher.py
+  s_c1fd1bcfc6f09b::t_700f13598657d2 90-96
+JOURNAL.md
+  s_c1fd1bcfc6f09b::t_b05b25d25c7c64 291-321,325-374
+  s_c1fd1bcfc6f09b::t_e435c573253c23 322-324
+moe_e2e_evidence/megamoe_a2_1122/analyze_megamoe_timing.py
+  s_c1fd1bcfc6f09b::t_9153ae75ec1a30 38
+  s_c1fd1bcfc6f09b::t_b1e7299964137b 76
+  s_c1fd1bcfc6f09b::t_889860f9756b9b 1-37,39-75,77-122
+vllm_ascend/ops/fused_moe/moe_comm_method.py
+  s_c1fd1bcfc6f09b::t_8f125771afdf02 18
+  s_c1fd1bcfc6f09b::t_372e14f48ce0ee 516-523
+  s_c1fd1bcfc6f09b::t_ede52310fcfbca 546-550,567-586
+tests/ut/ops/test_per_layer_placement.py
+  s_c1fd1bcfc6f09b::t_f8027873c0e4fd 1-74
+moe_e2e_evidence/megamoe_a2_1122/analyze_gmm_timing.py
+  s_c1fd1bcfc6f09b::t_ab3f1ec9659311 1-85
+vllm_ascend/ascend_forward_context.py
+  s_c1fd1bcfc6f09b::t_4f8fef48f8da23 2
+  s_c1fd1bcfc6f09b::t_6c18893a863f23 331-335
+  s_c1fd1bcfc6f09b::t_1a53f4acd611f5 103-113,117
+moe_e2e_evidence/megamoe_a2_1122/remote/results/calib1.calib.jsonl
+  s_c1fd1bcfc6f09b::t_04b8cabf941f66 1-120
+moe_e2e_evidence/megamoe_a2_1122/remote/results/calib1_metric.json
+  s_c1fd1bcfc6f09b::t_748e4611b80d53 1-1514
+moe_e2e_evidence/megamoe_a2_1122/remote/results/linear_equiv_metric.json
+  s_c1fd1bcfc6f09b::t_79ad13ac3d9697 1-1514
+moe_e2e_evidence/megamoe_a2_1122/remote/results/per_layer_load_map_verdict.json
+  s_c1fd1bcfc6f09b::t_636aa166bf83d7 1-4
+moe_e2e_evidence/megamoe_a2_1122/remote/results/per_layer_map.json
+  s_c1fd1bcfc6f09b::t_87f1bcc8ae1571 1-15442
+moe_e2e_evidence/megamoe_a2_1122/remote/results/per_layer_map.json.report.json
+  s_c1fd1bcfc6f09b::t_081ca0f77f0ecb 1-1002
+moe_e2e_evidence/megamoe_a2_1122/remote/results/perlayer3_metric.json
+  s_c1fd1bcfc6f09b::t_aa5a4e49920c26 1-1514
+moe_e2e_evidence/megamoe_a2_1122/remote/results/perlayer4_metric.json
+  s_c1fd1bcfc6f09b::t_27f08dca7e199e 1-1514
+moe_e2e_evidence/megamoe_a2_1122/remote/results/perlayer5.json
+  s_c1fd1bcfc6f09b::t_349cefbfe1c7e7 1-12
+moe_e2e_evidence/megamoe_a2_1122/remote/results/perlayer5_metric.json
+  s_c1fd1bcfc6f09b::t_36f88fd561d1aa 1-1514
+moe_e2e_evidence/megamoe_a2_1122/remote/results/probe/w16_24576b/probe_args.json
+  s_c1fd1bcfc6f09b::t_a34a465809ff20 1-19
+moe_e2e_evidence/megamoe_a2_1122/remote/results/probe/w16_24576b/probe_rank0.json
+  s_c1fd1bcfc6f09b::t_d4d34a91de30c7 1-49
+moe_e2e_evidence/megamoe_a2_1122/remote/results/probe/w16_24576b/probe_rank1.json
+  s_c1fd1bcfc6f09b::t_3882e198ab2f08 1-49
+moe_e2e_evidence/megamoe_a2_1122/remote/results/probe/w16_24576b/probe_rank10.json
+  s_c1fd1bcfc6f09b::t_d93deea9505f8b 1-49
+moe_e2e_evidence/megamoe_a2_1122/remote/results/probe/w16_24576b/probe_rank11.json
+  s_c1fd1bcfc6f09b::t_f9c8196f373793 1-49
+moe_e2e_evidence/megamoe_a2_1122/remote/results/probe/w16_24576b/probe_rank12.json
+  s_c1fd1bcfc6f09b::t_a66e442bdf7be9 1-49
+moe_e2e_evidence/megamoe_a2_1122/remote/results/probe/w16_24576b/probe_rank13.json
+  s_c1fd1bcfc6f09b::t_b5f05f1d4c7ec0 1-49
+moe_e2e_evidence/megamoe_a2_1122/remote/results/probe/w16_24576b/probe_rank14.json
+  s_c1fd1bcfc6f09b::t_d63301224a0e49 1-49
+moe_e2e_evidence/megamoe_a2_1122/remote/results/probe/w16_24576b/probe_rank15.json
+  s_c1fd1bcfc6f09b::t_12c84c3cd33b4c 1-49
+moe_e2e_evidence/megamoe_a2_1122/remote/results/probe/w16_24576b/probe_rank2.json
+  s_c1fd1bcfc6f09b::t_53a19e5cebd532 1-49
+moe_e2e_evidence/megamoe_a2_1122/remote/results/probe/w16_24576b/probe_rank3.json
+  s_c1fd1bcfc6f09b::t_d1910e2e085c77 1-49
+moe_e2e_evidence/megamoe_a2_1122/remote/results/probe/w16_24576b/probe_rank4.json
+  s_c1fd1bcfc6f09b::t_4a85ae04ecd718 1-49
+moe_e2e_evidence/megamoe_a2_1122/remote/results/probe/w16_24576b/probe_rank5.json
+  s_c1fd1bcfc6f09b::t_d1daceb0ba3b0c 1-49
+moe_e2e_evidence/megamoe_a2_1122/remote/results/probe/w16_24576b/probe_rank6.json
+  s_c1fd1bcfc6f09b::t_04d6db687cab67 1-49
+moe_e2e_evidence/megamoe_a2_1122/remote/results/probe/w16_24576b/probe_rank7.json
+  s_c1fd1bcfc6f09b::t_ae025d545e250d 1-49
+moe_e2e_evidence/megamoe_a2_1122/remote/results/probe/w16_24576b/probe_rank8.json
+  s_c1fd1bcfc6f09b::t_c57a85b64e67d8 1-49
+moe_e2e_evidence/megamoe_a2_1122/remote/results/probe/w16_24576b/probe_rank9.json
+  s_c1fd1bcfc6f09b::t_5d117ff78e7715 1-49
+moe_e2e_evidence/megamoe_a2_1122/remote/results/probe/w16b/probe_args.json
+  s_c1fd1bcfc6f09b::t_9150a49cec397b 1-19
+moe_e2e_evidence/megamoe_a2_1122/remote/results/probe/w16b/probe_rank0.json
+  s_c1fd1bcfc6f09b::t_b77e3fbdb0f660 1-49
+moe_e2e_evidence/megamoe_a2_1122/remote/results/probe/w16b/probe_rank1.json
+  s_c1fd1bcfc6f09b::t_d7e9975be6d209 1-49
+moe_e2e_evidence/megamoe_a2_1122/remote/results/probe/w16b/probe_rank10.json
+  s_c1fd1bcfc6f09b::t_8ed4bb0d911e44 1-49
+moe_e2e_evidence/megamoe_a2_1122/remote/results/probe/w16b/probe_rank11.json
+  s_c1fd1bcfc6f09b::t_6522ad66f542f3 1-49
+moe_e2e_evidence/megamoe_a2_1122/remote/results/probe/w16b/probe_rank12.json
+  s_c1fd1bcfc6f09b::t_22250fae569ea8 1-49
+moe_e2e_evidence/megamoe_a2_1122/remote/results/probe/w16b/probe_rank13.json
+  s_c1fd1bcfc6f09b::t_1680721f26c771 1-49
+moe_e2e_evidence/megamoe_a2_1122/remote/results/probe/w16b/probe_rank14.json
+  s_c1fd1bcfc6f09b::t_6c1bf5f578726f 1-49
+moe_e2e_evidence/megamoe_a2_1122/remote/results/probe/w16b/probe_rank15.json
+  s_c1fd1bcfc6f09b::t_9aa714c03301df 1-49
+moe_e2e_evidence/megamoe_a2_1122/remote/results/probe/w16b/probe_rank2.json
+  s_c1fd1bcfc6f09b::t_402411b162e0d6 1-49
+moe_e2e_evidence/megamoe_a2_1122/remote/results/probe/w16b/probe_rank3.json
+  s_c1fd1bcfc6f09b::t_851edc69b79c6f 1-49
+moe_e2e_evidence/megamoe_a2_1122/remote/results/probe/w16b/probe_rank4.json
+  s_c1fd1bcfc6f09b::t_f44c5a60c144db 1-49
+moe_e2e_evidence/megamoe_a2_1122/remote/results/probe/w16b/probe_rank5.json
+  s_c1fd1bcfc6f09b::t_62c32d4845a4b0 1-49
+moe_e2e_evidence/megamoe_a2_1122/remote/results/probe/w16b/probe_rank6.json
+  s_c1fd1bcfc6f09b::t_8db9b4b4106458 1-49
+moe_e2e_evidence/megamoe_a2_1122/remote/results/probe/w16b/probe_rank7.json
+  s_c1fd1bcfc6f09b::t_aeb2abf53c1754 1-49
+moe_e2e_evidence/megamoe_a2_1122/remote/results/probe/w16b/probe_rank8.json
+  s_c1fd1bcfc6f09b::t_6fc52f4777ad86 1-49
+moe_e2e_evidence/megamoe_a2_1122/remote/results/probe/w16b/probe_rank9.json
+  s_c1fd1bcfc6f09b::t_0c93b7e395e139 1-49
+moe_e2e_evidence/megamoe_a2_1122/remote/results/probe/w2c/probe_args.json
+  s_c1fd1bcfc6f09b::t_9fc7e59295bbdd 1-19
+moe_e2e_evidence/megamoe_a2_1122/remote/results/probe/w2c/probe_rank0.json
+  s_c1fd1bcfc6f09b::t_fbc6c20cbae9bf 1-49
+moe_e2e_evidence/megamoe_a2_1122/remote/results/probe/w2c/probe_rank1.json
+  s_c1fd1bcfc6f09b::t_0952a24f0bd1c1 1-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ba94f025c12ec706a8d2dfb51285e2ee3471b1bc",
+  "prompts": {},
+  "sessions": {
+    "s_c1fd1bcfc6f09b": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "55a01dbf-d46d-48f8-99ca-48ca41627699",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

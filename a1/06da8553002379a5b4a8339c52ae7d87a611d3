@@ -1,0 +1,19 @@
+.aci/0.30.0_ut.yml
+  s_3e626dc0875115::t_0bc6347e4b22d1 171
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a106da8553002379a5b4a8339c52ae7d87a611d3",
+  "prompts": {},
+  "sessions": {
+    "s_3e626dc0875115": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1ced7-ea4c-7300-ae6d-47c388496d21",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "zhengyoufu <zhengyoufu.zyf@antgroup.com>"
+    }
+  }
+}

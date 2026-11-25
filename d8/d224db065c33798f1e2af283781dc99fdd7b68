@@ -1,0 +1,21 @@
+vllm_ascend/models/qwen4_exp/ple_checkpoint.py
+  s_2c7c0a259eff1f::t_7820f9e4e8a1d7 9
+vllm_ascend/models/qwen4_exp/ple_bm_embedding.py
+  s_2c7c0a259eff1f::t_fded7bad0eb83b 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d8d224db065c33798f1e2af283781dc99fdd7b68",
+  "prompts": {},
+  "sessions": {
+    "s_2c7c0a259eff1f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1cb69-b458-77a2-a7f7-ef64f39725f8",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+vllm_ascend/models/kimi_k3/paired_sfa_cache.py
+  s_2c7c0a259eff1f::t_2a6cda2599d162 26-27,29-32
+vllm_ascend/models/kimi_k3/cache_config.py
+  s_2c7c0a259eff1f::t_2a6cda2599d162 15-16,18-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3c1cd4debf497c84cb31559ba0cc5b5ccf20b086",
+  "prompts": {},
+  "sessions": {
+    "s_2c7c0a259eff1f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1cb69-b458-77a2-a7f7-ef64f39725f8",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

@@ -1,0 +1,14 @@
+0.30.0_ut.yml
+  h_b17fe09d5e3772 120,166
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "fb4e8a40f7c82907a83f34ad9732e1f67c5a3017",
+  "prompts": {},
+  "humans": {
+    "h_b17fe09d5e3772": {
+      "author": "zhengyoufu <zhengyoufu.zyf@antgroup.com>"
+    }
+  }
+}

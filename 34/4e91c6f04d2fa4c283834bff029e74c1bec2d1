@@ -1,0 +1,2714 @@
+release_notes/fragments/20407.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-6
+tests/e2e/common/single_node/single_node_config.py
+  s_70fb834a8f513b::t_b603c721fcec39 12,40-46,53,74,132-133,173-174,184-200,220-221
+tests/e2e/pull_request/two_card/rlhf/weight_transfer/ipc/test_qwen_ipc.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-20
+docs/source/locale/zh_CN/LC_MESSAGES/developer_guide/contribution/multi_node_test.po
+  s_70fb834a8f513b::t_b603c721fcec39 278,283,320-365
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/PaddleOCR-VL.po
+  s_70fb834a8f513b::t_b603c721fcec39 25-29,31-33
+docs/source/tutorials/models/Kimi-K3.md
+  s_70fb834a8f513b::t_b603c721fcec39 283-284,338,398,476,531,591,820,896,974,1067,1146,1309,1388,1481,1561,1773,1831,1839,1924,1930,1937,2040,2048,2134,2140,2147,2404-2406
+tests/SIT/cases/models/configs/Qwen/qwen_3_6_27b_w8a8_A3.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-219
+tests/ut/kv_offload/mooncake_v2/test_push_sending.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-1063
+release_notes/fragments/20722.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-4
+csrc/attention/quant_lightning_indexer_v2/op_kernel/quant_lightning_indexer_v2.cpp
+  s_70fb834a8f513b::t_b603c721fcec39 27-29,31-33,41-42,51-52
+csrc/attention/quant_lightning_indexer_v2_metadata/README.md
+  s_70fb834a8f513b::t_b603c721fcec39 200-210
+tests/ut/patch/platform/test_patch_mamba_config.py
+  s_70fb834a8f513b::t_b603c721fcec39 100,237-282
+  s_70fb834a8f513b::t_306bfca7a5c45f 283-284
+tests/ut/distributed/ascend_store/test_layerwise_keys.py
+  s_70fb834a8f513b::t_b603c721fcec39 8,15-16,24-113
+tests/e2e/nightly/single_node/ops/singlecard_ops/test_hc_pre.py
+  s_70fb834a8f513b::t_b603c721fcec39 3,8-16,235-544
+release_notes/fragments/pending-gdn-internal-checkpoints.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-4
+tests/e2e/nightly/single_node/ops/singlecard_ops/test_qli_meta_registration.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-122
+docs/source/developer_guide/contribution/dependency_version_management.md
+  s_70fb834a8f513b::t_b603c721fcec39 1-146
+tests/SIT/cases/models/configs/GLM/GLM-5.1-W8A8C8-A3_64k_90_50.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-106
+tests/ut/models/test_kimi_k3_dense_sp.py
+  s_70fb834a8f513b::t_b603c721fcec39 9
+.github/workflows/dockerfiles/Dockerfile.buildwheel.310p
+  s_70fb834a8f513b::t_b603c721fcec39 18,34
+tests/SIT/cases/models/configs/GLM/GLM-5.2-W8A8C8-3.5k-1.5k-0-20-PD.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-338
+tests/ut/kv_offload/mooncake_v2/test_base_scheduler.py
+  s_70fb834a8f513b::t_b603c721fcec39 273,284-315
+.github/workflows/_selected_tests.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 105,111,232,252-254,271,298
+release_notes/fragments/20627.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-4
+csrc/attention/quant_lightning_indexer_v2_metadata/op_api/quant_lightning_indexer_v2_metadata.h
+  s_70fb834a8f513b::t_b603c721fcec39 19-24
+tests/SIT/cases/features/openai_api_compatibility/tests/test_think_tag.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-26
+tests/SIT/cases/models/configs/Kimi/Kimi-K2.6-W4A8-64k-1k-TPOT50-PD.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-161
+tests/SIT/cases/features/kv_pool/DSv4-Flash-Memcache-PD-layerwise.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-209
+tests/e2e/pull_request/four_card/test_graph_mode.py
+  s_70fb834a8f513b::t_b603c721fcec39 403
+tests/SIT/cases/models/configs/MiniMax/MiniMax-M3-w8a8-PP-prefix-PD.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-301
+csrc/attention/attn_res_fwd/op_kernel/arch35/attn_res_fwd_resident.h
+  s_70fb834a8f513b::t_b603c721fcec39 22,25,125-128,134-136,142-144,200-202,221-235,263,265-266,268,285-293
+README.md
+  s_70fb834a8f513b::t_b603c721fcec39 29,69,72-74,87-88,101,105
+tests/ut/attention/test_sfa_dcp_capacity.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-185
+tests/ut/models/test_glm5next_kda_pcp.py
+  s_70fb834a8f513b::t_b603c721fcec39 9,107-119,140,157
+tests/ut/quantization/configs/test_modelslim_config.py
+  s_70fb834a8f513b::t_b603c721fcec39 275
+tests/SIT/cases/models/configs/GLM/GLM-5.2-W4A8-DSpark-A3-V2.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-60
+csrc/attention/attn_res_fwd/op_kernel/arch35/attn_res_fwd_cooperative_regbase.h
+  s_70fb834a8f513b::t_b603c721fcec39 1-175
+tests/SIT/cases/models/configs/Qwen/Qwen3-30B-A3B-BF16-A2.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-63
+tests/ut/lora/test_quant_moe_empty_overlap.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-69
+.github/workflows/schedule_e2e_upstream_test.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 37,76-77,80,196-197,202,216,226,229,330-331,336,344,346,360,363,470
+tests/SIT/cases/features/openai_api_compatibility/tests/test_logprobs.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-29
+tests/ut/patch/worker/test_patch_dspark_eplb.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-128
+tests/e2e/common/rlhf/weight_transfer/hccl.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-102
+tests/ut/device/test_hardware_profile.py
+  s_70fb834a8f513b::t_b603c721fcec39 56-60,63-66,71,92,105-106,115,121-122,226-250
+  s_70fb834a8f513b::t_dc29be3feee22c 251-252
+tests/ut/quantization/test_method_adapters.py
+  s_70fb834a8f513b::t_b603c721fcec39 17-18,159-166,255,261,266-270
+  s_70fb834a8f513b::t_ba2c5345228714 271
+mkdocs.yml
+  s_70fb834a8f513b::t_b603c721fcec39 6,64-75,96-97,158-159,191-193,197-201,257,344
+tests/e2e/pull_request/one_card/rlhf/state_transitions/test_sleep_wake.py
+  s_70fb834a8f513b::t_b603c721fcec39 34
+tests/e2e/pull_request/two_card/rlhf/weight_transfer/ipc/__init__.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-2
+tests/e2e/pull_request/two_card/rlhf/state_transitions/test_pause_device_idle.py
+  s_70fb834a8f513b::t_b603c721fcec39 54
+tests/ut/attention/test_o_proj_forward_lifecycle.py
+  s_70fb834a8f513b::t_b603c721fcec39 11,13,43,47-48,50,103,112,128,131,170,174,194,207,262-265,275-276,282,287,297-299,304-306,310-343,345-352
+release_notes/fragments/21445.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-4
+tests/ut/kv_transfer/test_ascend_store_layerwise_lifecycle.py
+  s_70fb834a8f513b::t_b603c721fcec39 225-226
+tests/ut/patch/platform/test_patch_balance_schedule.py
+  s_70fb834a8f513b::t_b603c721fcec39 71,825-931
+  s_70fb834a8f513b::t_717fec0c9bc9c2 932-933
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/DeepSeek-V4-Pro.po
+  s_70fb834a8f513b::t_b603c721fcec39 484-497,500-502,504,507-515,518-521,523-531,534-535,537-538,541-543,545-578,581-591,594-601,603-606,609-611,613-919,926,928-931,933-934,936-1608,1614,1617-1619,1622-1626,1628-1631,1635,1639,1644,1646,1654,1656,1658,1660-1693
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/feature_guide/context_parallel.po
+  s_70fb834a8f513b::t_b603c721fcec39 311-385
+release_notes/fragments/20694.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-4
+tests/ut/distributed/ascend_store/test_mooncake_pcp.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-164
+tests/SIT/cases/models/configs/Qwen/Qwen3.5-397B-w4a8_64k-1k-90-50-PD.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-275
+csrc/attention/attn_res_fwd/op_host/attn_res_fwd_tiling.cpp
+  s_70fb834a8f513b::t_b603c721fcec39 13,16-18,51-52,72-75,85-88,111-114,124-126,155-156,167-207,225-227,247-249,255-262,274,300-309,331-338,356-360,374-391,393-424,433-435,440-442,454-455
+tests/SIT/cases/features/openai_api_compatibility/utility/completion_request.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-40
+csrc/attention/attn_res_fwd/README.md
+  s_70fb834a8f513b::t_b603c721fcec39 3-14,19-22,48-49,60-265,267-284,286-289,291-295
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/DeepSeekOCR2.po
+  s_70fb834a8f513b::t_b603c721fcec39 25-28,30-31
+tests/ut/kv_offload/test_npu_offload_spec.py
+  s_70fb834a8f513b::t_b603c721fcec39 177,179-185,193,213,221,272-274,310-312
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/Qwen3-Reranker.po
+  s_70fb834a8f513b::t_b603c721fcec39 25-28,30-31
+release_notes/fragments/20454.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-14
+tests/SIT/cases/models/configs/Qwen/Qwen3-30B-A3B-W8A8-offload-test-acc.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-57
+tests/ut/ops/test_fused_moe.py
+  s_70fb834a8f513b::t_b603c721fcec39 160-161,163-167,211,216,2093
+tests/ut/proxy/test_prefill_session_affinity.py
+  s_70fb834a8f513b::t_b603c721fcec39 10,129-132,134-138
+tests/SIT/cases/models/configs/Qwen/Qwen3.5-397B-A17B-W8A8-mtp-A3-perf_weekly.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-60
+tests/SIT/conftest.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-3
+.github/workflows/_e2e_nightly_multi_node.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 168,268-269,302,337,343,352,362,367
+tests/SIT/cases/models/configs/DeepSeek/DeepSeek-V4-flash-w8a8-PD-prefix.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-185
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/GLM5.3-Flash.po
+  s_70fb834a8f513b::t_b603c721fcec39 521-522,721-1949
+csrc/attention/quant_lightning_indexer_v2_metadata/op_host/op_api/quant_lightning_indexer_v2_metadata.cpp
+  s_70fb834a8f513b::t_b603c721fcec39 31-36,39-41,48-51,54-55
+release_notes/fragments/20660.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-5
+release_notes/fragments/19826.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-8
+tests/ut/kv_offload/test_native_offload_group_selection.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-227
+tests/ut/patch/platform/test_patch_pp_mtp.py
+  s_70fb834a8f513b::t_b603c721fcec39 24,288,317-319
+tests/ut/attention/test_flash_attn.py
+  s_70fb834a8f513b::t_b603c721fcec39 13,21-141,201-204,206-207,216,302,504
+tests/ut/spec_decode/test_dspark_model_loading.py
+  s_70fb834a8f513b::t_b603c721fcec39 13
+release_notes/fragments/20664.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-8
+tests/ut/attention/test_sfa_nope_forward.py
+  s_70fb834a8f513b::t_b603c721fcec39 14,44-51,68-75,89-96,130-134,161,170-174,216,269,292-296,357-378,383,405,427,503-504,507,510,512-518,542-543,550-551,553,570-573,579
+tests/e2e/nightly/single_node/ops/singlecard_ops/test_qsfa_native_heads.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-157
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_apply_grammar_bitmask_triton.py
+  s_70fb834a8f513b::t_b603c721fcec39 11
+tests/ut/runtime_guard/test_wave_and_actions.py
+  s_70fb834a8f513b::t_b603c721fcec39 27,30,36
+tests/ut/model_loader/rfork/test_session_reuse.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-125
+tests/ut/models/test_kimi_k3_gate_loading.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-152
+release_notes/fragments/20861.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-4
+tests/ut/ops/test_layernorm.py
+  s_70fb834a8f513b::t_b603c721fcec39 6,93-118
+  s_70fb834a8f513b::t_f450c1c45b49e2 119-120
+tests/e2e/common/single_node/test_single_node.py
+  s_70fb834a8f513b::t_b603c721fcec39 24-30,70,265,314,319,347-385,395,417,485-486,593,670-687
+  s_70fb834a8f513b::t_d48678dbeae879 688-692
+tests/ut/attention/test_sfa_cp.py
+  s_70fb834a8f513b::t_b603c721fcec39 3,6-7,26,32-36,46-143,223-225,272-273,275,312-313,315,326,379,414,435,461-463,465-466,469,473-474,476-477,480,482,485-489,493,496,505-511,513-518,521-524,678-684,708,727,743-746,748,754,772-783,785-799,802-828,831,834-844,846-848,850,852-868,870-879,883-891,893-894,896-898,900-904,910-911,915-916,918,922-926,928,930-933,935-946,950,960,966,977-979,1005-1007,1010,1013,1023,1066,1096,1098,1100,1103,1114,1129,1156,1184-1188,1195-1200,1222,1228,1232,1235-1237,1239-1244,1248,1512,1517-1520,1522,1635-1639,1658,1686-1688,1690,1703,1715,1717-1721,1724-1728,1730,1740,1750-1751,1759,1789-1794,1831-1838,1840-1843,1846-1847,1881,2003-2004,2007,2028,2030-2031,2033-2034,2041-2042,2060,2062-2063,2065-2066,2072-2076,2078-2079,2082,2086-2089,2091,2093-2104,2124,2126-2127,2129-2131,2134,2161-2162,2180-2540
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_num_nans.py
+  s_70fb834a8f513b::t_b603c721fcec39 2,51,55
+tools/bisect/build_analyzer/git_commands.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-58
+tests/ut/models/test_glm5next_input_norm.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-172
+docs/source/locale/zh_CN/LC_MESSAGES/getting_started/quick_start.po
+  s_70fb834a8f513b::t_b603c721fcec39 199-201,203-206,208-209,211-246
+tests/ut/models/test_deepseek_v41_cache.py
+  s_70fb834a8f513b::t_b603c721fcec39 21-24,131-133,1479,1483,1585-1599
+tests/ut/models/test_deepseek_v4_dspark_eplb.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-120
+docs/source/user_guide/feature_guide/rl.md
+  s_70fb834a8f513b::t_b603c721fcec39 120,126-129,161,166,172-194,227-483,527-621,643-646,649,651-653,656-661,669,672,678-680,684,686,690-711,717-721,725-742,787-789,793,797,799,831-832
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/feature_guide/rl.po
+  s_70fb834a8f513b::t_b603c721fcec39 470-472,475-480,482-487,490-767
+tests/e2e/common/rlhf/weight_transfer/npu_ipc.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-187
+tests/ut/tools/bisect/test_version_compat.py
+  s_70fb834a8f513b::t_b603c721fcec39 14,160,164,167
+tests/e2e/common/rlhf/weight_transfer/case.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-153
+tests/ut/test_envs.py
+  s_70fb834a8f513b::t_b603c721fcec39 22-31,35,49-51,71-112
+docs/hooks/revision_date.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-169
+tools/bisect/build_analyzer/package_effects.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-124
+tests/ut/distributed/ec_transfer/test_mooncake_store_backend.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-242
+tests/ut/model_loader/rfork/test_session_server_integration.py
+  s_70fb834a8f513b::t_b603c721fcec39 75-78
+tests/SIT/cases/models/configs/Qwen/Qwen3.6-35B-A3B-w4a8-A3.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-177
+docs/source/user_guide/configuration/additional_config.md
+  s_70fb834a8f513b::t_b603c721fcec39 142,147-160,164-165,210-214,340-370
+tests/SIT/cases/features/openai_api_compatibility/tests/test_context_length.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-84
+tests/ut/attention/test_flashmla_auto_select.py
+  s_70fb834a8f513b::t_b603c721fcec39 71,117-154
+  s_70fb834a8f513b::t_6fd0de2c45eadb 155-157
+tests/ut/attention/test_mla_prolog_v3_route.py
+  s_70fb834a8f513b::t_b603c721fcec39 28,40,82-84,748-749,753,780-781,785,1556-1587
+tests/ut/model_loader/rfork/test_lease_release.py
+  s_70fb834a8f513b::t_b603c721fcec39 4,11,15-16,232,237,243-249,259-549
+tests/SIT/cases/features/openai_api_compatibility/utility/assertion.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-187
+tests/ut/worker/test_full_sliding_kv_cache.py
+  s_70fb834a8f513b::t_b603c721fcec39 4,105-166
+  s_70fb834a8f513b::t_d6341435717675 167-168
+tests/ut/kv_offload/test_dspark_resident_kv.py
+  s_70fb834a8f513b::t_b603c721fcec39 468
+tests/ut/ops/test_shared_activation_overlap.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-318
+release_notes/fragments/20382.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-10
+tests/SIT/cases/models/configs/Qwen/Qwen3-30B-A3B-W8A8.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-43
+csrc/attention/quant_lightning_indexer_v2/op_kernel/arch22/quant_lightning_indexer_v2_vector.h
+  s_70fb834a8f513b::t_b603c721fcec39 44-70,213-230,238-239,242-243,249-253
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/InternVL3.5.po
+  s_70fb834a8f513b::t_b603c721fcec39 25-28,30-31
+examples/disaggregated_prefill_v1/launch_single_node_pd.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-439
+requirements.txt
+  s_70fb834a8f513b::t_b603c721fcec39 17,20,34-35,41
+tests/SIT/cases/models/configs/Qwen/Qwen3.5-27B-w8a8-A2.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-54
+tests/ut/kv_offload/test_mooncake_layerwise_connector.py
+  s_70fb834a8f513b::t_b603c721fcec39 4,80-85,1449-1451,1453-1455,1457-1458,1461,1470-1487,1496,1499-1502,1506-1509
+tests/ut/worker/test_model_runner_v2.py
+  s_70fb834a8f513b::t_b603c721fcec39 5-6,43-53,55,59,69,76,96-101,103,118-120,132-133,502,831-832,850,861-863,892,974,1034,1037,1297-1298,2051-2053,2084-2085,2087,2122-2207,2209,2212-2215,2245-2349
+.github/workflows/_build_csrc_cache.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 71
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/Qwen3.5-Dense.po
+  s_70fb834a8f513b::t_b603c721fcec39 401-425
+.github/workflows/schedule_nightly_image_build_with_base.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 27-28,66,126-146
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_compute_slot_mapping.py
+  s_70fb834a8f513b::t_b603c721fcec39 10
+tests/ut/distributed/ec_transfer/test_mooncake_store_client.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-506
+.github/workflows/scripts/test_config.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 32-37,49,77-79,81,112-114,152,155
+docs/hooks/macros_main.py
+  s_70fb834a8f513b::t_b603c721fcec39 4-6,11-12,52-54,58-70
+  s_70fb834a8f513b::t_7d6836b4236afc 71
+tests/SIT/cases/features/kv_pool/DeepSeek-V4-Flash-Memcache-PD-acc.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-199
+docs/source/tutorials/models/GLM5.2.md
+  s_70fb834a8f513b::t_b603c721fcec39 212-214,254-255,276,307-308,330,421,450,508,537,567,602-603,633,662-663,694,733,800,884,921,1037,1043-1044,1067,1075,1087,1145,1151-1152,1175,1183,1195,1247,1274,1282,1384-1385,1403,1405,1407,1421-1422,1443-1446,1565,1576-1577,1616,1655,1666-1667,1706,1745,1793,1831,1879,1954,1961,1966,1980,1982-1985,1990,2112,2123-2124,2152,2160,2208,2249,2348,2490,2558,2612,2680,2731,2890,2898,2963,3076,3189,3301,3604,3642,3676-3677,3729,3953,4050,4164,4240,4337,4434,4529,4661,4781,4794-4814,4833-4835
+docs/source/tutorials/models/MiniMax-M3.1-Flash.md
+  s_70fb834a8f513b::t_b603c721fcec39 1,15,17,31-32,36-39,49,51,53,55,57,59-121,123-153,155,158-159,162-194,209,211,217,219,225,227,232,236-237,240,265,271,289,295,308,336,354,358,362,364-370,372,438,513,536,538,540,542,544-568,570,572-596,598,614-617,630-631,655-656,665-667,690,705-706,711,716,719,743-744,749,751,757,772,776,782,793-795,797,799-800,805,810,813,837-838,845,851,866,869-870,876,878,881-886,901,904-906,908,910,914,929,932-933,977-984,1006,1014,1024-1025,1029,1031,1034,1085-1090,1111,1117,1119,1129,1133,1135,1138,1189-1194,1215,1221,1225,1227,1230-1235,1244-1246,1251-1253,1255,1257,1259,1261-1263,1265,1267,1269,1271-1280,1282,1284,1286-1288,1290,1292,1294,1296-1299,1301,1303,1305-1309,1311,1313,1315-1317,1319,1321,1323,1325,1327-1340,1342,1344,1346-2904,2910-2911,2920,2926-2927,2930-2931,2934-2939,2957
+csrc/attention/attn_res_fwd/op_kernel/attn_res_fwd_apt.cpp
+  s_70fb834a8f513b::t_b603c721fcec39 13,18-19,23-24,40-41,48-67
+tests/SIT/cases/models/configs/Kimi/kimi-k2.6_max_model_len.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-128
+release_notes/fragments/19512.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-8
+.github/workflows/scripts/estimated_times.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 12-14,53,60,71,84,110,129-131,151,163
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/Qwen3-VL-Reranker.po
+  s_70fb834a8f513b::t_b603c721fcec39 25-33
+tests/ut/model_executor/warmup/test_jit_warmup_indexer.py
+  s_70fb834a8f513b::t_b603c721fcec39 2,4-7,13-14,41-152
+tests/ut/models/test_deepseek_v41_decoder_replay_op.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-106
+csrc/attention/quant_lightning_indexer_v2/README.md
+  s_70fb834a8f513b::t_b603c721fcec39 42,50-54,74,78-105,112-224
+tests/SIT/cases/models/configs/Qwen/Qwen3_5_35B_A3B_FP8_A5.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-67
+csrc/attention/quant_lightning_indexer_v2_metadata/op_host/op_api/aclnn_quant_lightning_indexer_v2_metadata.cpp
+  s_70fb834a8f513b::t_b603c721fcec39 39-43,55-57,69-72,116-124,127-130
+csrc/attention/quant_lightning_indexer_v2_metadata/op_host/op_api/aclnn_quant_lightning_indexer_v2_metadata.h
+  s_70fb834a8f513b::t_b603c721fcec39 24-28
+tests/ut/worker/v2/test_entropy_verify.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-131
+.github/workflows/dockerfiles/Dockerfile.lint
+  s_70fb834a8f513b::t_b603c721fcec39 37,45-46
+tests/ut/worker/test_worker_v1.py
+  s_70fb834a8f513b::t_b603c721fcec39 888-915,1256,1273-1274,1277-1302
+  s_70fb834a8f513b::t_e89426aa7ab39d 1303
+tests/ut/ops/test_kimi_kda.py
+  s_70fb834a8f513b::t_b603c721fcec39 222,511-516,527-528,536,543-549,552-553,555-566,594-597,599-665
+tests/ut/quantization/methods/w8a8/test_fp8_block.py
+  s_70fb834a8f513b::t_b603c721fcec39 405-467
+tests/ut/model_loader/rfork/test_rfork_loader.py
+  s_70fb834a8f513b::t_b603c721fcec39 24,36-37,40,337,349,412,414,416-417,489,696-813,847-870,887-888,903,965,1068,1151
+docs/source/developer_guide/Design_Documents/disaggregated_prefill.md
+  s_70fb834a8f513b::t_b603c721fcec39 65-140
+tests/SIT/cases/models/configs/GLM/GLM-5.1-W8A8C8-3.5k-1.5k-0-50-PD.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-340
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/Qwen3.8-2.4T-A95B.po
+  s_70fb834a8f513b::t_b603c721fcec39 738-797
+tests/SIT/cases/models/configs/DeepSeek/DeepSeek-V4-Flash-w8a8-sleep-wakeup.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-72
+.github/workflows/dockerfiles/Dockerfile.buildwheel.a3
+  s_70fb834a8f513b::t_b603c721fcec39 18,34
+tests/ut/worker/test_worker_weight_checker.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-121
+tests/SIT/cases/models/configs/Qwen/Qwen3.5-27B-w8a8-A3_weekly.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-597
+docs/source/user_guide/ms_service_metric.md
+  s_70fb834a8f513b::t_b603c721fcec39 60
+tests/SIT/cases/models/configs/Qwen/qwen3.6-27B-w8a8c8-A5.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-64
+.github/workflows/schedule_nightly_test_a3_560t.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 139-185
+Dockerfile.310p
+  s_70fb834a8f513b::t_b603c721fcec39 33,35,42-44,46-51,63-64,112-113
+tests/SIT/cases/models/configs/DeepSeek/DeepSeek-V4-Pro-w4a8-PD-no-prefix.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-337
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/Qwen3-VL-Embedding.po
+  s_70fb834a8f513b::t_b603c721fcec39 25-33
+csrc/attention/attn_res_fwd/op_kernel/arch22/attn_res_fwd_resident.h
+  s_70fb834a8f513b::t_b603c721fcec39 22,123-126,132-134,143-145,201-203,222-233,242,261,279,330,408-418
+.github/workflows/schedule_doc_linkcheck.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 12-15,20,27-29,36,39-44,48-49,54-63,65,67,70,72,75,77-84,86-99
+tests/ut/_tools/build_cache_test_utils.py
+  s_70fb834a8f513b::t_b603c721fcec39 30,61
+tools/bisect/build_analyzer/environment.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-69
+tests/SIT/cases/models/configs/GLM/GLM-5.2-W8A8C8-A3_3.5k_1.5k_0_20.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-94
+tests/ut/worker/v2/test_aclgraph.py
+  s_70fb834a8f513b::t_b603c721fcec39 28,32-36,53-55,63-86,120-121,150-151,170-172,176-177,179-188,198-205,207-212,218-220,222,238,261-262,273
+.github/workflows/scripts/upstream_config.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1417-1798,1830-1831,1841-1846
+csrc/attention/kv_quant_sparse_flash_attention_vllm/op_kernel/arch35/kv_quant_sparse_flash_attention_vllm_kvcache.h
+  s_70fb834a8f513b::t_b603c721fcec39 131-136
+tests/ut/core/test_kv_cache_interface.py
+  s_70fb834a8f513b::t_b603c721fcec39 4,11-14,20,22,59-87,94-102
+  s_70fb834a8f513b::t_0bcefed0189908 103-104
+tests/e2e/pull_request/two_card/test_ec_mooncake_encoder_output.py
+  s_70fb834a8f513b::t_b603c721fcec39 24,274,282,321-329,334,381
+tests/ut/spec_decode/test_dspark_speculator.py
+  s_70fb834a8f513b::t_b603c721fcec39 168,170,181,185,191,194-195,210,287-288,290-323
+.github/workflows/recipes-preview-comment.yml
+  s_70fb834a8f513b::t_b603c721fcec39 1-207
+tools/bisect/auto_bisect.py
+  s_70fb834a8f513b::t_b603c721fcec39 36,69-70,77,80,94-101,107,111-114,146,241-247,249-251,270-278,297-303,390-397,402,405-407,453-454,468-469,502-504
+tests/SIT/cases/features/openai_api_compatibility/tests/test_content.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-75
+tests/ut/models/test_kimi_routed_norm_quant_cpu.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-237
+release_notes/fragments/19801.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-11
+tests/ut/worker/test_model_runner_v2_finegrained_tp.py
+  s_70fb834a8f513b::t_b603c721fcec39 1,25,45,54-60,228-230,294,387,389,396-398
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/feature_guide/Fine_grained_TP.po
+  s_70fb834a8f513b::t_b603c721fcec39 523-572
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_fill_logprob_token_ids_kernel.py
+  s_70fb834a8f513b::t_b603c721fcec39 2,35
+release_notes/fragments/20726.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-8
+release_notes/fragments/20777.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-4
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_precopy.py
+  s_70fb834a8f513b::t_b603c721fcec39 9
+csrc/mc2/dispatch_ffn_combine/op_host/dispatch_ffn_combine_tiling.cpp
+  s_70fb834a8f513b::t_b603c721fcec39 303-307,312-313
+tests/SIT/cases/models/configs/DeepSeek/DeepSeek-V4.1-Flash-w8a8-PD-MRV2.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-236
+csrc/attention/attn_res_fwd/op_kernel/arch22/attn_res_fwd_token_group.h
+  s_70fb834a8f513b::t_b603c721fcec39 1-537
+tests/SIT/cases/models/configs/Kimi/Kimi-K2.7-W4A8-64k-1k-TPOT50-PD.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-150
+docs/source/user_guide/feature_guide/pipeline_parallel.md
+  s_70fb834a8f513b::t_b603c721fcec39 290-292,298,319
+tests/ut/ops/test_triton_ple_prefill.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-159
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/Qwen3.5-397B-A17B.po
+  s_70fb834a8f513b::t_b603c721fcec39 184-213,215-217,220-222,224-226,229-233,235-236,239-259,261-262,264-265,268-273,276-278,280-291,294-297,299-304,307-315,317-327,330-332,335-340,343-344,346,348-357,359-368,371-379,382-389,392-395,397-399,402-405,407-410,413-417,419-422,425-433,435-438,441-459,461-467,470-474,476-478,481-483,485-486,489-491,493-501,503-504,507-513,515-517,520-528,530-534,537-540,542-544,547-549,551-554,556-564,566-572,575-580,583-586,588-589,591-616,619-621,623-624,627-630,632-633,636-644,646-647,649-650,653-656,658-659,662-669,671-680,683-690,692-693,695-696,699-700,702-705,708-710,713-716,718-723,726-728,730-739,742-751,753-762,765-768,770-776,779-787,790-794,796-798,801-802,804-808,811-813,815-816,819-822,824-828,831-841,844-847,849-850,853-855,857-858,861-863,865-869,872-886,888-897,900-906,908-910,913-916,918-919,922-923,925-926,929-930,932-933,936-939,941-942,945,947-948,951,956-965,968-977,979-983,985-1000,1003-1005,1007-1008,1011-1012,1014-1015,1018-1022,1024-1029,1032-1035,1037-1040,1043-1045,1047-1049,1052-1060,1062-1063,1066-1068,1070-1072,1074-1083,1086-1089,1091-1092,1095-1098,1100-1101,1104-1110,1112-1117,1120-1122,1124-1125,1128-1130,1132-1133,1136-1146,1148-1150,1153-1155,1157-1158,1160-1166,1169-1172,1174-1179,1182-1183,1185,1187-1188,1190-1199,1202-1207,1209-1212,1215-1227,1229-1235,1237-1281,1284-1485
+tests/SIT/cases/models/configs/DeepSeek/DeepSeek_V4_Flash_A5.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-152
+.github/workflows/configs/nightly_config.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 18,22,26,30,34,38,42,46,50,55,59,104,108,112,116-120,126,130,134,138,142,146,150,162,166,170,174,178,182,186,190,194,198,202,206,210,214,218,222,226,230,234,240,245,249,253,257,261,265,269,273,280,284,288,292,296,300,304,307-328,331,333-335,337-339,341,345,349-353,357,361,365,369,373,377,381-385
+csrc/attention/quant_lightning_indexer_v2_metadata/op_api/aclnn_quant_lightning_indexer_v2_metadata.h
+  s_70fb834a8f513b::t_b603c721fcec39 24-28
+release_notes/fragments/21547.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-4
+tests/e2e/models/test_kimi_fp8_eagle3_generation.py
+  s_70fb834a8f513b::t_b603c721fcec39 9
+tests/e2e/pull_request/two_card/test_cpu_offloading.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-75
+tests/ut/attention/test_cache_store.py
+  s_70fb834a8f513b::t_b603c721fcec39 212,236,272-276,291,296-298
+tests/ut/attention/test_pcp_main_kv_overlap.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-168
+tests/e2e/pull_request/one_card/test_gdn_checkpoint_states.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-190
+tests/ut/quantization/methods/w4a8/test_w4a8.py
+  s_70fb834a8f513b::t_b603c721fcec39 199,201-202,204,207-209,228,230-231,233
+tests/ut/attention/test_sfa_cp_precision.py
+  s_70fb834a8f513b::t_b603c721fcec39 3-5,21,26,30-110,127-162,178,214,218,221,226-228,261,335,339-342,348-350,397,401,445-517
+.github/workflows/_selected_tests_upstream.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 81,104,232
+docs/source/user_guide/feature_guide/mooncake_hybrid_attention.md
+  s_70fb834a8f513b::t_b603c721fcec39 3-38,40-41,43,45,47-56,62-120,123,125-126,128-129,131-134,136-163,166-205
+tests/e2e/nightly/single_node/ops/singlecard_ops/test_attn_res_fwd_cooperative.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-344
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/Qwen3-ASR-1.7B.po
+  s_70fb834a8f513b::t_b603c721fcec39 25-28,30-31
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/Qwen3-Embedding.po
+  s_70fb834a8f513b::t_b603c721fcec39 25-28,30-31
+release_notes/fragments/18447.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-6
+tests/SIT/cases/models/configs/Qwen/Qwen3.6-35B-A3B-w8a8-310p-MTP.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-84
+tests/e2e/conftest.py
+  s_70fb834a8f513b::t_b603c721fcec39 403-407,417,423,443,528-529,555-563,580-581
+tests/SIT/cases/models/configs/GLM/GLM5_2-W8A8-A3-dual-nodes.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-98
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_dcp_pre_post.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-394
+release_notes/fragments/19804.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-4
+tests/ut/ops/test_allgather_eplb.py
+  s_70fb834a8f513b::t_b603c721fcec39 173-174,206-208,215-314,402
+tests/ut/quantization/methods/w8a8/test_w8a8_mxfp8.py
+  s_70fb834a8f513b::t_b603c721fcec39 14,20,208-333,376,383-484,505,514-518,521,526,528-533,536,545-578,594,602-608,611,617,619-626,629-666,669,675,681
+.github/workflows/_schedule_image_build.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 150-164,356-357,372,375,377-380,395-488
+tests/ut/models/test_glm5next_cache_config.py
+  s_70fb834a8f513b::t_b603c721fcec39 28,73,107,198-268
+  s_70fb834a8f513b::t_b54065d7c218c5 269-270
+tests/e2e/pull_request/one_card/test_mla_prolog_head_padding.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-92
+tests/ut/kv_offload/mooncake_v2/test_connector.py
+  s_70fb834a8f513b::t_b603c721fcec39 90-91,95-98,113,118,122-123,128-133
+.github/workflows/pr_e2e_command.yml
+  s_70fb834a8f513b::t_b603c721fcec39 48-50,121-124,131-148,217
+tests/ut/worker/test_adaptive_verification.py
+  s_70fb834a8f513b::t_b603c721fcec39 4,11,14-15,20,53,79-81,85,88-101,103,105-107,109-115,117-143,145-164
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_qsa_rmsnorm_mrope.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-68
+tests/ut/quantization/configs/test_modelopt_mxfp8_config.py
+  s_70fb834a8f513b::t_b603c721fcec39 127
+tests/ut/patch/worker/test_patch_uva_prefix.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-134
+release_notes/fragments/21243.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-4
+tests/ut/worker/test_attn_utils_v2.py
+  s_70fb834a8f513b::t_b603c721fcec39 730-743,1119,1199-1203,1209-1210,1221,1240-1245,1253-1255,1274,2022,2349,2419-2432,2435,2438-2441,2466-2468,2470-2473,2495,2499-2516,2518-2574,2656-2657,2690,2902
+tests/SIT/cases/models/configs/DeepSeek/acceptace_rate_deepseekv4-flash-w8a8-mtp.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-121
+tests/SIT/cases/features/openai_api_compatibility/tests/test_tool_choice.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-120
+csrc/attention/attn_res_fwd/op_host/op_api/aclnn_attn_res_fwd.h
+  s_70fb834a8f513b::t_b603c721fcec39 6-7
+tests/ut/models/qwen4_exp/test_ple_internal_format.py
+  s_70fb834a8f513b::t_b603c721fcec39 16,210-239,245-255,259-260,263-311,321-325,328
+tests/SIT/cases/models/configs/Qwen/Qwen3.5-397B-A17B-W8A8-mtp-A3_weekly.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-401
+tests/e2e/pull_request/one_card/model_runner_v2/test_uva_prefix.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-61
+tests/ut/models/test_glm5next_kv_cache.py
+  s_70fb834a8f513b::t_b603c721fcec39 15,71,75-76,84-90,101-104,133-134,153,191,280-282,294,305,317-321,323,336-347,505,727-728,731-732,749-750
+release_notes/fragments/20303.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-6
+csrc/scripts/build_cache.py
+  s_70fb834a8f513b::t_b603c721fcec39 490,514-516,1486-1488
+tests/ut/ops/test_mc2_local_padding.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-67
+csrc/moe/hc_pre/op_kernel/hc_pre_m_k_split_core.h
+  s_70fb834a8f513b::t_b603c721fcec39 959,975,1356,1372
+release_notes/fragments/21317.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-4
+tests/SIT/cases/models/configs/Kimi/Kimi-K2.7-W4A8-3.5k-1.5k-TPOT50-PD.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-152
+csrc/attention/attn_res_fwd/op_kernel/arch22/reduce_common.h
+  s_70fb834a8f513b::t_b603c721fcec39 27-28,57-66,260-263,265-271,276,347-348
+tests/SIT/cases/models/configs/Kimi/Kimi-K2.7-W4A8-128k-1k-TPOT50-PD.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-160
+docs/source/tutorials/models/Kimi-K3.1-Pro.md
+  s_70fb834a8f513b::t_b603c721fcec39 1-2226
+tests/ut/patch/worker/test_patch_kv_cache_dtype.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-40
+csrc/torch_binding.cpp
+  s_70fb834a8f513b::t_b603c721fcec39 1303-1305,1311-1312,1440-1443,1457-1458,1462,1468,1476-1479,3106-3109,3113-3122,3131-3133,3310-3312
+docs/source/tutorials/models/DeepSeek-V4-Pro.md
+  s_70fb834a8f513b::t_b603c721fcec39 367,429,2291-2292
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/feature_guide/speculative_decoding.po
+  s_70fb834a8f513b::t_b603c721fcec39 39,42,922-1363,1365-1366
+tests/SIT/cases/models/configs/GLM/GLM-5.1-W8A8C8-A3_198k_function.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-109
+csrc/attention/kv_quant_sparse_flash_attention_vllm/op_kernel/kv_quant_sparse_flash_attention_vllm_kernel_mla.h
+  s_70fb834a8f513b::t_b603c721fcec39 42-44,107,273-275,283-285,290-295,302,308-313,323-364,367-370,395,408-460,606
+csrc/attention/quant_lightning_indexer_v2/op_kernel/arch35/quant_lightning_indexer_v2_kernel_arch35.h
+  s_70fb834a8f513b::t_b603c721fcec39 56-57,64-71,126,146,162-164,168-169,189,232-255,269-272,274,278,282,286,290,293-296,344-352,355-356,358,362-375,377,431,433-435,438,440-443,460,462-464,467,469-472,544-548,550,553,558,561,567,569,573,577-578,580-581,585-588,591,598-599,607,609,611,613-614,643-649,667,716
+.github/workflows/schedule_image_build_and_push.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 17-18,52,99-119
+tests/ut/patch/platform/test_prefix_cache_cp_patches.py
+  s_70fb834a8f513b::t_b603c721fcec39 14,153-159,163,166-170,174,211-212,219-225,233-236,245-246,278-318,327-333,521,589,591-593,598,601-605,611,616-617,653,714,747,771,775,968,982,1000-1004,1086,1093
+tests/e2e/common/multi_node/external_dp/external_dp_config.py
+  s_70fb834a8f513b::t_b603c721fcec39 247,294-296,302
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_sampling_mask.py
+  s_70fb834a8f513b::t_b603c721fcec39 15,240
+tests/SIT/cases/models/configs/Qwen/Qwen3.5-2b-310p.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-78
+tests/ut/distributed/eplb/test_hixl_communicator.py
+  s_70fb834a8f513b::t_b603c721fcec39 721
+tests/SIT/cases/models/configs/Qwen/Qwen3.5-122B-A10B-w4a8-A3-accuracy.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-67
+.github/workflows/dockerfiles/Dockerfile.buildwheel.a5
+  s_70fb834a8f513b::t_b603c721fcec39 18,37
+.github/workflows/scripts/run_mypy_parallel.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-80
+tests/ut/patch/platform/test_mamba_prefix_admission.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-147
+tests/SIT/cases/models/configs/GLM/GLM-5.2-W8A8C8-A3_198k_function.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-108
+.github/workflows/_e2e_nightly_single_node_560t.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 294,371-377,395,413-433
+  s_70fb834a8f513b::t_f53ac76bd8d637 434
+tests/ut/worker/test_dcp_speculator_metadata_v2.py
+  s_70fb834a8f513b::t_b603c721fcec39 1,71,84,90-91,99-102,348-349
+tests/e2e/common/multi_node/internal_dp/utils.py
+  s_70fb834a8f513b::t_b603c721fcec39 13
+tests/ut/distributed/device_communicators/test_quantized_all_reduce.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-230
+tests/SIT/cases/features/openai_api_compatibility/conftest.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-47
+tests/e2e/pull_request/one_card/test_mc2_local_padding.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-31
+tests/SIT/cases/features/openai_api_compatibility/tests/test_max_tokens.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-31
+tests/SIT/cases/features/openai_api_compatibility/tests/test_presence_penalty.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-33
+tests/ut/ops/test_kimi_bfg_gate_copy_cpu.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-196
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/Qwen3-Next.po
+  s_70fb834a8f513b::t_b603c721fcec39 25-28,30-31
+tests/ut/attention/test_mla_v1.py
+  s_70fb834a8f513b::t_b603c721fcec39 1,7-8,185-189,297,345,1134,1847-1880,1919-1920,2778-2779,2809-2815,3186,3229
+tests/ut/ops/test_eplb_v2_recording.py
+  s_70fb834a8f513b::t_b603c721fcec39 4,10,15-19,73-74,81,89,93
+tests/ut/worker/v2/test_pp_transport.py
+  s_70fb834a8f513b::t_b603c721fcec39 103,117,120
+tests/e2e/common/rlhf/common.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-414
+docs/source/locale/zh_CN/LC_MESSAGES/developer_guide/Design_Documents/persistent_csrc_build_cache.po
+  s_70fb834a8f513b::t_b603c721fcec39 723-764
+release_notes/fragments/20643.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-4
+csrc/attention/quant_lightning_indexer_v2_metadata/op_api/aclnn_quant_lightning_indexer_v2_metadata.cpp
+  s_70fb834a8f513b::t_b603c721fcec39 40-42,49-53,65-67,79-82,126-134,137-140
+docs/source/tutorials/models/Qwen3-Dense.md
+  s_70fb834a8f513b::t_b603c721fcec39 27-32,51-55,186-187,239,258,277-282,349-359,375-384,461,498-508,534
+docs/source/locale/zh_CN/LC_MESSAGES/developer_guide/contribution/doc_writing.po
+  s_70fb834a8f513b::t_b603c721fcec39 440-461
+tests/ut/_310p/fused_moe/test_shared_experts_overlap_310.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-109
+tests/SIT/cases/models/configs/Qwen/Qwen3.5-397B-A17B-FA-W8A8C8-A5-PD.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-190
+vllm_ascend/models/deepseek_v41/engram/embedding.py
+  s_70fb834a8f513b::t_694265529195bd 361
+tools/bisect/build_analyzer/lexer.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-49
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/feature_guide/rfork.po
+  s_70fb834a8f513b::t_b603c721fcec39 55-56,59-60,67,132-133,135-136,154-155,167,182,185-186,189-193,195-198,202-204,206-207,212-214,216-217,222-223,225-226,229-236,238-242,246-253,255-259,264,287-312,314-319,339,346,354-355,373,375,379,390-999,1002-1024,1026-1028,1033-1449
+tests/SIT/cases/models/configs/Qwen/Qwen3_32b_w8a8_A5.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-63
+tests/ut/models/test_kimi_k3_eplb.py
+  s_70fb834a8f513b::t_b603c721fcec39 16-17,328-330,398
+tests/SIT/cases/models/configs/Qwen/Qwen-3.5-397B-A17B-W8A8-PD.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-255
+tests/e2e/pull_request/four_card/test_pipeline_parallel.py
+  s_70fb834a8f513b::t_b603c721fcec39 39-41,61,65,67
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_postprocess_mamba.py
+  s_70fb834a8f513b::t_b603c721fcec39 26
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_kda_state_copy_integration.py
+  s_70fb834a8f513b::t_b603c721fcec39 15,22-77,104,109,138,146,149,154,162,203,243,258,280,312,360,386,414,442,456,475,500-501,520,576-577,591,594,635-636,640,642-645,671
+docs/source/tutorials/models/Kimi-K2.6.md
+  s_70fb834a8f513b::t_b603c721fcec39 15,157,161,280,358,435,512,565-566,611,634,665,689,717,721-723,746,802
+release_notes/fragments/20653.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-4
+docs/qwen38_mooncake_basic_pooling.md
+  s_70fb834a8f513b::t_b603c721fcec39 11,23,30
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/features/pd_disaggregation_mooncake_multi_node.po
+  s_70fb834a8f513b::t_b603c721fcec39 782-974
+tests/ut/models/test_kimi_projection_compile_cpu.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-111
+tests/e2e/pull_request/two_card/test_qwen3_moe_eplb.py
+  s_70fb834a8f513b::t_b603c721fcec39 46,54-58,60-69
+tests/e2e/common/rlhf/weight_transfer/reference_check.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-267
+tests/SIT/cases/features/structured_output/__init__.py
+  s_70fb834a8f513b::t_b603c721fcec39 1
+Dockerfile.a3
+  s_70fb834a8f513b::t_b603c721fcec39 38,40,47-49,51-56,68-69,78,80-81,85-98
+tools/bisect/build_analyzer/__init__.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-6
+tests/e2e/pull_request/four_card/context_parallel/test_accuracy_v2.py
+  s_70fb834a8f513b::t_b603c721fcec39 103,198-304
+  s_70fb834a8f513b::t_47b7cd8641316e 305-306
+tests/SIT/cases/models/configs/Qwen/Qwen3.5-397B-A17B-W8A8-mtp-A3.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-75
+release_notes/fragments/21114.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-7
+release_notes/fragments/21067.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-8
+tests/SIT/cases/features/context_parallel/Kimi-K2.6-W4A8-PCP-DCP.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-59
+tests/SIT/cases/models/configs/Step/Step3_7_Flash_W8A8_A5.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-77
+tests/ut/_310p/test_sampling_rng_310p.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-121
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_dflash_candidate_sampler.py
+  s_70fb834a8f513b::t_b603c721fcec39 11,106-116,122-123,144,164,169,180,207,213,223,254
+tests/SIT/cases/features/pp/Qwen3.8-27B-w8a8-PP2-TP2.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-60
+csrc/attention/quant_lightning_indexer_v2_metadata/op_graph/quant_lightning_indexer_v2_metadata_proto.h
+  s_70fb834a8f513b::t_b603c721fcec39 29,43-49
+tools/bisect/build_analyzer/diff.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-378
+tests/ut/ops/test_moe_comm_method.py
+  s_70fb834a8f513b::t_b603c721fcec39 119-121,132-133
+tests/ut/worker/test_model_runner_v2_kv_cache.py
+  s_70fb834a8f513b::t_b603c721fcec39 14,83-84,100,106-113
+release_notes/fragments/21229.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-8
+tests/SIT/cases/features/openai_api_compatibility/tests/test_stop.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-31
+tests/SIT/cases/models/configs/Kimi/Kimi-K2.7-W4A8-254k-1k-TPOT20-PD.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-84
+tests/SIT/cases/models/configs/Qwen/Qwen2.5-VL-7B-Instruct-EPD.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-92
+tests/ut/models/test_glm5next_kda_reduce_scatter.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-40
+tests/SIT/cases/models/configs/GLM/GLM-5.3-Flash-W8A8-130k-PD.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-188
+tests/ut/tools/bisect/test_runner.py
+  s_70fb834a8f513b::t_b603c721fcec39 2,4,28-29
+tests/e2e/nightly/single_node/ops/multicard_ops_a3/test_dispatch_ffn_combine.py
+  s_70fb834a8f513b::t_b603c721fcec39 13-23,98-103,105-119,121-135,137,139-140,144-163,165-172,174,177-179,182,184-188,190,194-209,212-224,228,231,233,235,241-244,255-257,262-267
+tests/SIT/cases/features/structured_output/test_offline_api.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-58
+tests/SIT/cases/models/configs/Gemma/Gemma4.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-76
+tests/ut/model_loader/rfork/conftest.py
+  s_70fb834a8f513b::t_b603c721fcec39 7,13,19-24,46-49,71-76,79,84,119-251
+tests/SIT/cases/models/configs/GLM/GLM-5.1-W8A8C8-A3_3.5k_1.5k_0_50.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-96
+tests/SIT/cases/models/configs/GLM/GLM_5_1_PD_in32k_bs16-0.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-338
+csrc/attention/attn_res_fwd/attn_res_fwd_validation.h
+  s_70fb834a8f513b::t_b603c721fcec39 1-46
+csrc/attention/quant_lightning_indexer_v2/op_kernel/arch22/quant_lightning_indexer_v2_kernel_arch22.h
+  s_70fb834a8f513b::t_b603c721fcec39 58,70-71,126-127,136,152,156-157,189,196,216-221,237-238,279-289,345-347,349-350,355-366,392-393,493-494,507-508,548-552,564,601-602,605,610-618,620-623,680,750-755,764-772
+docs/source/locale/zh_CN/LC_MESSAGES/developer_guide/Design_Documents/context_parallel.po
+  s_70fb834a8f513b::t_b603c721fcec39 404-449,452,457,459-460,465,470-474
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/Qwen3.8-27B.po
+  s_70fb834a8f513b::t_b603c721fcec39 376-695
+tests/SIT/cases/models/configs/Qwen/Qwen3-32B-QuaRot-eagle3.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-51
+csrc/attention/attn_res_fwd/op_host/op_api/aclnn_attn_res_fwd.cpp
+  s_70fb834a8f513b::t_b603c721fcec39 3-4,11-29,66-107,110
+tests/SIT/cases/models/configs/Qwen/Qwen3.5-122B-A10B-W8A8-A3.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-77
+tests/SIT/cases/models/configs/Qwen/Qwen3.5-397B-w4a8_986k-function-PD.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-201
+docs/source/locale/zh_CN/LC_MESSAGES/developer_guide/contribution/e2e_ci_test.po
+  s_70fb834a8f513b::t_b603c721fcec39 135-136,138-139
+csrc/attention/quant_lightning_indexer_v2/torch_extension/quant_lightning_indexer.py
+  s_70fb834a8f513b::t_b603c721fcec39 19-33,47-50,55,57-58,88,96-99,121,128-131,148,152,158,242,250-253,266-269,283,291-294,310,318-321,336,344-347,433,440-443,466,473-476
+tests/SIT/cases/models/configs/Gemma/Gemma4_31B_W4A4_A5.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-66
+docs/source/developer_guide/Design_Documents/context_parallel.md
+  s_70fb834a8f513b::t_b603c721fcec39 3-4,13-16,192
+tests/ut/models/test_qwen3_dspark_confidence.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-26
+tests/SIT/cases/features/structured_output/cases.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-105
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_dcp_candidates.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-141
+tests/ut/_310p/fused_moe/test_shared_fused_moe_310.py
+  s_70fb834a8f513b::t_b603c721fcec39 61,91,102-103,109,117,129-135
+tests/ut/model_executor/warmup/test_jit_warmup_flash_attention_gate.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-148
+tests/SIT/cases/models/configs/Qwen/Qwen3.8-27B-w8a8-A3.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-79
+tests/ut/models/test_engram.py
+  s_70fb834a8f513b::t_b603c721fcec39 335-345,554-603
+csrc/attention/attn_res_fwd/op_host/attn_res_fwd_def.cpp
+  s_70fb834a8f513b::t_b603c721fcec39 32
+release_notes/fragments/20932.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-4
+csrc/attention/attn_res_fwd/op_host/attn_res_fwd_tiling.h
+  s_70fb834a8f513b::t_b603c721fcec39 30-31,73,77
+tests/ut/distributed/ascend_store/test_glm53_store.py
+  s_70fb834a8f513b::t_b603c721fcec39 10,17-18,22,27,43,49-57,141-144,156-157,170-174,192-198,202-206,222-224,231-233,235,243-247,253,256,274,284-316,318-339,342-343,379-380,387-389,391,394-395,397-405,408-409,411,416-418,423-426,437,441,445-450,455-459
+tests/ut/models/test_engram_shared_rdma.py
+  s_70fb834a8f513b::t_7b82a8f8fdcf4b 46-70
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/feature_guide/dynamic_chunk_pipeline_parallel.po
+  s_70fb834a8f513b::t_b603c721fcec39 344-345,347-371
+tests/SIT/cases/models/configs/Qwen/Qwen3.6-35B-W8A8-310P-300I-DUO.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-44
+tests/ut/patch/worker/test_patch_v2_gumbel.py
+  s_70fb834a8f513b::t_b603c721fcec39 14,16,41-46,56-71,102-107
+release_notes/fragments/20404.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-8
+tests/ut/ops/test_rotary_embedding.py
+  s_70fb834a8f513b::t_b603c721fcec39 144-197,455-489,640-673
+tests/e2e/pull_request/two_card/rlhf/weight_transfer/hccl/test_qwen_hccl.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-20
+tests/ut/worker/v2/test_lmhead_tp_utils.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-356
+.github/workflows/schedule_nightly_test_a3.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 19-20,95,152-198,325,379,432,592-593,595-603
+benchmarks/benchmark_kv_pool_metadata.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-328
+csrc/attention/quant_lightning_indexer_v2/quant_lightning_indexer_v2_torch_adpt.h
+  s_70fb834a8f513b::t_b603c721fcec39 13-16,26-87,94-95,97-99,112-113,122,131-133,166-170,187-188,197,200-205,235-238
+release_notes/fragments/20207.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-9
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_triton_ple_spec.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-87
+tests/SIT/cases/models/configs/GLM/GLM5_1-W8A8-EP.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-234
+tests/SIT/cases/models/configs/Qwen/Qwen3.5-122B-A10B-W8A8-A3_weekly.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-289
+tests/ut/spec_decode/test_dflash2_v2.py
+  s_70fb834a8f513b::t_b603c721fcec39 1,29,170-172,385,442-447,449-450,452-456,459-485,610
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/feature_guide/pipeline_parallel.po
+  s_70fb834a8f513b::t_b603c721fcec39 832-882
+tests/ut/worker/test_glm5next_pooled_cache.py
+  s_70fb834a8f513b::t_b603c721fcec39 110,229-230,232-241,243-255,257-267,270,272-292,295-318
+tests/ut/ops/test_fla_lazy_imports.py
+  s_70fb834a8f513b::t_b603c721fcec39 129-132,140,143-144
+docs/source/developer_guide/Design_Documents/dynamic_chunked_pipeline_parallel.md
+  s_70fb834a8f513b::t_b603c721fcec39 5-8
+tests/SIT/cases/E2E_TEST_CASE_GUIDE.md
+  s_70fb834a8f513b::t_b603c721fcec39 1-820
+tests/e2e/nightly/single_node/ops/singlecard_ops/test_sfa_dcp_capacity.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-139
+tests/ut/quantization/methods/w8a8/test_swiglu_mx_quant.py
+  s_70fb834a8f513b::t_b603c721fcec39 16-21,32,35-36
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/Qwen3.5-27B-Qwen3.6-27B.po
+  s_70fb834a8f513b::t_b603c721fcec39 374-434,438,444-445,449,456-457,460-461,466-467,470,475-477,479,481,484-486,488-489,492-505,507-511,517-524,526-538,549,554-564,566-568,571-573,576-585,588-610,612-613,615-662,664-670,672-679,686,688,690,692,694,696,700-701,704,708,712,716-717,719-720,723-725
+tests/ut/patch/platform/test_patch_fused_moe.py
+  s_70fb834a8f513b::t_b603c721fcec39 127,153
+tests/SIT/cases/models/configs/GLM/GLM5_3-W8A8-A3-dual-nodes.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-105
+.github/workflows/_e2e_nightly_single_node.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 161,300,378-384,402,420-440
+  s_70fb834a8f513b::t_1f9f5e03d0067a 441
+tests/SIT/cases/models/configs/Qwen/Qwen3-VL-32B-Instruct-W8A8.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-65
+csrc/attention/quant_lightning_indexer_v2/docs/qli_v2_two_level_topk_design.md
+  s_70fb834a8f513b::t_b603c721fcec39 8
+csrc/attention/attn_res_fwd/op_kernel/arch35/reduce_common.h
+  s_70fb834a8f513b::t_b603c721fcec39 26
+tests/ut/_tools/test_generate_zh_docs.py
+  s_70fb834a8f513b::t_b603c721fcec39 1,3,6-16,18-39,42-47,49-50,54-55,59-74,79,81-92
+tests/ut/test_ascend_config.py
+  s_70fb834a8f513b::t_b603c721fcec39 44,117-137,386-440,450-451,597-600,1552-1559,1567-1570,1575,1582-1584,1618-1622,1631-1634,1641-1644,1652,1656-1659,1671-1674,1891-1893,1929-2004,2124-2132,2408,2416-2444
+  s_70fb834a8f513b::t_eab9c57fc629e6 2445
+release_notes/fragments/17337.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-4
+csrc/attention/kv_quant_sparse_flash_attention_vllm/op_kernel/kv_quant_sparse_flash_attention_vllm_service_vector_mla.h
+  s_70fb834a8f513b::t_b603c721fcec39 68-84,209-238,269,279-291,327,676,678,1096-1961
+  s_70fb834a8f513b::t_3b5b2727f3812f 1962
+tests/SIT/cases/models/configs/DeepSeek/DeepSeek-V4.1-Flash-A5-PD.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-171
+tests/ut/patch/platform/test_patch_kv_cache_dtype.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-86
+tests/ut/attention/test_batch_invariance_support.py
+  s_70fb834a8f513b::t_b603c721fcec39 8
+benchmarks/README.md
+  s_70fb834a8f513b::t_b603c721fcec39 9,186-252
+.github/workflows/scripts/gitleaks.sh
+  s_70fb834a8f513b::t_b603c721fcec39 26-51
+csrc/attention/attn_res_fwd/op_kernel/arch35/attn_res_fwd_regbase_common.h
+  s_70fb834a8f513b::t_b603c721fcec39 24-26,82-83,85,93,110-116,132-138,160-164,175-179,202,254,300,348
+docs/source/locale/zh_CN/LC_MESSAGES/community/governance.po
+  s_70fb834a8f513b::t_b603c721fcec39 158-166
+tests/ut/quantization/configs/test_compressed_tensors_config.py
+  s_70fb834a8f513b::t_b603c721fcec39 88-143,229
+tests/e2e/common/rlhf/__init__.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-2
+tests/SIT/cases/features/kv_pool/Qwen3.5-397B-no-Memcache-perf.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-53
+docs/source/locale/zh_CN/LC_MESSAGES/developer_guide/Design_Documents/dynamic_chunked_pipeline_parallel.po
+  s_70fb834a8f513b::t_b603c721fcec39 241-276,282,285,288
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_dcp_a2a.py
+  s_70fb834a8f513b::t_b603c721fcec39 6,40,42-54,109,161,211,264,286,292,365-370
+tests/ut/ops/test_triton_layout.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-35
+tests/ut/attention/test_gqa_dcp_split.py
+  s_70fb834a8f513b::t_b603c721fcec39 1,313-314,357-358
+tests/ut/runtime_guard/test_manual_dump_detail.py
+  s_70fb834a8f513b::t_b603c721fcec39 83
+tests/SIT/cases/models/configs/DeepSeek/DeepSeek_V4_Flash_A5_weekly.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-152
+tests/ut/models/test_glm5next_kda_contracts.py
+  s_70fb834a8f513b::t_b603c721fcec39 5,106-107,115-116,120-122
+tests/ut/kv_offload/mooncake_v2/test_push_scheduler.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-507
+docs/source/tutorials/models/MiniMax-M3.md
+  s_70fb834a8f513b::t_b603c721fcec39 13,29,34-35,154-186,195,504-505,923,935,997,1171,1182,1240,2014,2026,2111,2609,2611,2621,2661,2665,2678,2686,2693,2697,2712,2728,2735,2770,2772,2794,2824,2857,2887,2889,2891,2895,2908,2943-2967,2995
+  s_70fb834a8f513b::t_6ec2b109a10874 2996
+tools/bisect/build_analyzer/image_history.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-72
+tests/SIT/cases/models/configs/Kimi/KimiK26_w4a4c8_A5.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-120
+docs/source/developer_guide/Design_Documents/persistent_csrc_build_cache.md
+  s_70fb834a8f513b::t_b603c721fcec39 187-201,222
+  s_70fb834a8f513b::t_f1b48afb5d3f21 223
+tests/ut/kv_offload/test_ascend_multi_connector.py
+  s_70fb834a8f513b::t_b603c721fcec39 355-360
+  s_70fb834a8f513b::t_4315a44dcaa6ff 361-362
+tests/SIT/cases/features/structured_output/api.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-94
+tests/e2e/nightly/single_node/ops/multicard_ops_a3/test_sfa_dcp.py
+  s_70fb834a8f513b::t_b603c721fcec39 5,20-21,23,63,80,83,113-117,134-135,137,142-143,153,172,213
+docs/source/developer_guide/Design_Documents/layerwise_and_sparse_kv_cache_offloading.md
+  s_70fb834a8f513b::t_b603c721fcec39 308
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_kda_state_copy_triton.py
+  s_70fb834a8f513b::t_b603c721fcec39 5-6,14,168-171
+AGENTS.md
+  s_70fb834a8f513b::t_b603c721fcec39 91
+tools/bisect/build_analyzer/image_executor.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-173
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/feature_guide/kv_cache_pool_ascend_store.po
+  s_70fb834a8f513b::t_b603c721fcec39 1552-1556,1684-1688,2052-2226
+tests/SIT/cases/models/configs/Kimi/Kimi-K2.6-w4a8-A3.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-79
+tests/ut/attention/test_sparse_flash_mla.py
+  s_70fb834a8f513b::t_b603c721fcec39 59-125
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/GLM5.2.po
+  s_70fb834a8f513b::t_b603c721fcec39 1714-2320
+tests/ut/attention/test_indexer.py
+  s_70fb834a8f513b::t_b603c721fcec39 4-5,29,32,42-43,135-136,156-206,313-316,339,348,351,369,538-602
+tests/SIT/cases/models/configs/Qwen/Qwen3.5-397B-w4a8_128k-1k-90-50-PD.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-301
+tests/ut/worker/test_kv_cache_block_copy.py
+  s_70fb834a8f513b::t_b603c721fcec39 8-19
+docs/source/tutorials/models/Qwen3.6-35B-A3B.md
+  s_70fb834a8f513b::t_b603c721fcec39 322
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/DeepSeek-V4.1-Flash.po
+  s_70fb834a8f513b::t_b603c721fcec39 481-482,484-485,487-488,490-491,493-494,496-497,500-502,505-508,510-513,515-516,520-521,524-1336,1339-1341,1343-1346,1349-1353,1355-1359,1362-1416,1418-1429,1432-1443,1445-1449,1452-1455,1457-1458,1461-1467,1469-1470,1472-1476,1479-1481,1483-1485,1488-1491,1493-1495,1497-1509,1512-1521,1523-1525,1528-1530,1532-1535,1537-1538,1540-1543,1545-1562,1565-1571,1574-1578,1580-1583,1585-1741,1745-1746,1748-1750,1753-1758,1760-1761,1765-1766,1768-1770,1773-1777,1779-1780,1783-1785,1787-1788,1791-1794,1796-1798,1801-1803,1805-1806,1808-1819,1821-1872,1876-1946
+tests/e2e/common/rlhf/weight_transfer/checkpoint_adapters.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-80
+tests/SIT/cases/models/configs/Qwen/Qwen3_32b_w8a8_A5_weekly.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-63
+csrc/attention/kv_quant_sparse_flash_attention_vllm/op_kernel/kv_quant_sparse_flash_attention_vllm_service_cube_mla.h
+  s_70fb834a8f513b::t_b603c721fcec39 47-48,54,72-76,83-84,88,90,92,96-97,100-101,115-116,127,136,142-146,158-160,241,243,245,247,250,253-255,257,261-264,266,270-271,277-281,292-295,305-308,317-318,336-337,342-343,348-349,362-363,377-378,394-396,399,403-404,412-415,437-441,463-497,530-531,547-549,557-561,584-609,623-626,640-641,658-659,671,684-685,688,708,728,733,736-737,739-740,775,785,843,849,881-882,889,909-911,913-914,918-932,937,971-974
+tests/ut/patch/worker/test_patch_qwen3_5_mtp.py
+  s_70fb834a8f513b::t_b603c721fcec39 17-18,23-28,33-39,48
+docs/source/community/governance.md
+  s_70fb834a8f513b::t_b603c721fcec39 9
+release_notes/fragments/21123.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-7
+release_notes/fragments/18459.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-4
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_indexer_quant_cache_int8.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-304
+release_notes/fragments/20810.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-4
+tests/e2e/pull_request/four_card/test_sparse_hccl_checkpoint.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-313
+tests/ut/ops/test_kimi_kda_pcp_context.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-61
+tests/ut/attention/test_sfa_kv_offload.py
+  s_70fb834a8f513b::t_b603c721fcec39 25-47
+tests/ut/quantization/configs/test_fp8_config.py
+  s_70fb834a8f513b::t_b603c721fcec39 162-226
+tests/e2e/nightly/single_node/ops/singlecard_ops/test_minimax_m3_sparse_attn.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-2292
+tests/SIT/cases/models/configs/GLM/GLM-5.2-W4A8C8-1M-PD-DCP.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-366
+tests/ut/models/test_kimi_k3_dspark_weights.py
+  s_70fb834a8f513b::t_b603c721fcec39 12-13
+tests/ut/ops/test_kda_int8_overlap.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-77
+tests/SIT/cases/models/configs/Qwen/Qwen3_6_27B_W8A8_A5.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-112
+tools/bisect/build_analyzer/base_image.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-116
+tests/ut/ops/test_triton_ple_decode.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-115
+tests/ut/distributed/ascend_store/test_kv_transfer.py
+  s_70fb834a8f513b::t_b603c721fcec39 558,573,603-615
+tests/SIT/cases/models/configs/Qwen/Qwen3.8-27B-w8a8-A2.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-76
+.github/workflows/schedule_main2main.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 198,204,221,463-465,507-509,522-523
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/LLaVA-OneVision-Qwen2-0.5B-OV.po
+  s_70fb834a8f513b::t_b603c721fcec39 25-29,31-33
+tests/SIT/cases/features/openai_api_compatibility/tests/test_chat_template_kwargs.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-142
+tools/bisect/build_analyzer/base_apply.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-276
+tests/ut/_310p/test_sampling_dispatch_310p.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-188
+release_notes/fragments/20617.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-5
+tests/ut/ops/test_triton_ple_spec.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-165
+tests/SIT/cases/models/configs/Qwen/Qwen3-30B-A3B-W8A8-A2.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-66
+tests/ut/models/test_glm5next_recoverssm_metadata.py
+  s_70fb834a8f513b::t_b603c721fcec39 18-19,34,54,56-64,77,92-98
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_ple_decode.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-69
+tests/ut/kv_offload/mooncake_v2/helpers.py
+  s_70fb834a8f513b::t_b603c721fcec39 76-77,120,130,156,165,220,223-230
+release_notes/fragments/20176.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-4
+tests/ut/attention/test_fia_non_pa_inputs.py
+  s_70fb834a8f513b::t_b603c721fcec39 31,146-148,159-176
+  s_70fb834a8f513b::t_ebfd7f7b4bf15e 177-178
+docs/source/locale/zh_CN/LC_MESSAGES/faqs.po
+  s_70fb834a8f513b::t_b603c721fcec39 565-607
+docs/source/user_guide/support_matrix/supported_features.md
+  s_70fb834a8f513b::t_b603c721fcec39 15,25,34-36,58-60
+tests/ut/lora/test_quant_moe.py
+  s_70fb834a8f513b::t_b603c721fcec39 200-201,206,212-213
+tests/ut/spec_decode/test_speculators_vwn_eagle3.py
+  s_70fb834a8f513b::t_b603c721fcec39 160
+README.zh.md
+  s_70fb834a8f513b::t_b603c721fcec39 19,29-32,37-41,43,45,59,71,74-76,89-90,103,108,110,114
+release_notes/fragments/20446.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-4
+tests/ut/models/test_qwen4_exp_vl_preprocess.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-169
+csrc/attention/quant_lightning_indexer_v2_metadata/op_host/quant_lightning_indexer_v2_metadata_check.h
+  s_70fb834a8f513b::t_b603c721fcec39 510-569,572-573,576-578,580-585,600-604
+  s_70fb834a8f513b::t_c2c4cd1dcbda50 605-606
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/Kimi-K2.6.po
+  s_70fb834a8f513b::t_b603c721fcec39 475-657
+tests/ut/distributed/ascend_store/test_mooncake_hybrid.py
+  s_70fb834a8f513b::t_b603c721fcec39 52-54,121-130,168,180-181,279,453,492,662
+Dockerfile.openEuler
+  s_70fb834a8f513b::t_b603c721fcec39 35,37,44-46,48-53,64-65,74,76-77,81-94
+tests/ut/distributed/ec_transfer/test_mooncake_memory.py
+  s_70fb834a8f513b::t_b603c721fcec39 1,78-134,136-138,140-141,143-145,149-217
+tests/SIT/cases/models/configs/GLM/GLM-5.2-W8A8C8-A3_3.5k_1.5k_0_50.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-96
+tests/ut/spec_decode/test_mla_dspark.py
+  s_70fb834a8f513b::t_b603c721fcec39 20-22,32,35,46-49,57-58,65-78,82-84,131-141,144,159-170
+csrc/attention/kv_quant_sparse_flash_attention_vllm/op_kernel/kv_quant_sparse_flash_attention_vllm.cpp
+  s_70fb834a8f513b::t_b603c721fcec39 126-127,162-182,201-218
+.github/ISSUE_TEMPLATE/850-cut-branch-checklist.yml
+  s_70fb834a8f513b::t_b603c721fcec39 56,58
+tests/SIT/cases/models/configs/Qwen/Qwen3.5-122B-A10B-w4a8-16k-1k-PD.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-173
+tests/ut/core/test_kv_tp_replicas.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-84
+docs/source/user_guide/feature_guide/runtime_guard.md
+  s_70fb834a8f513b::t_b603c721fcec39 96
+tests/ut/attention/test_indexer_kpool_tp_shard.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-356
+tests/SIT/cases/models/configs/Gemma/Gemma4-31B-Dense.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-75
+tests/ut/models/test_kimi_k3_mla_quantization.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-274
+tests/SIT/cases/models/configs/GLM/GLM-5.1-W8A8C8-128k-1k-90-50-PD.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-378
+.github/workflows/scripts/select_tests.py
+  s_70fb834a8f513b::t_b603c721fcec39 767-772,888-889
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/Qwen3-Coder-30B-A3B.po
+  s_70fb834a8f513b::t_b603c721fcec39 25-28,30-31
+tests/SIT/cases/models/configs/Qwen/Qwen3.5-122B-A10B-w4a8-128k-1k-PD.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-233
+tests/ut/distributed/ascend_store/test_request_lifecycle.py
+  s_70fb834a8f513b::t_b603c721fcec39 242-243,333,354-357,433-439
+tests/ut/kv_offload/mooncake_v2/test_metadata.py
+  s_70fb834a8f513b::t_b603c721fcec39 3-4,90-120
+tests/SIT/cases/features/openai_api_compatibility/tests/test_n.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-38
+docs/source/developer_guide/contribution/nightly_ci_test.md
+  s_70fb834a8f513b::t_b603c721fcec39 348
+release_notes/fragments/20723.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-4
+tests/ut/attention/test_sfa_v1.py
+  s_70fb834a8f513b::t_b603c721fcec39 1,42,86,94,483-495,525,570,616,644-653,681,732-733,743-745,1163-1164,1204,1223,1328-1329,1350-1356,1396-1421,1738-1744,1774-1807,1860-1861,1945
+tests/ut/model_executor/warmup/test_kernel_warmup.py
+  s_70fb834a8f513b::t_b603c721fcec39 4,6-7,11-13,19-20,61-87,186-193,196-197,199-201,203-281,283-365
+tests/e2e/pull_request/four_card/_310p/test_moe_model_310p.py
+  s_70fb834a8f513b::t_b603c721fcec39 21-22,32
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/Hunyuan-A13B-Instruct.po
+  s_70fb834a8f513b::t_b603c721fcec39 25-28,30-31
+tests/SIT/cases/models/configs/GLM/GLM-5.2-W8A8C8-128k-1k-90-50-PD.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-381
+tests/SIT/cases/models/configs/Kimi/Kimi-K2.6-W4A8-254k-1k-TPOT20-PD.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-84
+tests/ut/model_loader/rfork/test_transfer_backend.py
+  s_70fb834a8f513b::t_b603c721fcec39 705,723-728,836-887,1006-1105
+  s_70fb834a8f513b::t_5d7c8ee4debd40 1106-1107
+release_notes/fragments/18116.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-4
+tests/SIT/cases/models/configs/GLM/GLM-5.2-W8A8C8-3.5k-1.5k-0-50-PD.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-340
+tests/ut/model_executor/warmup/helpers.py
+  s_70fb834a8f513b::t_b603c721fcec39 53
+tests/e2e/pull_request/four_card/test_ec_mooncake_cross_encoder_store.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-602
+tests/SIT/cases/models/configs/Qwen/Qwen3.5-397B-A17B-w8a8-3.5k-1.5k-0-50-single.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-69
+docs/requirements-linkcheck.txt
+  s_70fb834a8f513b::t_b603c721fcec39 1-5
+release_notes/fragments/21168.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-4
+tests/ut/ops/test_linear.py
+  s_70fb834a8f513b::t_b603c721fcec39 2-3,8,13,15,21-23,243-259,421-539
+  s_70fb834a8f513b::t_6d73dd37eef574 540-541
+tests/SIT/cases/models/configs/DeepSeek/DeepSeek-V4-Flash-0731-A5-PD.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-200
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/support_matrix/feature_matrix.po
+  s_70fb834a8f513b::t_b603c721fcec39 47-52,75,112,125-126,131-132,134,136-137
+  s_70fb834a8f513b::t_fbd894da9e8da7 46
+csrc/attention/quant_lightning_indexer_v2/torch_extension/graph_convert_quant_lightning_indexer.py
+  s_70fb834a8f513b::t_b603c721fcec39 69,77-80
+docs/source/tutorials/models/GLM5.md
+  s_70fb834a8f513b::t_b603c721fcec39 1072-1073,1117,1135-1136,1180,1238,1296
+tests/ut/kv_offload/test_dspark_pd_context.py
+  s_70fb834a8f513b::t_b603c721fcec39 89,96-100,110,114
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/feature_guide/lora.po
+  s_70fb834a8f513b::t_b603c721fcec39 253-256
+docs/source/developer_guide/performance_and_debug/service_profiling_guide.md
+  s_70fb834a8f513b::t_b603c721fcec39 321
+docs/source/locale/zh_CN/LC_MESSAGES/developer_guide/contribution/nightly_ci_test.po
+  s_70fb834a8f513b::t_b603c721fcec39 775,780,1259-1265
+tests/SIT/cases/models/configs/DeepSeek/DeepSeek-V4-Pro-w4a8-prefix-cache-PD.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-341
+tests/ut/runtime_config/test_runtime_config_core.py
+  s_70fb834a8f513b::t_b603c721fcec39 45,131
+tests/e2e/pull_request/two_card/rlhf/weight_transfer/__init__.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-2
+tests/ut/worker/test_spec_decode_utils.py
+  s_70fb834a8f513b::t_b603c721fcec39 9
+tests/ut/patch/platform/test_packed_kv_cache_compat.py
+  s_70fb834a8f513b::t_b603c721fcec39 10-11
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_glm5next_cann_keypool.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-186
+csrc/attention/attn_res_fwd/op_kernel/arch22/attn_res_fwd_reload.h
+  s_70fb834a8f513b::t_b603c721fcec39 142-144,221,243,301,362,400-404,408,449-459
+tests/SIT/cases/features/kv_pool/DS-V4-Flash-W8A8-A3-Mooncake.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-116
+tests/ut/model_loader/rfork/test_restored_lifecycle.py
+  s_70fb834a8f513b::t_b603c721fcec39 4-6,8,12-13,20-21,23-24,26-32,35-36,40-54,56-71,75,77-79,82-84,86-111,171-367
+tests/ut/models/test_qwen4_exp_cache_config.py
+  s_70fb834a8f513b::t_b603c721fcec39 1,9,537,547,586,614,635,815-820,830-840,874,885,898,935
+tests/ut/attention/test_dsa_v41.py
+  s_70fb834a8f513b::t_b603c721fcec39 6,135-190
+  s_70fb834a8f513b::t_f2ceb4e093086e 191-192
+csrc/attention/attn_res_fwd/op_host/CMakeLists.txt
+  s_70fb834a8f513b::t_b603c721fcec39 22,33
+tests/ut/model_loader/rfork/test_identity_validation.py
+  s_70fb834a8f513b::t_b603c721fcec39 5,54,57-59,61-63,238-247,742-833,835-837,841-905,1075-1087,1100,1133,1168,1192
+tests/SIT/cases/models/configs/Qwen/Qwen3.5-122B-A10B-w4a8-A3.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-161
+tests/SIT/cases/models/configs/GLM/GLM5_1_W4A4_A5_weekly.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-73
+tests/SIT/cases/models/configs/Qwen/Qwen3-32B-Int8-A2.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-65
+tests/SIT/cases/features/structured_output/README.md
+  s_70fb834a8f513b::t_b603c721fcec39 1-22
+tests/SIT/cases/models/configs/Qwen/Qwen3_6_27B_W8A8_A5_weekly.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-112
+release_notes/fragments/20312.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-4
+docs/source/locale/zh_CN/LC_MESSAGES/developer_guide/contribution/testing.po
+  s_70fb834a8f513b::t_b603c721fcec39 499-535
+.github/workflows/_collect_build_info.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-145
+tests/SIT/cases/models/configs/DeepSeek/DeepSeek-V4-flash-w8a8-PD-prefix-MRV2.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-228
+tests/ut/worker/v2/test_penalties.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-242
+tests/e2e/pull_request/one_card/test_gdn_block_packed_states.py
+  s_70fb834a8f513b::t_b603c721fcec39 2,9,13,18,21-26,28,30-35,39-40,49,127-397
+tests/ut/test_sleep_mode_tensor_ownership.py
+  s_70fb834a8f513b::t_b603c721fcec39 83-84
+csrc/attention/attn_res_fwd/attn_res_fwd_common.h
+  s_70fb834a8f513b::t_b603c721fcec39 7,19-20,26-29,35-36,39,45-46,50-51,53-54
+csrc/attention/attn_res_fwd/op_host/attn_res_fwd_parallel_plan.h
+  s_70fb834a8f513b::t_b603c721fcec39 1-157
+csrc/attention/quant_lightning_indexer_v2/op_host/quant_lightning_indexer_v2_tiling.h
+  s_70fb834a8f513b::t_b603c721fcec39 61,79-83,144-148,171,189-193,221,231-235
+docs/requirements-docs.txt
+  s_70fb834a8f513b::t_b603c721fcec39 1-4
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/Mixtral-8x7B-Instruct-v0.1.po
+  s_70fb834a8f513b::t_b603c721fcec39 25-28,30-31
+tests/ut/kv_offload/test_pool_worker_pp_layer_count.py
+  s_70fb834a8f513b::t_b603c721fcec39 93,101
+tests/ut/kv_offload/test_sfa_pd_peer_restart.py
+  s_70fb834a8f513b::t_b603c721fcec39 39
+.github/vllm-release-tag.commit
+  s_70fb834a8f513b::t_b603c721fcec39 1
+tests/SIT/cases/models/configs/Qwen/Qwen3_5_397B_A17B_w8a8_mxfp8_A5_weekly.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-107
+tests/ut/models/test_kimi_dense_situ_quant_cpu.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-182
+tests/ut/runtime_guard/test_hooks.py
+  s_70fb834a8f513b::t_b603c721fcec39 88,90,99,117,127,136,178
+tests/SIT/cases/models/configs/DeepSeek/DeepSeek-V4-Flash-W8A8-A3.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-79
+Dockerfile.310p.openEuler
+  s_70fb834a8f513b::t_b603c721fcec39 32,34,41-43,45-50,61-62,109-110
+release_notes/fragments/20704.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-8
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/feature_guide/expert_parallelism_load_balancer.po
+  s_70fb834a8f513b::t_b603c721fcec39 330-408,411-464,466-475,478-481,483-488,491-496,498-499,502-503,505-656,660-679,681-684,689-694,696-699,702-704,706-707,710-714,716-721,724-734,736-747,750-755,757-760,763-769,771-772,774-780,783-787,789-791,794-799,802-806,808-810,813-816,818-819,822-830,833-836,838-843,846-853,855-856,858-863,865-869,872-874,876-877,880-882,884-885,888-889,891-968
+docs/source/tutorials/models/DeepSeek-V4-Flash.md
+  s_70fb834a8f513b::t_b603c721fcec39 135,847,914,983,991,994,996,1000-1005,1020,1022,1024,1036-1038,1040,1042-1051,1053-1054,1056,1058-1059,1067-1068,1072,1074,1078-1097,1099-1103,1106,1120-1122,1124-1131,1134-1136,1153,1158-1175,1177-1182,1184,1193,1212-1218,1530,1723,1828,1977,2010-2017,2071-2074,2079-2084,2087-2088,2139-2160,2162-2166,2169,2185-2188,2193-2198,2201-2202,2248-2269,2271-2275,2278,2294-2297,2303-2308,2311-2314,2367-2384,2386-2391,2393,2414-2417,2423-2428,2431-2434,2482-2499,2501-2506,2508,2586-2597
+tests/ut/models/test_kimi_k31.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-224
+docs/source/user_guide/feature_guide/dynamic_chunk_pipeline_parallel.md
+  s_70fb834a8f513b::t_b603c721fcec39 3-6
+.github/workflows/dockerfiles/Dockerfile.nightly.a2
+  s_70fb834a8f513b::t_b603c721fcec39 26-27,44
+tests/ut/kv_offload/test_sfa_pd_rd2h_connector.py
+  s_70fb834a8f513b::t_b603c721fcec39 68-108
+csrc/attention/attn_res_fwd/op_kernel/arch35/attn_res_fwd_cooperative.h
+  s_70fb834a8f513b::t_b603c721fcec39 1-544
+tests/ut/ops/test_cann_keypool_adapters.py
+  s_70fb834a8f513b::t_b603c721fcec39 108-109,114-116,125-127,132-134
+tests/ut/eplb/adaptor/test_vllm_adaptor.py
+  s_70fb834a8f513b::t_b603c721fcec39 202-227
+tests/SIT/cases/models/configs/DeepSeek/DeepSeek-V4-Flash-w8a8-bugtest-acc.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-173
+tests/SIT/cases/models/configs/Kimi/Kimi-K2.6-W4A8-128k-1k-TPOT50-PD.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-160
+tests/ut/kv_offload/test_native_cpu_offload.py
+  s_70fb834a8f513b::t_b603c721fcec39 245-247,292-294
+tests/ut/attention/test_common_cp.py
+  s_70fb834a8f513b::t_b603c721fcec39 2,8,15,243-299
+Dockerfile
+  s_70fb834a8f513b::t_b603c721fcec39 35,37,44-46,48-53,64-65,74,76-77,81-93
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_categorical_sample.py
+  s_70fb834a8f513b::t_b603c721fcec39 12
+tests/SIT/cases/models/configs/MiniMax/MiniMax-M3-BF16-A3.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-97
+tests/ut/attention/test_sfa_nope_metadata.py
+  s_70fb834a8f513b::t_b603c721fcec39 266,645-660
+tests/SIT/cases/features/openai_api_compatibility/tests/test_frequency_penalty.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-33
+tests/ut/core/test_kv_cache_config_builder.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-143
+docs/source/user_guide/feature_guide/speculative_decoding.md
+  s_70fb834a8f513b::t_b603c721fcec39 9-10,31,36,350-353,357-360,363,366,368-369,372-374,380-381,401,406,420,449,464-489,555,565-620,637-645,735,751,812,814,816,844,846,850,852,864,866,868,870-874,876,880-882,902-943,1004,1006
+tests/SIT/cases/features/context_parallel/glm-5.2-W4A8C8-DSpark-PCP.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-72
+tests/ut/attention/test_mla_output_gate.py
+  s_70fb834a8f513b::t_b603c721fcec39 62
+tests/ut/distributed/ascend_store/test_backend.py
+  s_70fb834a8f513b::t_b603c721fcec39 31,170-182
+  s_70fb834a8f513b::t_c6ffdd44ddbf32 183
+tests/ut/_310p/conftest.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-45
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/feature_guide/kvpp.po
+  s_70fb834a8f513b::t_b603c721fcec39 419-495,499-519,521-539
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/support_matrix/supported_models.po
+  s_70fb834a8f513b::t_b603c721fcec39 278-564
+examples/rl/rlhf_sparse_hccl.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-124
+tests/upstream_test_plugin.py
+  s_70fb834a8f513b::t_b603c721fcec39 7,16-21
+tests/ut/_310p/spec_decode/test_decode_graph_metadata_310p.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-110
+tests/SIT/cases/models/configs/GLM/GLM-5.2-W8A8C8-64k-1k-90-50-PD.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-369
+tests/ut/kv_offload/mooncake_v2/test_pull_scheduler.py
+  s_70fb834a8f513b::t_b603c721fcec39 13,17,23-26,68,89-93,96-97,279,294,302,321,335,338-339,341-342,493-538,555,560-682,737,746,858,1006,1020,1032,1039-1768
+tests/SIT/cases/models/configs/Qwen/Qwen3.5-397B-A17B-w4a8-mtp-A2.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-74
+tests/ut/core/test_qsa_kv_cache_grouping.py
+  s_70fb834a8f513b::t_b603c721fcec39 27,70-73
+tests/ut/models/minimax_m3/test_msa_m3.py
+  s_70fb834a8f513b::t_b603c721fcec39 8,11,54,64,68-136,200-205,217-219,221,227,368,379-489,500-534,584,610-664,681-685,690-703,708-719,724-727,730,807,809,812,815,877-879,883-889,949,983-1058,1619,1623-1627,1635-1638,1640-1641,1664,1701-1702,1780-1781,1783-1786,1788-1790,1792-1799,1809-1820,1833,1836-1842,1844,1847-1877,1881-2319,2347-2349,2351-2353,2362-2365,2381-2391,2395-2400,2402,2444-2452,2454-2460,2468-2471,2473,2495-2503,2507-2510,2514,2517,2519,2523,2525-2529,2548,2550,2552,2571,2595,2601,2603-2604,2611,2625,2686-2892
+tests/ut/models/qwen4_exp/test_qsa_layerwise_hooks.py
+  s_70fb834a8f513b::t_b603c721fcec39 10,39,41-42,52
+tests/SIT/cases/models/configs/GLM/GLM-5.2-W4A4C8-DSpark-GQA-A5-V2.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-80
+tests/ut/ops/test_mla.py
+  s_70fb834a8f513b::t_b603c721fcec39 19-24,27,128-129,141,199,332-341
+tests/ut/worker/test_worker_v2.py
+  s_70fb834a8f513b::t_b603c721fcec39 3,19-85,88-89,91,93
+tests/ut/patch/platform/test_patch_mamba_block_aligned_split.py
+  s_70fb834a8f513b::t_b603c721fcec39 56,156-166
+  s_70fb834a8f513b::t_7587e15765487c 167-168
+docs/source/tutorials/models/Qwen3.8-Flash-Next.md
+  s_70fb834a8f513b::t_b603c721fcec39 1,5-10,13-1036,1038-1040,1042,1044-1045,1047-1050,1052,1054-1059,1061,1063-1071,1073,1075,1077,1079,1081,1083-1117,1119,1121-1152,1154,1156,1159-1168,1170,1172,1174-1180,1182,1184,1186-1190,1192,1194,1196,1198,1200,1202,1204-1206,1210-1222,1224-1225,1228-1229,1231-1236,1238-1271,1273-1488,1490-1491,1493-1689,1691-1750,1753,1755,1757-1968,1972-1986,1991,2003,2007,2010,2040,2046-2047,2051,2090,2099,2120,2123,2146,2150-2152,2156-2157,2164-2182,2188-2210,2214-2216,2218,2220,2224
+tests/SIT/cases/models/configs/Qwen/Qwen3.5-397B-A17B-w8a8-64k-1k-90-50-single.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-89
+tests/ut/spec_decode/test_dspark_pcp_dp_sync.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-127
+tests/ut/test_compressed_prefix_cache.py
+  s_70fb834a8f513b::t_b603c721fcec39 11-14
+tests/SIT/cases/models/configs/Kimi/KimiK26_w4a4c8_A5_weekly.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-120
+tests/SIT/cases/models/configs/Kimi/Kimi-K3-MRV2-A3.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-180
+csrc/attention/kv_quant_sparse_flash_attention_vllm/op_kernel/arch35/kv_quant_sparse_flash_attention_vllm_service_vector_mla.h
+  s_70fb834a8f513b::t_b603c721fcec39 88,834-870,930-931
+tests/ut/attention/test_dsa_metadata_builders.py
+  s_70fb834a8f513b::t_b603c721fcec39 224
+tests/ut/ops/test_gdn_layerwise_kv.py
+  s_70fb834a8f513b::t_b603c721fcec39 277-289,301-302,317-319
+tests/e2e/pull_request/two_card/model_runner_v2/test_qwen3_6_dspark.py
+  s_70fb834a8f513b::t_b603c721fcec39 23,25,29,32-38,40-41,48-74,134-331
+tests/ut/model_loader/rfork/test_registration_cache_isolated.py
+  s_70fb834a8f513b::t_b603c721fcec39 13-14,27-59,79-82,85,112-122,124,127-164,166-175,177-183,185-205,208-214,216-228,230-236,238,240-244,247-262,264-267,269,271-276,278,280-284
+release_notes/fragments/20433.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-4
+csrc/attention/kv_quant_sparse_flash_attention_vllm/op_host/kv_quant_sparse_flash_attention_vllm_tiling.cpp
+  s_70fb834a8f513b::t_b603c721fcec39 408,607-617,1280-1283
+release_notes/fragments/20097.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-21
+tests/SIT/cases/models/configs/DeepSeek/DeepSeek-V4-Pro-w4a8-prefix-cache-PD_weekly.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-362
+docs/source/user_guide/feature_guide/epd_disaggregation.md
+  s_70fb834a8f513b::t_b603c721fcec39 1-748
+tests/ut/attention/test_dsa_v41_cp.py
+  s_70fb834a8f513b::t_b603c721fcec39 12,261-282,407-410
+tests/SIT/cases/features/structured_output/test_openai_api.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-103
+tests/ut/test_profiling_config.py
+  s_70fb834a8f513b::t_b603c721fcec39 12-13,18-19
+release_notes/fragments/19601.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-4
+tests/ut/test_sparse_li_c8_projection_types.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-173
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/Kimi-K3.po
+  s_70fb834a8f513b::t_b603c721fcec39 845-1415,1424,1427,1430-1431,1433-1442
+tests/ut/distributed/weight_transfer/test_sparse_hccl_engine.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-159
+tests/ut/ops/test_token_dispatcher.py
+  s_70fb834a8f513b::t_b603c721fcec39 93,177-216
+  s_70fb834a8f513b::t_d7a3c2c2ddd3ed 217
+tests/ut/distributed/ascend_store/test_pool_worker.py
+  s_70fb834a8f513b::t_b603c721fcec39 31,123-124,178-187,196-268,2523-2649,3095
+tests/e2e/common/rlhf/weight_transfer/__init__.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-3
+.github/workflows/pr_test.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 49-56,58-60,94,97,100-103,115-134,136-143,146-160,162-174,181-182,241,253-259,273,290,295,298-301,308,320-324,330,345-346,349-386,409-412,417-421,428,431,436,465-468,485,601-602,612-613,628-629,637,639,689,692,700-701,715-717,730,733,740-741,746,750,760-761,768,773,777,814
+.github/workflows/schedule_weekly_test_a3.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 19-20,79,241,293,341-342,345-346,348-356
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/features/pd_colocated_mooncake_multi_instance.po
+  s_70fb834a8f513b::t_b603c721fcec39 331-344
+release_notes/fragments/20697.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-6
+tests/ut/models/test_glm5next_recoverssm_config.py
+  s_70fb834a8f513b::t_b603c721fcec39 14,21-25,43-45,72-73,79,85-129
+  s_70fb834a8f513b::t_c51ad34ff25137 130-131
+docs/source/developer_guide/contribution/doc_writing.md
+  s_70fb834a8f513b::t_b603c721fcec39 7-17,46,48,50
+tests/ut/worker/test_mla_dcp_metadata_v2.py
+  s_70fb834a8f513b::t_b603c721fcec39 1,118-119
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/feature_guide/short_request_first.po
+  s_70fb834a8f513b::t_b603c721fcec39 266-284
+tests/ut/models/test_glm5_dspark_flashmla.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-58
+csrc/mc2/dispatch_ffn_combine/op_kernel/dispatch_ffn_combine_kernel.hpp
+  s_70fb834a8f513b::t_b603c721fcec39 473-474,523,894-895,929,933,948,952,1131-1132,1136-1137,1194
+Dockerfile.a3.openEuler
+  s_70fb834a8f513b::t_b603c721fcec39 35,37,44-46,48-53,64-65,74,76-77,81-94
+tests/ut/models/test_deepseek_v41_decoder_replay.py
+  s_70fb834a8f513b::t_b603c721fcec39 81-159,240-242,260-263,268-274,284
+tests/ut/quantization/methods/test_moe_logical_experts.py
+  s_70fb834a8f513b::t_b603c721fcec39 48
+tests/SIT/cases/models/configs/Qwen/Qwen3-32B-W8A8C8-A3.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-65
+csrc/attention/quant_lightning_indexer_v2/torch_extension/csrc/quant_lightning_indexer.cpp
+  s_70fb834a8f513b::t_b603c721fcec39 17,92-93,95-97,110-111,120,128-130,164-168,182-184,209-214,216-220,277-281,285-288
+docs/source/developer_guide/Design_Documents/model_runner_v2_eplb.md
+  s_70fb834a8f513b::t_b603c721fcec39 67-68,183
+tests/e2e/common/multi_node/lws.yaml.jinja2
+  s_70fb834a8f513b::t_b603c721fcec39 15-20,22-25,153-160,162-165
+docs/source/locale/zh_CN/LC_MESSAGES/developer_guide/evaluation/index.po
+  s_70fb834a8f513b::t_b603c721fcec39 22-34
+tests/ut/model_loader/rfork/test_engram_local_loading.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-185
+tests/SIT/cases/models/configs/GLM/GLM-5.1-W8A8C8-A3_128k_90_50.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-107
+csrc/attention/quant_lightning_indexer_v2_metadata/op_kernel_aicpu/quant_lightning_indexer_v2_metadata_aicpu.cpp
+  s_70fb834a8f513b::t_b603c721fcec39 38,59-62,78-104,331-340,360-372,382-401,489-508,523,545-554
+tests/e2e/pull_request/one_card/rlhf/state_transitions/test_pause_resume.py
+  s_70fb834a8f513b::t_b603c721fcec39 31
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_penality.py
+  s_70fb834a8f513b::t_b603c721fcec39 3,9-14,27-73,95,157-159,161-175,177,181-210,215-232,234-240,242-252,255-256,258-276,278,286,288-293,297-311,382-497
+  s_70fb834a8f513b::t_9a4f38cb6600b8 498
+csrc/cmake/func.cmake
+  s_70fb834a8f513b::t_b603c721fcec39 703,705-712,748-749,751
+docs/source/locale/zh_CN/LC_MESSAGES/community/versioning_policy.po
+  s_70fb834a8f513b::t_b603c721fcec39 421-595,598-599,602-603,607-608,611-612,616-617,620-621,625-626,629-630,634-635,638-639,643-644,647-648,652-653,656-657,661-662,665-666,670-671,674-675,679-680,683-684,688-689,692-693,697-698,701-702,706-707,710-711,715-716,719-720,724-725,728-729,733-734,737-738,742-743,746-747,751-752,755-756,760-761,764-765,769-770,773-774,778-779,782-783,787-788,791-792,796-797,800-801,805-806,809-810,814-815,818-819,823-824,827-828,832-833,836-837,841-842,845-846,850-851,854-855
+tests/ut/ops/test_kimi_kda_pcp.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-285
+csrc/torch_binding_meta.cpp
+  s_70fb834a8f513b::t_b603c721fcec39 7,895-901,922-924,1032-1035,1055-1062
+docs/requirements-translate.txt
+  s_70fb834a8f513b::t_b603c721fcec39 1-5
+docs/source/tutorials/features/pd_disaggregation_mooncake_multi_node.md
+  s_70fb834a8f513b::t_b603c721fcec39 360-362,375-432
+  s_70fb834a8f513b::t_ca95932ef4dc91 433
+tests/ut/patch/platform/test_patch_eplb.py
+  s_70fb834a8f513b::t_b603c721fcec39 543-644
+tests/ut/model_loader/rfork/session_test_utils.py
+  s_70fb834a8f513b::t_b603c721fcec39 22
+docs/source/user_guide/feature_guide/kv_cache_pool_ascend_store.md
+  s_70fb834a8f513b::t_b603c721fcec39 65-84,113,116
+tests/SIT/cases/models/configs/Qwen/Qwen3-30B-A3B-W4A8-llm-compressor.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-41
+.github/workflows/scripts/collect_build_info.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-321
+release_notes/fragments/16851.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-4
+tests/ut/models/test_kimi_k3_pp_sp.py
+  s_70fb834a8f513b::t_b603c721fcec39 272,483
+tests/SIT/cases/features/openai_api_compatibility/utility/http_client.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-25
+tests/SIT/cases/models/configs/Qwen/Qwen3VL-8B-310p.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-86
+tests/SIT/cases/models/configs/Qwen/Qwen3_5_397B_A17B_w8a8_mxfp8_A5.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-107
+tests/ut/models/qwen4_exp/test_qsa_upstream_abi.py
+  s_70fb834a8f513b::t_b603c721fcec39 9,50-51,86-88
+tests/ut/models/test_qwen4_exp_soc_gating.py
+  s_70fb834a8f513b::t_b603c721fcec39 5,12,71,76-85,92-116
+tests/ut/patch/worker/test_patch_mm_input_norm.py
+  s_70fb834a8f513b::t_b603c721fcec39 17-18
+tests/ut/worker/test_paired_sfa_kv_cache.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-333
+tests/SIT/cases/models/configs/Qwen/Qwen3-32B.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-55
+tests/e2e/common/rlhf/weight_transfer/weight_source.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-252
+.gitleaks.toml
+  s_70fb834a8f513b::t_b603c721fcec39 73-90
+.readthedocs.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 23-28,30-36,46-52
+  s_70fb834a8f513b::t_0c87a9113402f4 53
+.github/workflows/schedule_doc_translate.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 70,73,196
+tests/SIT/cases/features/test_qwen3_grid_exceed_65536.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-45
+.github/workflows/dockerfiles/Dockerfile.buildwheel.a2
+  s_70fb834a8f513b::t_b603c721fcec39 18,34
+tests/e2e/common/multi_node/internal_dp/multi_node_config.py
+  s_70fb834a8f513b::t_b603c721fcec39 21
+tests/SIT/cases/models/configs/DeepSeek/DS-V4-flash-w8a8-PD-prefix-weekly.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-249
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/Kimi-K3.1-Pro.po
+  s_70fb834a8f513b::t_b603c721fcec39 1-2175
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_compute_topk_logprobs.py
+  s_70fb834a8f513b::t_b603c721fcec39 9,13-14,54-55,70-100
+tests/ut/distributed/ec_transfer/test_mooncake_worker.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-7,10-12,17-19,21-26,57,59-66,68-82,85,98-101,111,114-115,123,133-138,148-149,151-152,157-173,175-208,210-251,254-255,257-289,291-296,298-306,309-317,319-320,322,345-346,348-365,367-535,537,539-543,546-557,559-650,652-731,734-851,854-855,857-993,995-999,1001-1111
+docs/source/developer_guide/contribution/multi_node_test.md
+  s_70fb834a8f513b::t_b603c721fcec39 15-39,48,110-111,118,120-123,126,186,241,337,381,406,412,429,442,463,489,495,516,529
+docs/README.md
+  s_70fb834a8f513b::t_b603c721fcec39 12-13,16-17,54-72
+  s_70fb834a8f513b::t_cd71c4346c513b 73
+tests/SIT/cases/models/configs/MiniMax/MiniMax-M3-W8A8-A3-EAGLE3.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-101
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_sfa_dcp.py
+  s_70fb834a8f513b::t_b603c721fcec39 11,34,40-41,46,56-66,73-74,99-109,151-161,190,232-235,239,252
+tests/e2e/pull_request/four_card/test_data_parallel_tp2.py
+  s_70fb834a8f513b::t_b603c721fcec39 167-176
+docs/source/locale/zh_CN/LC_MESSAGES/developer_guide/Design_Documents/kvpp.po
+  s_70fb834a8f513b::t_b603c721fcec39 112-117,120-127,130-152,155-170,175-177,179-180,182-185,188-190,193-200
+tests/SIT/cases/models/configs/GLM/GLM-5.1-W8A8C8-64k-1k-90-50-PD.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-354
+tests/ut/runtime_guard/test_review_regressions.py
+  s_70fb834a8f513b::t_b603c721fcec39 209,221,223,233,262,282,684-685,2229,2238,2248-2249,2271,2275,2345
+tests/SIT/cases/models/configs/Kimi/Kimi-K2.6-w4a8-A3_weekly.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-257
+tests/SIT/cases/features/openai_api_compatibility/tests/test_top_k.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-31
+.github/workflows/scripts/run_selected_tests.sh
+  s_70fb834a8f513b::t_b603c721fcec39 160
+tests/SIT/cases/models/configs/Qwen/Qwen3-32B-Int8.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-72
+tests/SIT/cases/models/configs/GLM/GLM-5.2-W8A8C8-A3_128k_90_50.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-107
+tests/SIT/cases/models/configs/Kimi/Kimi-K2.6-W4A8-3.5k-1.5k-TPOT50-PD.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-152
+tests/SIT/cases/models/configs/GLM/GLM-5.1-W8A8-PrefillMC2.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-80
+tests/e2e/nightly/single_node/ops/multicard_ops_a3/test_sfa_cache_store.py
+  s_70fb834a8f513b::t_b603c721fcec39 27,31
+release_notes/fragments/20570.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-4
+tests/SIT/cases/models/configs/GLM/GLM_5_1_PD_in64k_bs16-90.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-346
+release_notes/fragments/20361.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-4
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/Step-5-Preview.po
+  s_70fb834a8f513b::t_b603c721fcec39 316-320
+tests/SIT/cases/features/context_parallel/DeepSeek-V4.1-Flash-W8A8-DSpark-PCP.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-73
+csrc/attention/quant_lightning_indexer_v2_metadata/op_host/op_api/quant_lightning_indexer_v2_metadata.h
+  s_70fb834a8f513b::t_b603c721fcec39 19-24
+tests/SIT/cases/features/pp/GLM-5.3-W8A8C8-A3-200k-PP-PD.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-359
+tests/ut/kv_offload/test_dspark_transfer_cancellation.py
+  s_70fb834a8f513b::t_b603c721fcec39 140,144,162-163
+.github/workflows/pr_nightly_command.yml
+  s_70fb834a8f513b::t_b603c721fcec39 290
+tests/SIT/cases/models/configs/Qwen/Qwen3-8B-w8a8sc-310p.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-58
+docs/source/user_guide/release_notes.md
+  s_70fb834a8f513b::t_b603c721fcec39 3-109,1749,1844,1910,1952
+tests/ut/ops/test_gdn_spec_recurrent_dispatch.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-82
+tests/SIT/cases/models/configs/DeepSeek/DeepSeek-V3.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-113
+tests/ut/attention/test_mla_cp.py
+  s_70fb834a8f513b::t_b603c721fcec39 3,13,31,852-948
+tests/ut/ops/test_mm_encoder_attention.py
+  s_70fb834a8f513b::t_b603c721fcec39 4,8-9,120-166
+  s_70fb834a8f513b::t_5640b0d87bbf23 167
+tests/e2e/pull_request/two_card/aclgraph/test_aclgraph_capture_replay.py
+  s_70fb834a8f513b::t_b603c721fcec39 40
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_msa_m3_index_postprocess.py
+  s_70fb834a8f513b::t_b603c721fcec39 4-6,17-18,32-33,45-46,80,87-88,110-111,156-290
+tests/ut/kv_offload/test_preempt_offload_connector.py
+  s_70fb834a8f513b::t_b603c721fcec39 1160-1161
+tests/ut/models/test_kimi_k3_mtp_gate_loading.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-89
+tests/SIT/cases/models/configs/Qwen/Qwen3-32B-w8a8sc-310p.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-57
+tests/ut/test_utils.py
+  s_70fb834a8f513b::t_b603c721fcec39 931-942
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_rejection_sample_v2.py
+  s_70fb834a8f513b::t_b603c721fcec39 7,10,148,218-221,224-227,287-289,327,370,391-394,431-433,457-459,482-485,489-643
+tests/ut/distributed/ascend_store/test_ascend_store_connector.py
+  s_70fb834a8f513b::t_b603c721fcec39 20,26,28-29,52,56,218-250,275-276,712-717
+  s_70fb834a8f513b::t_7252d9341547da 718
+tests/ut/distributed/ec_transfer/test_ec_mooncake_connector.py
+  s_70fb834a8f513b::t_b603c721fcec39 3,5,9,12-14,16,19,23-28,30-31,34-42,44-45,47-51
+csrc/attention/quant_lightning_indexer_v2/docs/aclnnQuantLightningIndexerV2.md
+  s_70fb834a8f513b::t_b603c721fcec39 63,72-75,308-323,429-474,496-497,500,545-546
+tests/e2e/pull_request/one_card/test_flash_attn_precision.py
+  s_70fb834a8f513b::t_b603c721fcec39 12-16,47-48,52-53,55,57-58,61-62,102-104,108-110
+csrc/attention/quant_lightning_indexer_v2/op_kernel/arch22/quant_lightning_indexer_v2_common_arch22.h
+  s_70fb834a8f513b::t_b603c721fcec39 55,115,118,120,133-138,185-201
+  s_70fb834a8f513b::t_59de44c7b20268 202
+tests/ut/core/check_paired_sfa_dspark_geometry.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-149
+tests/ut/distributed/ascend_store/test_qsa_basic_pooling.py
+  s_70fb834a8f513b::t_b603c721fcec39 183-187
+tests/ut/kv_offload/mooncake_v2/test_push_worker.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-254
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_triton_ple.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-240
+tests/SIT/cases/features/kv_pool/test_qwen3_30b_acc.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-143
+.github/workflows/dockerfiles/Dockerfile.nightly.a5
+  s_70fb834a8f513b::t_b603c721fcec39 26-27,44,47
+tests/SIT/cases/models/configs/GLM/GLM-5.2-W8A8C8-A3_128k-static-super-kernels.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-110
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_gdn_prepare.py
+  s_70fb834a8f513b::t_b603c721fcec39 15,17,31-64
+  s_70fb834a8f513b::t_a8be7fe4cc800e 65-66
+tests/SIT/cases/models/configs/Qwen/QWEN3_235B_PD_3_5K_1_5k.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-207
+tests/SIT/cases/features/kv_pool/Qwen3.5-397B-Memcache-perf.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-78
+tests/ut/runtime_guard/test_hot_path_overhead.py
+  s_70fb834a8f513b::t_b603c721fcec39 145,162,181,215,231-232,251-252,257-304,345,351,356-390,408,434-471
+tests/SIT/cases/models/configs/GLM/GLM5_1_W4A4_A5.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-80
+csrc/attention/attn_res_fwd/op_kernel/arch35/attn_res_fwd_reload.h
+  s_70fb834a8f513b::t_b603c721fcec39 25,144-146,280,282-283,285
+tests/e2e/pull_request/one_card/pooling/test_d3.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-167
+docs/source/user_guide/support_matrix/supported_models.md
+  s_70fb834a8f513b::t_b603c721fcec39 25-69,73-134,178-228,231-289
+tests/ut/worker/test_pcp_profile_budget.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-136
+tests/e2e/pull_request/two_card/rlhf/state_transitions/test_weight_checker.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-369
+tests/ut/attention/test_dsa_v41_shared_metadata.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-455
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/MiniMax-M3.po
+  s_70fb834a8f513b::t_b603c721fcec39 1914-1916,1919,1922,1925,1932,1935,1938,1941,1948-1949,1952,1961-1962,1968-1969,1972,1980-1983,1986-2188,2201-2273
+tests/e2e/pull_request/one_card/test_gumbel_sampling.py
+  s_70fb834a8f513b::t_b603c721fcec39 14-15,607-618,628-629,665
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/Hy4-preview.po
+  s_70fb834a8f513b::t_b603c721fcec39 392-398
+tests/SIT/cases/models/configs/GLM/GLM5_1-W8A8-EP-external.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-331
+tests/ut/quantization/methods/w4a8/test_w4a8_mxfp4.py
+  s_70fb834a8f513b::t_b603c721fcec39 5,157-175,226-263,267-268,270,281-289,291-292,299-322
+tests/ut/attention/test_flashmla_dcp.py
+  s_70fb834a8f513b::t_b603c721fcec39 423-434
+csrc/attention/attn_res_fwd/op_host/attn_res_fwd_legacy_plan.h
+  s_70fb834a8f513b::t_b603c721fcec39 1-87
+csrc/attention/attn_res_fwd/op_kernel/attn_res_fwd_ub_layout.h
+  s_70fb834a8f513b::t_b603c721fcec39 1-23
+tests/ut/kv_offload/test_sfa_pd_rd2h_lifecycle.py
+  s_70fb834a8f513b::t_b603c721fcec39 4,11,26-29,71,106-111,113,143-152,156,164,187-190,192-199
+tests/ut/patch/worker/patch_common/test_patch_distributed.py
+  s_70fb834a8f513b::t_b603c721fcec39 168-170,172,192-195,209
+.github/workflows/_e2e_nightly_single_node_models.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 87
+tests/SIT/cases/features/openai_api_compatibility/tests/test_request_id.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-86
+csrc/attention/quant_lightning_indexer_v2_metadata/docs/aclnnQuantLightningIndexerV2Metadata.md
+  s_70fb834a8f513b::t_b603c721fcec39 58,268-272
+  s_70fb834a8f513b::t_7a26fe68523be3 273-277
+tests/ut/distributed/ascend_store/_mock_deps.py
+  s_70fb834a8f513b::t_b603c721fcec39 550-552
+csrc/attention/quant_lightning_indexer_v2/op_host/quant_lightning_indexer_v2_tiling.cpp
+  s_70fb834a8f513b::t_b603c721fcec39 244-246,297-301,420-423,426,429-442,454-457,510-571,672-680,897-906,957,964-985,1274,1415-1431,1434,1750-1757,1917-1921
+tests/e2e/nightly/single_node/ops/singlecard_ops/test_kv_quant_sparse_flash_attention_vllm.py
+  s_70fb834a8f513b::t_b603c721fcec39 714,729,733-735,768-833
+tests/SIT/cases/features/kv_pool/GLM-5.2-W8A8C8-A3-Memcache-PD.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-247
+requirements-dev.txt
+  s_70fb834a8f513b::t_b603c721fcec39 21
+tests/ut/distributed/weight_transfer/test_npu_ipc_engine.py
+  s_70fb834a8f513b::t_b603c721fcec39 42-43,125-127,225,244,281,381-462
+release_notes/fragments/19997.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-4
+tools/bisect/build_analyzer/operation_rules.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-79
+tests/SIT/cases/models/configs/Qwen/Qwen3_6_27b_A5_weekly.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-69
+csrc/attention/quant_lightning_indexer_v2/op_kernel/quant_lightning_indexer_v2_dcp_common.h
+  s_70fb834a8f513b::t_b603c721fcec39 1-93
+tests/ut/test_platform.py
+  s_70fb834a8f513b::t_b603c721fcec39 37-70,382,384,469-473,2236-2262
+  s_70fb834a8f513b::t_4bea5f6bc43df4 2263
+Dockerfile.a5
+  s_70fb834a8f513b::t_b603c721fcec39 38,40-41,48-50,52-58,79-80,82,86,89,93-94,101-114,117
+tests/e2e/pull_request/two_card/rlhf/weight_transfer/hccl/__init__.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-2
+docs/source/tutorials/models/DeepSeek-V4.1-Flash.md
+  s_70fb834a8f513b::t_b603c721fcec39 25-26,28-30,32-35,44-46,48-58,60,62,64-66,68-69,71-77,79-80,82-86,99-100,108,150,153,161,186-234,242-244,250-298,305-307,314,342,351,366,377-380,386-862,865-867,871-873,892,904,919,929,935-936,954-955,962-974,996,1012,1030,1035-1037,1044-1045,1050,1057-1058,1084,1091,1103,1113,1122,1129-1130,1145,1151-1154,1167,1174-1180,1185,1194-1196,1199-1200,1214-1217,1227-1229,1235,1241,1255-1261,1267-1268,1272-1276,1278,1280-1289,1291-1293,1295,1297-1299,1309,1312,1317-1318,1321,1334,1349,1352,1357-1358,1367-1368,1373,1376,1379-1381,1384,1389,1391-1392,1394,1404,1407,1412-1413,1416,1428,1433-1434,1438,1445-1446,1456-1457,1467,1473,1476,1480-1482,1484,1491,1494-1497,1504-1507,1512-1526,1529-1543,1547-1554,1572,1574,1576,1578-1580,1582-1585,1587-1591,1593,1595,1597-1600,1602-1606,1608-1610,1612,1614-1619,1621-1635,1637-1644,1646,1648-1653,1655-1656,1658,1660-1664,1666-1667,1669-1681,1683-1698,1700-1703,1705-1772,1774-1778,1780,1782-1784,1786-1794,1796-1901,1903-2167,2169-2172,2174-2176,2178,2180-2182,2184-2185,2187-2188,2190-2194,2196-2204,2206-2209,2211-2263,2265-2278,2280-2281,2283,2285-2287,2289-2292,2294-2296,2298,2300-2306,2308-2309,2323-2326,2330-2335,2344-2366,2368-2370,2376-2379,2382,2389-2392,2396-2398,2400-2406,2414,2419,2425,2427,2439-2444,2454,2469,2472,2477-2478,2493-2494,2511,2525,2535-2536,2539,2546,2548,2558,2563-2564,2568,2575-2576,2592-2593,2615,2621,2635-2637,2646-2650,2672-2674,2727-2729,2733,2736-2737,2740-2743,2749-2751,2753-2754,2758-2759,2761-2762,2765-2767,2777,2789-2790,2793-2795,2799-2800,2802-2812,2827-2845,2866-2877,2879,2882-2884
+docs/source/tutorials/models/Qwen3-30B-A3B.md
+  s_70fb834a8f513b::t_b603c721fcec39 25,29-31,169-170,270,274,284,286-287,309-317,358,458,460-461,464,466-471,473
+tests/e2e/pull_request/four_card/test_glm5_3_flash.py
+  s_70fb834a8f513b::t_b603c721fcec39 27,124-130,181
+tests/SIT/cases/features/kv_pool/test_kvpp_dspark.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-85
+tests/e2e/common/multi_node/external_dp/test_external_dp.py
+  s_70fb834a8f513b::t_b603c721fcec39 226
+tests/SIT/cases/models/configs/Qwen/Qwen3-235B-A22B-A2.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-74
+tests/SIT/cases/models/configs/Qwen/Qwen3-235B-A22B-W8A8_piecewise_fullgraph_A3.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-85
+tests/SIT/cases/models/configs/Qwen/Qwen3_5_35B_A3B_FP8_A5_weekly.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-67
+tests/ut/distributed/ascend_store/test_mooncake_pipeline.py
+  s_70fb834a8f513b::t_b603c721fcec39 29-30,35-46,73,87-88,158,162-166,264-268,407-417
+tests/SIT/cases/models/configs/GLM/GLM-5.2-W4A8-MTP-A3-V2.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-60
+tests/ut/models/test_glm5next_eplb.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-110
+tools/bisect/build_analyzer/ir.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-140
+tests/ut/distributed/weight_transfer/test_e2e_weight_transfer_oracle.py
+  s_70fb834a8f513b::t_b603c721fcec39 31-33
+tests/ut/models/test_kimi_k3_adapter.py
+  s_70fb834a8f513b::t_b603c721fcec39 11,16-17,21,25,27-143,250,303,525-527,531,536,538-539,565-567,582,584-587
+.github/vllm-main-verified.commit
+  s_70fb834a8f513b::t_b603c721fcec39 1
+docs/source/getting_started/installation.md
+  s_70fb834a8f513b::t_b603c721fcec39 234-239,241-251,258,274-275,277,282,284-286,288-320,326-328
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/Qwen2.5-Math-RM-72B.po
+  s_70fb834a8f513b::t_b603c721fcec39 25-29,31-33
+tests/ut/runtime_guard/test_detectors_and_kv.py
+  s_70fb834a8f513b::t_b603c721fcec39 160-161,163-164,205,239,245-246
+tests/ut/worker/test_v2_dummy_padding.py
+  s_70fb834a8f513b::t_b603c721fcec39 142,173-176
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/feature_guide/epd_disaggregation.po
+  s_70fb834a8f513b::t_b603c721fcec39 21-22,25-422,425-436,439-442,444-450,453-454,456-460,463-465,467-469,472-479,481-482,484-485,488-491,493-502,504-505,507-525,528-531,533-539,542-546,548-552,554-555,557-567,570-571,573-574,576-583,586-590,592-607,610-611,613-618,621-623,625-629,631-634,637-639,642-646,648-649,652-653,655-656,659-662,664-666,669-670,672-673,676-678,680-681,684-685,687-700,703-712,714-999,1002-1006,1008-1012
+csrc/attention/quant_lightning_indexer_v2/op_kernel/arch35/quant_lightning_indexer_v2_service_cube_arch35.h
+  s_70fb834a8f513b::t_b603c721fcec39 54,59-60,143,168,173,254-259,340-344,446-448,453-467,753,772
+docs/source/locale/zh_CN/LC_MESSAGES/getting_started/installation.po
+  s_70fb834a8f513b::t_b603c721fcec39 328-562
+tests/SIT/cases/models/configs/GLM/GLM-5.2-W8A8C8-layerwise-PD.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-293
+tests/SIT/cases/models/configs/Qwen/Qwen3-14B-w8a8sc-310p.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-59
+tests/SIT/cases/models/configs/Qwen/Qwen3_6_27b_A5.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-69
+pyproject.toml
+  s_70fb834a8f513b::t_b603c721fcec39 21,33-35
+tests/SIT/cases/features/kv_pool/test_kvpp_pool.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-92
+tests/SIT/cases/models/configs/Qwen/Qwen3.6-35B-A3B-w8a8-A3-accuracy.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-65
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/DeepSeek-V4-Flash.po
+  s_70fb834a8f513b::t_b603c721fcec39 382-445,456,458,460-462,466,468-471,474-475,477-481,484-488,490-491,494-496,498-499,502-503,505-506,509-512,514-516,519-521,523-524,527-529,531-532,534-540,542-544,547-549,551-627,630-1765
+docs/source/developer_guide/contribution/testing.md
+  s_70fb834a8f513b::t_b603c721fcec39 251,282,399-400,402,405-409,412-418,420-421
+tests/ut/models/test_glm5next_kda_dispatch.py
+  s_70fb834a8f513b::t_b603c721fcec39 5,21-27,31-34,47-48,50-64,72-73,75-77,79-80,86-88,90,92,98-100,106-109,111-117,358,415,478
+csrc/attention/quant_lightning_indexer_v2/op_host/vllm_ascend_quant_lightning_indexer_v2_def.cpp
+  s_70fb834a8f513b::t_b603c721fcec39 23-27,30,35,83-89,91,106-110
+tests/SIT/cases/features/openai_api_compatibility/tests/test_repetition_penalty.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-37
+tests/ut/ops/test_gdn_checkpoint_dispatch.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-172
+tests/SIT/cases/models/configs/Kimi/Kimi-K3-W4A8-A3-1M-PD.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-380
+tests/SIT/cases/models/configs/GLM/GLM-5_1-W8A8_A3_weekly.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-156
+tests/ut/ops/test_gdn_attn_builder.py
+  s_70fb834a8f513b::t_b603c721fcec39 5,13,16-17,19-22,24-25,36,194,203-204,217,238,248,385-391,531-566,732-937,1531-1533,1551,1559,1860-2082
+tests/ut/attention/test_sharded_indexer.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-55
+docs/source/user_guide/feature_guide/context_parallel.md
+  s_70fb834a8f513b::t_b603c721fcec39 12-15
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/dcp_test_utils.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-55
+tests/SIT/cases/models/configs/DeepSeek/DeepSeek-V4-Flash-W8A8-A3-Breakable.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-69
+tests/ut/_310p/test_multistream_logits_initialization_310p.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-100
+.github/workflows/scripts/csrc_cache_targets.json
+  s_70fb834a8f513b::t_b603c721fcec39 7,15,23,31,39,47,55,63,71,79,87,95,103
+csrc/attention/kv_quant_sparse_flash_attention_vllm/op_kernel/arch35/kv_quant_sparse_flash_attention_vllm_kernel_mla.h
+  s_70fb834a8f513b::t_b603c721fcec39 164,717-718
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/MiniMax-M3.1-Flash.po
+  s_70fb834a8f513b::t_b603c721fcec39 1-1890
+tests/SIT/cases/models/configs/Qwen/Qwen3.5-122B-A10B-w4a8-984k-1k-0-PD.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-178
+csrc/attention/attn_res_fwd/op_kernel/attn_res_fwd_tiling_data.h
+  s_70fb834a8f513b::t_b603c721fcec39 45-51
+csrc/attention/quant_lightning_indexer_v2/op_kernel/arch35/quant_lightning_indexer_v2_service_vector_arch35.h
+  s_70fb834a8f513b::t_b603c721fcec39 308-331,704,712-731
+tests/e2e/pull_request/one_card/spec_decode/test_ngram_npu.py
+  s_70fb834a8f513b::t_b603c721fcec39 62-66,109
+tests/ut/patch/platform/test_patch_kv_cache_coordinator.py
+  s_70fb834a8f513b::t_b603c721fcec39 88,115,213-236,248-251
+requirements-nightly.txt
+  s_70fb834a8f513b::t_b603c721fcec39 17
+tests/SIT/cases/models/configs/Qwen/qwen3.6-35B-W4A8-A5.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-60
+tests/SIT/cases/models/configs/Qwen/Qwen3.5-122B-A10B-W8A8-A2.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-72
+Dockerfile.a5.openEuler
+  s_70fb834a8f513b::t_b603c721fcec39 35,37-39,45-47,49-55,76-77,86,89-90,96,98-112
+release_notes/fragments/20544.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-6
+tests/deepseek_v41_utils.py
+  s_70fb834a8f513b::t_b603c721fcec39 317,336
+tests/ut/core/test_dyntra_lb_scheduler.py
+  s_70fb834a8f513b::t_b603c721fcec39 479-579
+tests/ut/distributed/ascend_store/test_layerwise_cache_layout.py
+  s_70fb834a8f513b::t_b603c721fcec39 757-758,784-785
+tests/ut/kv_offload/mooncake_v2/test_pull_worker.py
+  s_70fb834a8f513b::t_b603c721fcec39 8,48,199,231,408,445,476,482-527,557-560,590-592,679,706,734,755,785,811,837,843-908,1127-1183,1682,1693-1694,1700,1726,2075-2076,2087-2088,2094,2167,2185,2199,2247-2495
+release_notes/fragments/21209.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-6
+.github/workflows/dockerfiles/Dockerfile.nightly.310p
+  s_70fb834a8f513b::t_b603c721fcec39 26-27,44
+docs/source/developer_guide/evaluation/index.md
+  s_70fb834a8f513b::t_b603c721fcec39 1-6
+.github/workflows/configs/weekly_config.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 26-33,36,40,44,48,52,56,60,64,68,72,76,80,84,88,92,96,100,104,108,112-116,121-123,127,131,135,139,143,147,151,155,159,163,167,171,175,179,183,187,191,195,199,203,207,211,215,219,223,227,234,237,240,244,248,252,256,260,264,268,272,276,280,284,288,292,296,300,304,308,315,322,325,329,333,337,344-348,366,370,374,378,382,386
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/GLM5.po
+  s_70fb834a8f513b::t_b603c721fcec39 836-860,862-915
+csrc/attention/attn_res_fwd/op_kernel/arch22/attn_res_fwd_cooperative.h
+  s_70fb834a8f513b::t_b603c721fcec39 1-586
+csrc/attention/kv_quant_sparse_flash_attention_vllm/op_kernel/kv_quant_sparse_flash_attention_vllm_common.h
+  s_70fb834a8f513b::t_b603c721fcec39 52,59-60,67-81
+  s_70fb834a8f513b::t_0d21e25b5a3daa 82
+.github/workflows/recipes-preview.yml
+  s_70fb834a8f513b::t_b603c721fcec39 16,20,34-36,46-50,54-56,65,71,73-75,79-81
+tests/SIT/cases/features/structured_output/conftest.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-109
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/Qwen3-Omni-30B-A3B-Thinking.po
+  s_70fb834a8f513b::t_b603c721fcec39 25-28,30-31
+tests/SIT/cases/models/configs/GLM/GLM-5.3-Flash-W8A8-MXFP8-A5-PD.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-159
+docs/source/tutorials/models/Step-5-Preview.md
+  s_70fb834a8f513b::t_b603c721fcec39 14-17,29-30,55-56,107,113-128,139,232-241,258,278,297-355,357,359
+csrc/attention/attn_res_fwd/op_kernel/tiling_key_attn_res_fwd.h
+  s_70fb834a8f513b::t_b603c721fcec39 22-23
+tools/bisect/build_analyzer/__main__.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-151
+tests/ut/patch/platform/test_patch_use_v2_model_runner.py
+  s_70fb834a8f513b::t_b603c721fcec39 7-8
+docs/source/developer_guide/contribution/e2e_ci_test.md
+  s_70fb834a8f513b::t_b603c721fcec39 8,51-52
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/support_matrix/supported_features.po
+  s_70fb834a8f513b::t_b603c721fcec39 199-200,202-203,207-208,210-211,214-216,218-240,256-259,274-277
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_resample.py
+  s_70fb834a8f513b::t_b603c721fcec39 16,797,863,1026-1056
+tests/SIT/cases/models/configs/Kimi/Kimi-K2.7-w4a8-A3.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-316
+.github/workflows/schedule_nightly_test_a5.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 94,149-195,325,434-435,437-445
+tests/SIT/cases/models/configs/Qwen/Qwen3.5-397B-w4a8_3.5k-1.5k-0-50-PD.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-208
+tests/ut/models/test_deepseek_v4_weight_loader_reload.py
+  s_70fb834a8f513b::t_b603c721fcec39 60
+csrc/attention/quant_lightning_indexer_v2/op_kernel/arch22/quant_lightning_indexer_v2_service_cube_arch22.h
+  s_70fb834a8f513b::t_b603c721fcec39 41-45,48,53-65,73-80,102-106,108-109,111-116,118-122,124-126,156-158,164,170,179,192-196,206-207,209-215,217-226,231,237-238,240-244,247-260,262,264-265,269-290,292-300,303-307,310,315-316,318-328,341,344,357-380,382,384,386-387,389,392-397,401-408,410-412,415,423,435-437,450,457-458,474,480,487,493,505-506,512,541-542,549,578-579,584,592-593,597-605,608,616-617,622-623,633,635-636,640-641,652-653,674-675,681,697,699,718-719,739
+  s_70fb834a8f513b::t_c41c8dc8979f63 740
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/feature_guide/mooncake_layerwise_adaptation_and_optimization.po
+  s_70fb834a8f513b::t_b603c721fcec39 21-25,28-31,33-35,38-40,42,45-47,49-50,52-53,56-62,64-65,67-68,71-76,79-81,83-84,87-89,91-92,95-97,99-103,106-108,111-113,115-116,119-120,122-126,128-129,132-133,135,138-141,143-144,147-153,155-156,159-162,164-165,168-171,173,175-176,179-182,184-185,188-191,193-200,203-207,209-210,212-215,218-220,222-223,225-235,237-238,240-241,244-246,248-249,252-256,258-260,263-266,268-270,272-273,275-276,279-282,284-285,288-291,293-302,305-307,309-312,315-317,320-321,323,326-328,330-331,334-336,338-339,342-344,346-350,353-359,361-363
+docs/hooks/nav_titles.py
+  s_70fb834a8f513b::t_b603c721fcec39 62-65,134-135,155-156
+tests/SIT/cases/models/configs/GLM/GLM-5.1-W8A8C8-A3_3.5k_1.5k_0_20.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-94
+tests/ut/tools/bisect/test_build_manager.py
+  s_70fb834a8f513b::t_b603c721fcec39 46,48
+tests/ut/patch/worker/test_deepseek_pp_embedding.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-162
+.github/workflows/schedule_nightly_test_310p.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 23-29,148-194
+tests/SIT/cases/models/configs/GLM/GLM_5_1_PD_in32k_bs20-90.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-334
+tests/ut/distributed/ascend_store/test_pool_scheduler.py
+  s_70fb834a8f513b::t_b603c721fcec39 43,46,55,62-68,72-85,89,115,143,181-185,191-193,196-200,204-209,219,221,226-248,267,302,341,353-367,389,428,437,1093-1119,1121-1148,1150-1190,1192-1199,1340-1341,1368-1370,1373-1374,1378,1382,1386,1390,1394,1413,1427-1429,1441,1452-1454,1459,1462,1473,1479,1496-1497,1520,1541,1543,1547,1558-1561,1563-1565,1662,1697,1704-1717,1840
+tests/ut/distributed/ec_transfer/test_mooncake_transfer.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-2,11-19,22-26,29,38-43
+docs/source/tutorials/models/GLM5.3-Flash.md
+  s_70fb834a8f513b::t_b603c721fcec39 1-2,17-26,33-38,153-160,165,189,209-212,214,249-251,255,264,267,271-275,277-278,292,313,336-337,339-340,363,412,483,496-517,523,527,545-552,560-561,579-580,582,588,590-592,595,603,609-612,619-621,625,627-628,634,636-637,649-650,652,660-662,665,673,679-682,689,694,696-701,709-711,723,740,756-761,768,770-771,773-788,790,799-800,811,818,824,838,851,853-854,858,860,863,870-873,880,887-888,915,932,934,937,943,948,958-959,964-965,979,988,1003-1005,1009-1032,1039,1072,1083-1084,1091,1097,1105,1114,1124-1128,1137-1138,1177-1178,1189-1190,1207,1219,1226,1237,1252-1253,1258,1264-1276,1284-1285,1388-1390,1397,1399-1402,1404-1410,1412-1413,1432-1436,1445-1550,1555-1565,1622,1651,1656,1665-1666,1697,1731,1752-1776,1799-1803,1805-1809,1811-1816,1818,1820-1824,1826-1840,1843-1858,1860-1869,1871-1881,1885-1890,1893,1895-1898,1900,1902-1904,1907-1928,1931-1943,1946-1948,1951-1972,1975-1987,1990-2022,2029-2030,2070,2076,2085,2102-2103,2108-2110,2113,2118-2120,2122-2123,2135-2139
+  s_70fb834a8f513b::t_0eea64aad68322 2140
+tests/ut/attention/test_dsv4_compressor_metadata_cache.py
+  s_70fb834a8f513b::t_b603c721fcec39 10,22,41,69
+tests/SIT/cases/models/configs/DeepSeek/DeepSeek-V4-flash-w8a8-PD-no-prefix.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-208
+tests/SIT/cases/models/configs/Qwen/Qwen3.6_35B_27B_A3_acceptance_rate.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-91
+docs/source/getting_started/installation/install_vllm_ascend.inc.md
+  s_70fb834a8f513b::t_b603c721fcec39 132-133,153-154,176
+docs/source/locale/zh_CN/LC_MESSAGES/getting_started/installation/install_vllm_ascend.inc.po
+  s_70fb834a8f513b::t_b603c721fcec39 218-262
+.github/workflows/schedule_weekly_test_a2.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 75,250-251,253-261
+tests/SIT/cases/models/configs/Gemma/Gemma4_26B_A4B_W4A4_A5.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-67
+tests/ut/distributed/ascend_store/test_metadata.py
+  s_70fb834a8f513b::t_b603c721fcec39 24-28,45,54-71
+tests/ut/distributed/weight_transfer/test_hccl_engine.py
+  s_70fb834a8f513b::t_b603c721fcec39 11,26,224-228,267-283,324-330,333-336
+tests/SIT/cases/features/context_parallel/Qwen3-30B-A3B-VWN-eagle3-PCP.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-56
+tests/ut/spec_decode/test_dflash_model_loading.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-63
+tests/e2e/pull_request/two_card/rlhf/weight_transfer/ipc/test_glm_ipc.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-20
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/Qwen3.8-Flash-Next.po
+  s_70fb834a8f513b::t_b603c721fcec39 24-135,139-164,166,169-171,173-175,178-180,182-183,186-189,191-193,195-202,205-208,210-213,216-222,224-231,233-240,242-245,248-249,251-255,258-263,265-266,268-276,279-285,288-290,292-294,297-310,312-321,324-329,331-332,335-344,346-347,350-354,357-360,362-363,366-372,374-377,379-380,383-385,387-388,390-400,403-406,408-410,412-418,420-423,425-430,433-439,441-445,447-456,458-461,463-470,473-475,478-482,484-485,488-496,499-502,505-513,515-516,518-519,522-532,535-559,561-565,568-570,572-573,576-578,580-581,583-591,594-596,598-599,602-606,608-610,613-617,619-620,622-623,625-626,629-631,633-635,637-640,643-651,653-655,657-663,665-679,682-686,688-695,697-703,706-708,710-711,714-716,718-731,734-749,752-761,763-775,778-783,785-1373
+tools/bisect/build_analyzer/parser.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-31
+tests/ut/worker/test_mtp_pcp_speculator_v2.py
+  s_70fb834a8f513b::t_b603c721fcec39 7,14,24,26,31-33,41,156-169,171,173-180,183-185,198,200-204,208,214-253,261,265-269,272,277,279,284,290-454,484-485,555-577
+docs/source/developer_guide/Design_Documents/non_contiguous_kv_cache.md
+  s_70fb834a8f513b::t_b603c721fcec39 14-15,225
+release_notes/fragments/20718.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-6
+tests/ut/_tools/test_build_cache.py
+  s_70fb834a8f513b::t_b603c721fcec39 103,128,2100-2223
+tests/SIT/cases/models/configs/DeepSeek/DeepSeek_V4_Flash_K15_dspark_A5.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-121
+.github/TEST_README.md
+  s_70fb834a8f513b::t_b603c721fcec39 108-111,125,129-132
+tests/ut/core/test_batch_job_aware_scheduler.py
+  s_70fb834a8f513b::t_b603c721fcec39 633-685
+tests/ut/test_mrv2_utils.py
+  s_70fb834a8f513b::t_b603c721fcec39 26-27,30-31,35-36,38-39,42-43,45,48-49,51-52,55-56,58-60,62-63,70,75-78,85-86
+csrc/build_aclnn.sh
+  s_70fb834a8f513b::t_b603c721fcec39 125
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_prepare_dflash_inputs.py
+  s_70fb834a8f513b::t_b603c721fcec39 14
+tests/ut/models/test_glm5next_mtp_sp.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-145
+tests/ut/distributed/kv_transfer/kv_p2p/test_mooncake_connector.py
+  s_70fb834a8f513b::t_b603c721fcec39 21-27,62
+tests/ut/patch/worker/test_patch_deepseek_v2.py
+  s_70fb834a8f513b::t_b603c721fcec39 45,200,232
+release_notes/fragments/16292.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-4
+tests/SIT/cases/features/structured_output/assertions.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-51
+tests/ut/worker/test_pcp_manager_v2.py
+  s_70fb834a8f513b::t_b603c721fcec39 19,29,41,45-46,178,181-183,189-192,633-636,877-878,880,889-898,900,902-909,920,922-923,930,932,934,937-938,941-951,954-955,957-959,1058,1101-1103,1219,1241,1355-1561
+tools/bisect/build_analyzer/planner.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-1075
+docs/source/community/versioning_policy.md
+  s_70fb834a8f513b::t_b603c721fcec39 24-66
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_kimi_kda_fused_norm_gate.py
+  s_70fb834a8f513b::t_b603c721fcec39 202-305
+tests/SIT/cases/models/configs/GLM/GLM5_1-W8A8-A2-dual-nodes.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-92
+tests/ut/worker/test_routing_replay.py
+  s_70fb834a8f513b::t_b603c721fcec39 15
+tests/ut/worker/test_layerwise_kv_allocation.py
+  s_70fb834a8f513b::t_b603c721fcec39 18,65-66,69-71,73-85,87-93
+tests/ut/worker/test_model_runner_v2_mamba.py
+  s_70fb834a8f513b::t_b603c721fcec39 2,28,421,475-479,481-482,484-488,513-519,531,536-550,552-606,608-624,626-657,710-712,720-723,727,746,749,752-753,1071,1124,1192,1299-1387,1413-1452
+.github/workflows/misc/model_dataset_list.json
+  s_70fb834a8f513b::t_b603c721fcec39 591,611,634-640,718-727
+tests/SIT/cases/models/configs/Qwen/Prefix-Cache-Qwen3-32B-Int8.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-69
+tests/SIT/cases/models/configs/Kimi/Kimi-K3.1-Pro-W4A8-A3-1M-PD.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-368
+tests/SIT/cases/models/configs/DeepSeek/DeepSeek-V4-Flash-W8A8-A3-MRV2.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-75
+tests/SIT/cases/models/configs/GLM/GLM-5.2-W8A8C8-A3_64k_90_50.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-107
+release_notes/fragments/20826.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-4
+.github/workflows/schedule_nightly_test_a2.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 95,152-198,326,467,499,536-537,539-547
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_flash_attention_gate.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-132
+release_notes/fragments/20456.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-8
+csrc/attention/attn_res_fwd/op_kernel/arch35/attn_res_fwd_token_group.h
+  s_70fb834a8f513b::t_b603c721fcec39 1-460
+tests/SIT/cases/features/openai_api_compatibility/tests/test_role.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-65
+tests/e2e/nightly/single_node/ops/singlecard_ops/test_scatter_nd_update_sk.py
+  s_70fb834a8f513b::t_b603c721fcec39 11,30-74,311,327,331
+.github/workflows/_nightly_image_build.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 200-215,338-339,382,385-389,417-508
+tests/ut/ops/test_gdn_mixed_batch.py
+  s_70fb834a8f513b::t_b603c721fcec39 283-284,305-306,308-313,329-337,340-341,353-355,357,363,365-366,368-372,446-532
+tests/ut/_310p/test_model_runner_v2_310p.py
+  s_70fb834a8f513b::t_b603c721fcec39 22,31-32,199-201,542-600,678,682-688,693-986,991,996,1027-1028,1030,1037,1045,1050
+docs/source/developer_guide/Design_Documents/KV_Cache_Pool_Guide.md
+  s_70fb834a8f513b::t_b603c721fcec39 13
+tests/e2e/nightly/single_node/ops/singlecard_ops/test_quant_lightning_indexer_v2.py
+  s_70fb834a8f513b::t_b603c721fcec39 19-21,337-721
+tests/SIT/cases/models/configs/GLM/GLM-5.1-w8a8c8-MTP-offload-test-perf.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-66
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/configuration/additional_config.po
+  s_70fb834a8f513b::t_b603c721fcec39 1104-1106,1108-1116,1118-1119,1122-1126,1128-1130,1133-1134,1136,1138-1142,1145-1148,1151-1152,1154,1157-1160,1162-1163,1168-1172,1175,1180-1186,1189-1193,1195-1268,1271-1276,1278-1282
+csrc/attention/quant_lightning_indexer_v2_metadata/op_api/quant_lightning_indexer_v2_metadata.cpp
+  s_70fb834a8f513b::t_b603c721fcec39 31-36,39-41,48-51,54-55
+tests/ut/model_loader/rfork/test_rfork_planner.py
+  s_70fb834a8f513b::t_b603c721fcec39 4,8,120-243,245-291,293-296,298-302
+tests/ut/spec_decode/test_dspark_valid_kv_lengths.py
+  s_70fb834a8f513b::t_b603c721fcec39 23,27-28
+tests/e2e/pull_request/two_card/spec_decode/test_spec_decode.py
+  s_70fb834a8f513b::t_b603c721fcec39 30-31,164,168,180,203,206-214,221-222,226,230,233-256
+.github/workflows/dockerfiles/Dockerfile.nightly.a3
+  s_70fb834a8f513b::t_b603c721fcec39 26-27,44
+docs/source/user_guide/feature_guide/expert_parallelism_load_balancer.md
+  s_70fb834a8f513b::t_b603c721fcec39 24-27,29-30,40,47,68,204-206,269,279
+tests/SIT/cases/models/configs/GLM/GLM-5.2-W4A8C8-SFA-DCP.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-84
+tests/SIT/cases/models/configs/DeepSeek/DeepSeek-R1-W8A8-EPLB.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-204
+release_notes/fragments/19460.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-6
+csrc/mc2/dispatch_ffn_combine_w4_a8/op_kernel/dispatch_ffn_combine_w4_a8_kernel.hpp
+  s_70fb834a8f513b::t_b603c721fcec39 585-588,640-641,1043-1047,1063,1070
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_msa_m3_index_topk.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-130
+tests/SIT/cases/features/openai_api_compatibility/tests/test_temperature.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-35
+release_notes/fragments/19780.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-9
+tests/e2e/pull_request/one_card/test_eplb_map_to_physical_npu.py
+  s_70fb834a8f513b::t_b603c721fcec39 4-6,9,13-32
+  s_70fb834a8f513b::t_0cc57d48c9b56b 33-34
+tests/SIT/cases/models/configs/GLM/GLM-5.2-W8A8C8-MTP-A5-dual-nodes.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-104
+tests/ut/patch/worker/test_patch_dspark_pp.py
+  s_70fb834a8f513b::t_b603c721fcec39 9,13,17,20,35,61
+tests/ut/attention/test_mla_pcp_dcp.py
+  s_70fb834a8f513b::t_b603c721fcec39 7,9,11-60,215,231,269,298-303,306,323,354-358,395-397,436-540
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/feature_guide/mooncake_hybrid_attention.po
+  s_70fb834a8f513b::t_b603c721fcec39 24-26,28-31,33-34,37-39,41-42,44-49,51-52,55-57,59-64,67-68,70-106,108-111,113-116,119-121,123-131,133-134,137-140,142-151,154-158,160-163,166-176,178-185,187-188,190-191,193-197,200-204,206-212,215-219,221-239,241-245,247-255,258-261,263-265,267-271,274-275,277-278,281-284,286-293,295-305,307-323,325-352,354-361
+tests/ut/models/test_d3_registration.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-44
+csrc/attention/quant_lightning_indexer_v2/op_kernel/arch22/quant_lightning_indexer_v2_service_vector_arch22.h
+  s_70fb834a8f513b::t_b603c721fcec39 61-62,77,118,140-143,227-233,259,266-270,292-295,302-303,309,353-361,378,383-391,400-408,417-425,434-442,451-459,469-477,486-494,503-511,642,653-661,664-672,675-683,686-694,697-705,708-716,727-735,738-746,749-757,760-768,771-779,794-803,808-816,819-827,830-838,841-849,852-860,863-871,874-882,885-893,896-904,907-915,956,961,1021,1028-1029,1031,1035,1053,1055-1064,1069-1080,1143-1149,1156-1166,1168-1176,1180,1184-1188,1190-1191,1194-1199,1202,1207-1216,1226,1231,1234,1241,1243-1244,1253-1254,1256,1269-1270,1278-1279,1310-1313,1325-1326,1328,1335-1338,1341-1347,1349-1352,1360-1362,1365,1373-1375,1382-1385,1396-1398,1402,1406-1407,1409,1413,1418-1428,1431-1436,1443-1446
+tests/SIT/cases/models/configs/Qwen/Qwen3.5-27B-w8a8-A3.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-73
+docs/source/locale/zh_CN/LC_MESSAGES/user_guide/release_notes.po
+  s_70fb834a8f513b::t_b603c721fcec39 4836-5151
+tests/SIT/cases/models/configs/DeepSeek/DeepSeek-V4-Pro-w4a8-1M-PD.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-317
+.github/workflows/scripts/check_md_links.py
+  s_70fb834a8f513b::t_b603c721fcec39 2,4-5,8-9,11-24,26,28-29,32-98,100-102,106-123,125-153,156-161,163-274,276-365,367-415,417-419,422-448,452
+tests/ut/distributed/ec_transfer/test_mooncake_async_store_get.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-282
+release_notes/fragments/19361.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-7
+release_notes/fragments/20002.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-8
+docs/source/locale/zh_CN/LC_MESSAGES/index.po
+  s_70fb834a8f513b::t_b603c721fcec39 87-91
+tests/ut/kv_offload/mooncake_v2/test_base_worker.py
+  s_70fb834a8f513b::t_b603c721fcec39 36,107,195,285,306-307,350,375,396
+tests/e2e/pull_request/one_card/_310p/test_embedding_310p.py
+  s_70fb834a8f513b::t_b603c721fcec39 66-67
+tests/ut/models/test_deepseek_v41_decoder_replay_state.py
+  s_70fb834a8f513b::t_b603c721fcec39 419-443,449,451
+tests/ut/models/test_glm5next_kpool_model_backend.py
+  s_70fb834a8f513b::t_b603c721fcec39 5,7,14,27-29,42-64,216,260-316,511,528,530,542,578-579,584,591,601,620,624,626-634,641-644,647,689-706,717-729,734-737,742-745,748-749,756,759-880
+docs/source/user_guide/feature_guide/rfork.md
+  s_70fb834a8f513b::t_b603c721fcec39 14-64,70,76,87-142,154-159,165,168-171,176,178,195-227,242-243,260-353,356-378,380-382,386-548
+csrc/attention/quant_lightning_indexer_v2_metadata/op_kernel_aicpu/quant_lightning_indexer_v2_metadata_aicpu.h
+  s_70fb834a8f513b::t_b603c721fcec39 27,176,233,243,285,305-310,332
+tests/ut/attention/test_sfa_dcp.py
+  s_70fb834a8f513b::t_b603c721fcec39 2,7-8,12,14-21,24-27,30-34,37-40,43-45
+docs/source/locale/zh_CN/LC_MESSAGES/developer_guide/Design_Documents/model_runner_v2_eplb.po
+  s_70fb834a8f513b::t_b603c721fcec39 345-408
+tests/ut/test_rlhf_server_logging.py
+  s_70fb834a8f513b::t_b603c721fcec39 7
+.pre-commit-config.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 56,62-63
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/Minitron-8B-Base.po
+  s_70fb834a8f513b::t_b603c721fcec39 25-28,30-31
+tests/SIT/cases/features/openai_api_compatibility/tests/test_max_completion_tokens.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-39
+tests/ut/core/test_paired_sfa_cache.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-226
+tests/ut/worker/v2/test_speculator.py
+  s_70fb834a8f513b::t_b603c721fcec39 1,11,34,246-247,251-253,255-258,262-275,416,418,485,524,544-546,578,581,607,610-612,624-625,694,789-811
+tests/ut/compilation/test_acl_graph.py
+  s_70fb834a8f513b::t_b603c721fcec39 139-141,223-263
+  s_70fb834a8f513b::t_b5ab7b451b6233 264
+tests/ut/attention/test_dsa_v1.py
+  s_70fb834a8f513b::t_b603c721fcec39 254,1750-1752
+csrc/attention/kv_quant_sparse_flash_attention_vllm/README.md
+  s_70fb834a8f513b::t_b603c721fcec39 3-15,64,309
+tests/SIT/cases/models/configs/Qwen/Qwen3-30B-QuaRot-eagle3.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-42
+tests/ut/worker/test_lmhead_mc2_dp_sync.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-73
+tests/ut/model_executor/test_glm_mla_dspark.py
+  s_70fb834a8f513b::t_b603c721fcec39 77-82,110-113
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/gpt-oss-120b.po
+  s_70fb834a8f513b::t_b603c721fcec39 25-33
+tests/SIT/cases/features/kv_pool/test_kvpp_mooncake_layerwise.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-92
+tests/SIT/cases/models/configs/Qwen/Qwen3.6-27B-W8A8-310P-300I-DUO.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-53
+csrc/attention/quant_lightning_indexer_v2/op_kernel/arch35/quant_lightning_indexer_v2_common_arch35.h
+  s_70fb834a8f513b::t_b603c721fcec39 17,84,169-188,212-216
+docs/source/user_guide/feature_guide/mooncake_layerwise_adaptation_and_optimization.md
+  s_70fb834a8f513b::t_b603c721fcec39 1,3,5-8,10-12,14-16,18,20-22,24,26-34,36-37,39,41,43-44,47-50,53-56,58-61,63,65-68,70-73,75,77-80,82-85,87,89,91-95,97,99-101,104-106,108,110-113,115,117-129,131,133-145,147-149,151-155,157-160,162,164,167-173,177-212
+tests/ut/attention/test_attention_v1.py
+  s_70fb834a8f513b::t_b603c721fcec39 846-860
+  s_70fb834a8f513b::t_f4ac83cf09b0c9 861
+tests/ut/distributed/eplb/test_state.py
+  s_70fb834a8f513b::t_b603c721fcec39 206-264,283-309,360-361
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/Qwen3.6-35B-A3B.po
+  s_70fb834a8f513b::t_b603c721fcec39 346-673
+.github/workflows/nightly_image_build.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 25-26
+tests/ut/patch/worker/test_patch_step3p5.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-145
+tests/SIT/cases/models/configs/GLM/GLM-5.1-W8A8C8-3.5k-1.5k-0-20-PD.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-338
+tests/SIT/cases/features/openai_api_compatibility/tests/test_top_p.py
+  s_70fb834a8f513b::t_b603c721fcec39 1-31
+tests/ut/device_allocator/test_camem.py
+  s_70fb834a8f513b::t_b603c721fcec39 115-116,311-329
+  s_70fb834a8f513b::t_50bd624ae27aa4 330
+tests/SIT/cases/models/configs/GLM/GLM5_1-W8A8-A3-dual-nodes.yaml
+  s_70fb834a8f513b::t_b603c721fcec39 1-104
+tests/ut/distributed/ascend_store/test_mooncake_layerwise.py
+  s_70fb834a8f513b::t_b603c721fcec39 197,199,205
+tests/ut/distributed/kv_transfer/test_mooncake_transfer_engine.py
+  s_70fb834a8f513b::t_b603c721fcec39 173,198
+tools/bisect/BUILD_RECIPE.md
+  s_70fb834a8f513b::t_8eb9d61e3751f6 1-116
+tools/bisect/README.md
+  s_70fb834a8f513b::t_7c97784a8396f7 62-69
+tools/bisect/USAGE_zh.md
+  s_70fb834a8f513b::t_80daacab1eb3c8 21,158-159,350-364
+tools/bisect/build_analyzer/registry_image.py
+  s_70fb834a8f513b::t_cb18d351709207 15-41,43-315
+tools/bisect/build_analyzer/replay_cleanup.py
+  s_70fb834a8f513b::t_9a179a9c383fd8 13-130
+tools/bisect/build_analyzer/requirements.txt
+  s_70fb834a8f513b::t_529680c76a779e 1-3
+tools/bisect/build_analyzer/semantics.py
+  s_70fb834a8f513b::t_eeda356bc44f1f 1,13-208,210-312,314-339,341-351,353-364,366-379,381-525,527-586,588-634
+tools/bisect/build_analyzer/sources.py
+  s_70fb834a8f513b::t_da8cd6a14d7a57 1,13,15-23,25-26,28-31,34-66,68-87,89-101,103-159,161-175,177-209,211-221,223,225-229,231-238,240-253,255-275,277-333
+tools/bisect/build_analyzer/syntax.py
+  s_70fb834a8f513b::t_c1e485fa26e564 1-134
+tools/bisect/build_diff.py
+  s_70fb834a8f513b::t_d3455a8a84bd45 1-57
+tools/bisect/build_ir.py
+  s_70fb834a8f513b::t_dd745b23ba2a07 1-43
+tools/bisect/build_manager.py
+  s_70fb834a8f513b::t_504241589abccf 23,29,31-33,35,38-39,41-59,66,76,105-180,184-195,197,205-208,215-220,223,228-232,252-255,257-300,304-309,314-324,326,328-535,550-565,567,569,571-573,575-576,579-583,585-588,590,593-595,640-644
+tools/bisect/build_manifest.py
+  s_70fb834a8f513b::t_68c21386d8d1ef 1,6-27,29-42,44-69,71-76,78-103
+tools/bisect/build_recipe.py
+  s_70fb834a8f513b::t_57a1e3d580d213 15-220
+tools/bisect/config.py
+  s_70fb834a8f513b::t_0cecdcd371bd33 168-169,182-183
+tools/bisect/coordinator.py
+  s_70fb834a8f513b::t_f6c0de8a176475 25,130-145
+tools/bisect/pairing.py
+  s_70fb834a8f513b::t_44d77c3640895c 1,3,6-7,9-11,14-27,30-38,40-44,46-52,54-74,76-81,83-85,87-103
+tools/bisect/process_output.py
+  s_70fb834a8f513b::t_4649c5ba6f0151 12,15,17-22,25-44,46-53,55-79
+tools/bisect/report.py
+  s_70fb834a8f513b::t_06937788754332 89,99
+tools/bisect/runner.py
+  s_70fb834a8f513b::t_ab25c3791782f0 49,51,139,166-167,177-189,197,210,214,253,255,265-269,292-298,317,324,328
+tools/bisect/tool_env.py
+  s_70fb834a8f513b::t_47d4f5ce055fc9 1-64
+tools/bisect/version_compat.py
+  s_70fb834a8f513b::t_8d66a5b92ad66a 31,38,50-51,153,156-157,196,215-220,224-226,236-238,250,253-273,282,289,291-292,299-303,315-322,343,357-363,366-367,380-382
+tools/bisect/worker_agent.py
+  s_70fb834a8f513b::t_9ae0aca574b9ba 41-43,45,122-124,126,144,147
+tools/generate_zh_docs.py
+  s_70fb834a8f513b::t_1b9895b9cbfbf7 168-170,197-202,259-260,267,290
+vllm_ascend/_310p/fused_moe/fused_moe.py
+  s_70fb834a8f513b::t_d895b69b2ec7fb 33,143-144,189-190
+vllm_ascend/_310p/fused_moe/shared_experts.py
+  s_70fb834a8f513b::t_e66f45aa6c0e22 1-101
+vllm_ascend/_310p/ops/gdn_attn_builder_310.py
+  s_70fb834a8f513b::t_996a5b266fbc03 42-47,64-67
+vllm_ascend/_310p/worker/v2/model_runner.py
+  s_70fb834a8f513b::t_49eb8fadb0f0cc 57,156-163,1301-1318,1335-1338,1373,1377-1378,1397-1400,1412
+vllm_ascend/_310p/worker/v2/model_state.py
+  s_70fb834a8f513b::t_18333ec2dbbd07 29,142-147,181-207
+vllm_ascend/_310p/worker/v2/rejection_sampler.py
+  s_70fb834a8f513b::t_8f4c0049d222a8 17,28,67-108,119-122,127-128,166-172,175,199-200,239-246,257
+vllm_ascend/_310p/worker/v2/sample/__init__.py
+  s_70fb834a8f513b::t_cdcf0b7f646218 1-23
+vllm_ascend/_310p/worker/v2/sample/bad_words.py
+  s_70fb834a8f513b::t_6e7dc87fc5eb73 2-4,6,8,10-11,14,16-29,31-47
+vllm_ascend/_310p/worker/v2/sample/dispatch.py
+  s_70fb834a8f513b::t_5218402e8acdfc 1-112
+vllm_ascend/_310p/worker/v2/sample/logit_bias.py
+  s_70fb834a8f513b::t_a4946ed71c607e 1-56
+vllm_ascend/_310p/worker/v2/sample/logprob.py
+  s_70fb834a8f513b::t_0d20777ad7339a 1-27
+vllm_ascend/_310p/worker/v2/sample/min_p.py
+  s_70fb834a8f513b::t_5166ee2c03122d 2-3,5,10-21
+vllm_ascend/_310p/worker/v2/sample/penalties.py
+  s_70fb834a8f513b::t_5643624238a1f1 2-4,8,10,12-75
+vllm_ascend/_310p/worker/v2/sample/temperature.py
+  s_70fb834a8f513b::t_fb9e91bff3cb46 2-3,5,7,10-22
+vllm_ascend/_310p/worker/v2/sample_utils.py
+  s_70fb834a8f513b::t_ab2b7caa9fb653 5-6,19-23,31-33
+vllm_ascend/_310p/worker/v2/sampler.py
+  s_70fb834a8f513b::t_531143500a0275 15,20-21,24-35,48,58,60-61,63,81-84,94-97,104-107,113-125,145-148,173-200,216-227,237,251-253,260-264,270-362,368-369,371,373-374,380,383-385,402,410-418,422-424,427,433-434,437,440-442,457-460,465
+vllm_ascend/_310p/worker/v2/spec_decode/aclgraph.py
+  s_70fb834a8f513b::t_c88ce4c5c29c9a 22,48-50,88,110,148,168-169,213-214,272-281
+vllm_ascend/_310p/worker/v2/spec_utils.py
+  s_70fb834a8f513b::t_a397d289e853b1 374
+vllm_ascend/_310p/worker_310p.py
+  s_70fb834a8f513b::t_8f1cd751d9a870 27-29,31,52,54-55
+vllm_ascend/ascend_config.py
+  s_70fb834a8f513b::t_22b261fadb2685 23-25,360-364,408-451,519,568-571,672-681,694-697,716,728-730,763-766,768-772,774-778,795,822-827,877-888,1010-1019,1026,1032,1034-1036,1104-1133,1174-1200,1204-1205,1208-1211,1215-1216,1220-1221,1223,1229-1231,1235,1240-1242,1249-1252,1255-1261,1265,1267-1272,1274,1278-1291,1333,1348,1353-1362,1897-1913,2068
+vllm_ascend/ascend_forward_context.py
+  s_70fb834a8f513b::t_e3f4e109ee9ebb 373-379,381
+vllm_ascend/attention/attention_v1.py
+  s_70fb834a8f513b::t_b266ebc73d09b0 578-586,598,661-681,697,1002-1021,1413-1417
+vllm_ascend/attention/context_parallel/attention_cp.py
+  s_70fb834a8f513b::t_eec1f5f666be73 25,136-141,412-416
+vllm_ascend/attention/context_parallel/common_cp.py
+  s_70fb834a8f513b::t_65d8b527da1765 7,9,13-33
+vllm_ascend/attention/context_parallel/dsa_v41_cp.py
+  s_70fb834a8f513b::t_6b570de09a8bd4 5,14,20-21,23,44-45,54,159,162-183,220,225-229,280-337,357-380,384-408,410-417,419-423,427,430-438,447-452,454-459,471-505,537-543
+vllm_ascend/attention/context_parallel/mla_cp.py
+  s_70fb834a8f513b::t_59a9e7ab1e042c 21,66,122-133,208-209,216,219-221,233-236,248-250,282,359-361,554-558,1131,1140,1147,1173,1193
+vllm_ascend/attention/context_parallel/sfa_cp.py
+  s_70fb834a8f513b::t_03b19165ce64e4 3,19-20,25,28,37,45,51,78-80,128,134,136-137,140,143,151,197-212,217,358-360,554-555,558-560,562-569,584-626,696,699,707-715,718-731,759,761,767,776-782,792,813,815-825,854,930,932,957-958,966-978,989-990,996,1001-1003,1009
+vllm_ascend/attention/context_parallel/sfa_dcp_utils.py
+  s_70fb834a8f513b::t_7e53b8442ab699 1,3-4,13-24,59-64,69-70,73-84
+vllm_ascend/attention/context_parallel/sharded_indexer.py
+  s_70fb834a8f513b::t_49cccbd8fc847b 1-65
+vllm_ascend/attention/dsa_v1.py
+  s_70fb834a8f513b::t_dca7418538a42b 548,596,1456,1490-1492,1496-1505,1507-1516,1521-1546,1778-1779,1787-1789,1820,2871
+vllm_ascend/attention/dsa_v41.py
+  s_70fb834a8f513b::t_0a3d0cd1fd1f75 88-118,849-852,876-883,1041,1043-1049,1051-1053,1055-1078,1080,1083,1085-1135,1138-1139,1141-1142,1148-1151,1153,1158,1160-1164,1166-1167,1170-1171,1173,1177-1180,1182,1185,1189-1190,1192-1207,1209-1215,1219-1225,1228,1230-1237,1239,1242,1244-1247,1249-1251,1254-1257,1259-1261,1264-1267,1274-1278,1280,1282-1285,1288,1290,1293,1297,1299-1300,1302-1305,1323,1326-1327,1329,1335-1446,1448-1507,1509-1510,1524,1536-1537,1544,1546-1547,1551,1558-1559,1562,1565-1567,1570,1572-1573,1581-1582,1589-1633,1641,1647-1648,1651,1656-1657,1659,1667,1683-1684,1686,1688,1692,1696-1698,1705-1706,1708-1735,1772-1803,1823-1837
+vllm_ascend/attention/fa_v1.py
+  s_70fb834a8f513b::t_444a21521c155d 6,9,56-75,86-101,107-109,156
+vllm_ascend/attention/indexer.py
+  s_70fb834a8f513b::t_322e8b3af44528 1-2,4,13-14,40,43,46,53,56-74,103-105,120-127,231-232,253,267-285,295-298,313-374,387-392,402-417,423,431-432,440-441,443-444,455-456,458-459,462,468-470,474-476,482,488,502-514,516-519,521-525,561-564,566-595,597-617,619-621,623-630,658,662,672-681,688-833,837-896,937,946,954,957-960,971-973,979-980,983,986,990,995,1215-1270,1349-1392,1424,1431-1478,1497,1506-1513,1518-1520,1522-1524
+vllm_ascend/attention/indexer_kpool.py
+  s_70fb834a8f513b::t_8543351d4449de 5,13,17-22,24,41-42,46-197,235-236,301-303,315-399,465,649,752-753,814-830,850-853,856,866,874-876,878-908,914,928-929,940-948,951-953,963,976-977,984-991,1003,1036-1042,1095,1112-1131,1133,1137-1140,1147-1151
+vllm_ascend/attention/mla_v1.py
+  s_70fb834a8f513b::t_d7046b43c75f7f 3,9,11,16,78,156,655-656,666,668,671-672,675,677-696,963-964,968-982,999-1002,1033-1035,1052,1221,1270,1273-1276,1356-1357,2047-2048,2052,3136-3138,3216-3218,3220-3223,3225,3227-3242,3469
+vllm_ascend/attention/sfa_kv_offload.py
+  s_70fb834a8f513b::t_133e520e1ecf93 862-863,865
+vllm_ascend/attention/sfa_v1.py
+  s_70fb834a8f513b::t_ad24596221af33 3,7,10,60,62-63,74-75,81,377-382,384-387,405-406,408-409,501-506,541,674,767-770,819,837-840,844-845,900-926,986,989-990,1014-1016,1042-1047,1104-1111,1263-1264,1274-1348,1353,1384,1401,1518-1523,1558,1576,1764,1769,1772-1783,1785-1810,1812-1844,1847-1857,1863-1867,1875-1877,1986-2010,2048-2050,2074,2085-2091,2093-2095,2104,2113,2117-2120,2142-2153,2158,2160-2162,2185-2186,2188,2194,2226-2228,2245,2254-2255,2286,2290
+vllm_ascend/attention/sparse_flash_mla.py
+  s_70fb834a8f513b::t_098cb7c9560450 81-96,103-124
+vllm_ascend/attention/utils.py
+  s_70fb834a8f513b::t_ecee9f1458678f 16,261
+vllm_ascend/compilation/acl_graph.py
+  s_70fb834a8f513b::t_fa3461396a4d23 19,70-73,161-164
+vllm_ascend/core/batch_job_aware_scheduler.py
+  s_70fb834a8f513b::t_fd170674d02f27 450-451
+vllm_ascend/core/dyntra_lb_scheduler.py
+  s_70fb834a8f513b::t_522ed9de2a5bff 435-436,598-603,1004-1006,1172-1173
+vllm_ascend/core/kv_cache_config_builder.py
+  s_70fb834a8f513b::t_6bfe8aaf222c4b 2-14,17-29,31-36,39,42-44,48-49,53-104,110-113,115-320
+vllm_ascend/core/kv_cache_interface.py
+  s_70fb834a8f513b::t_0643cba09dd009 199-201,218-227,295-298,317,320-321,329-345,353,362,371,387,481-483,487-488,501-508,512,520,522-523,547
+vllm_ascend/core/recompute_scheduler.py
+  s_70fb834a8f513b::t_b6cbbf3d7c3852 435-440
+vllm_ascend/core/scheduler_profiling_chunk.py
+  s_70fb834a8f513b::t_7501d714f75503 91-97,536-541
+vllm_ascend/device/device_config.py
+  s_70fb834a8f513b::t_64c3ee7183957e 51
+vllm_ascend/device/device_op.py
+  s_70fb834a8f513b::t_9a7fdb2e2641e9 43-45,54-182,637,652-653,666,672-683,702-712,735,737-771,773,775,1152-1153,1723-1843
+vllm_ascend/device/hardware_profile.py
+  s_70fb834a8f513b::t_bb4199e6c095a4 71-74,104-108,129-134,159-160,167-168,263-269,307-310,319-323,332-333,349,378,394,407-408,417,423,429
+vllm_ascend/device_allocator/camem.py
+  s_70fb834a8f513b::t_a37574b3830ca7 306
+vllm_ascend/distributed/device_communicators/npu_communicator.py
+  s_70fb834a8f513b::t_90e7f8d9a7cf5a 21-26,69-90
+vllm_ascend/distributed/device_communicators/quantized_all_reduce.py
+  s_70fb834a8f513b::t_a509cdf1437e34 2-3,16-55,57-60,63-65,69-151
+vllm_ascend/distributed/ec_transfer/ec_connector/mooncake/async_store_get.py
+  s_70fb834a8f513b::t_6a7fa02a310b6d 1-4,7-72,75-77,79-80,84-85,87-88,91-113,115-116,118-134,136-143,145-146,148-174,176-222,224-233
+vllm_ascend/distributed/ec_transfer/ec_connector/mooncake/connector.py
+  s_70fb834a8f513b::t_bcce592c77e2cd 18-20,37,44
+vllm_ascend/distributed/ec_transfer/ec_connector/mooncake/memory.py
+  s_70fb834a8f513b::t_68afbcc1bf7b29 9-11,26,29-30,36-37,64-66,68,83,88,104,107,110-111,114-116,118-123,125-126,128-151,154,156-192,198,202-276,278-284,286-288,290-295,297-328
+vllm_ascend/distributed/ec_transfer/ec_connector/mooncake/scheduler.py
+  s_70fb834a8f513b::t_46596c51dfa0bb 2-107,109-166,168-169,172-182
+vllm_ascend/distributed/ec_transfer/ec_connector/mooncake/store_backend.py
+  s_70fb834a8f513b::t_c4ef11b8a2f430 1,3,5,7-13,15-42,44-49,52-53,55-57,59-62,65-107,109-113,115-163,166-254,256-280,282-316,318,320-337,339-414
+vllm_ascend/distributed/ec_transfer/ec_connector/mooncake/store_client.py
+  s_70fb834a8f513b::t_81fa9f6fe794b2 1-13,15-16,18-26,28-34,37-41,45-57,59-75,77-80,82,84-98,100-111,113-142,144-176,178-181,183,185-188,190-194,196,198-212,214-218,220-264,266,268-321,323-334,336-346,348-374,376-380,382-450,452-459
+vllm_ascend/distributed/ec_transfer/ec_connector/mooncake/transfer.py
+  s_70fb834a8f513b::t_cfd28441854c82 24,29,32,35,37,39-50
+vllm_ascend/distributed/ec_transfer/ec_connector/mooncake/worker.py
+  s_70fb834a8f513b::t_f9337740fb61aa 8,11,13,25,38-43,48-52,57-63,74-76,80,107-108,110-144,150,152-153,155-158,160-167,169-170,172,176,182-183,185-187,189,191,193-200,202-212,214-218,220-241,243,245-300,302-309,311-328,331-332,334-358,360-449,451,455-459,461-462,465,470-471,477,482,484,487-489,492-527,529-589,591-615,617-714,716-722,724,726,728-750,766-771,780-807
+vllm_ascend/distributed/eplb/eplb_communicator.py
+  s_70fb834a8f513b::t_28472def6f5f27 577-585
+vllm_ascend/distributed/eplb/eplb_state.py
+  s_70fb834a8f513b::t_977bbcad052e41 44-47,132-145,147-161,235-237,311-318,763-765
+vllm_ascend/distributed/kv_transfer/__init__.py
+  s_70fb834a8f513b::t_4cb22a57a1cf48 103-108
+vllm_ascend/distributed/kv_transfer/ascend_multi_connector.py
+  s_70fb834a8f513b::t_babfee6b85907b 131-132,136-141
+vllm_ascend/distributed/kv_transfer/kv_p2p/mooncake/__init__.py
+  s_70fb834a8f513b::t_cdc7bf69641711 15,27-32,48-50
+vllm_ascend/distributed/kv_transfer/kv_p2p/mooncake/base_scheduler.py
+  s_70fb834a8f513b::t_49a4d4becdb96d 5,9,18,26-27,34-41,49-359,531-533,550-567
+vllm_ascend/distributed/kv_transfer/kv_p2p/mooncake/base_worker.py
+  s_70fb834a8f513b::t_3a7020c99737ee 25,29,41,107-315,377-380,525,606-608,622,632
+vllm_ascend/distributed/kv_transfer/kv_p2p/mooncake/connector.py
+  s_70fb834a8f513b::t_b653d7665f5f17 10,52-53,238,261,269-292
+vllm_ascend/distributed/kv_transfer/kv_p2p/mooncake/heartbeat.py
+  s_70fb834a8f513b::t_f5aa043e5165fe 1-3,6-70,72-129,131-132,135-148,152-154
+vllm_ascend/distributed/kv_transfer/kv_p2p/mooncake/metadata.py
+  s_70fb834a8f513b::t_eed5ef35557602 27-28,38-40,45-46,48-51,110-111,121,156-188,194-199,226-264,273-274
+vllm_ascend/distributed/kv_transfer/kv_p2p/mooncake/pull_scheduler.py
+  s_70fb834a8f513b::t_afcd1d87cc2cda 9,14,27,29-34,54-55,58,73,75,77-79,83-86,88,90-103,121,159-163,177,183-184,188-197,326-332,335-340,347-387,390-391,400,421,474-475,511,513-517,524-543,562,566,577,588-589
+vllm_ascend/distributed/kv_transfer/kv_p2p/mooncake/pull_worker.py
+  s_70fb834a8f513b::t_6f2b455468bf01 34,52,343,552,624,662-671,698,706,708,756,758,765,810-832,834-869,872,875,883,886-887
+vllm_ascend/distributed/kv_transfer/kv_p2p/mooncake/push_scheduler.py
+  s_70fb834a8f513b::t_dffce4a2c8eb36 1-3,5-8,10-15,17-26,28-33,36-90,93-99,101-124,126-127,129-168,170-180,182-192,194-195,197-246,248-284
+vllm_ascend/distributed/kv_transfer/kv_p2p/mooncake/push_worker.py
+  s_70fb834a8f513b::t_b65824ca4ca1d6 2-10,13,15-254,256-306,308-362,364-368,370-443,445-462,464-495,497-516,518-572,575-610,613-618,620-626,628-742,744-746,748-845,847-912
+vllm_ascend/distributed/kv_transfer/kv_p2p/mooncake/utils.py
+  s_70fb834a8f513b::t_2e124507e01ebb 7,9,13,17,22,39-125
+vllm_ascend/distributed/kv_transfer/kv_p2p/sfa_pd_rd2h/send_thread.py
+  s_70fb834a8f513b::t_55a80db2a1cdbf 79,86,159
+vllm_ascend/distributed/kv_transfer/kv_p2p/sfa_pd_rd2h/worker.py
+  s_70fb834a8f513b::t_c405825e013663 863
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/ascend_store_connector.py
+  s_70fb834a8f513b::t_026cd015492fc0 47,54,57,65,74,129-135,179-180,219,227,349,351-352,355,415-416,420-425,452,524-526
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/backend/__init__.py
+  s_70fb834a8f513b::t_23b86248a70949 18,39-49
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/backend/layerwise_keys.py
+  s_70fb834a8f513b::t_ad77dc4d60d9ed 7,13,15-23,26-27,29,31
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/backend/memcache_backend.py
+  s_70fb834a8f513b::t_8569782f71a9cd 21,158-161,166
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/backend/mooncake_backend.py
+  s_70fb834a8f513b::t_ed350af00ba0cc 30,328,332,338-341,370,375
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/dspark_prefix_layout.py
+  s_70fb834a8f513b::t_aa99ed4cd139f3 1-26
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/in_flight_save_blocks.py
+  s_70fb834a8f513b::t_f0e0b4aaae8a61 1-2,4,7-8,10-16,18-32,34-52,55-63,65-66
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/kv_transfer.py
+  s_70fb834a8f513b::t_407afc54ef6c1c 468,482,825-830,838-839
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/layerwise/pool_scheduler.py
+  s_70fb834a8f513b::t_8a91310d87d6af 11,21-22,26,28,31,39,43-47,53-56,71-79,81-96,98,100-129,144,310-311,318-321
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/layerwise/pool_worker.py
+  s_70fb834a8f513b::t_8edb4e715dd4b1 78,102,110-123,590-602,718-729,770,1982-1985,1987
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/lookup_key.py
+  s_70fb834a8f513b::t_4ed50d40feb1db 21,115
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/metadata.py
+  s_70fb834a8f513b::t_9b6d3a8bfbb2bc 15,280-297
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/pool_scheduler.py
+  s_70fb834a8f513b::t_9964bf57e95c27 2,20,23,49-51,55,62-63,89,129,144-145,298-299,305,319-323,325-333,335,359-360,363,366-368,385-386,537,546,617,621,627,665,668-689,693-695,698,701-703,726,736,740,755-813
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/pool_worker.py
+  s_70fb834a8f513b::t_d7e1eb40ada72e 7,21,28,58,74-75,77-78,90,109-114,118-137,223,337-339,419,662-688,691-696,703-712,751,774,826-839,841-842,844-851,853-860,862-866,868-870,873-912,914,916-920,922-933,935-936,938-939,941-943,945-968,970-973,975-977,979,981-1014,1016-1021,1023-1032,1034-1044,1046-1059,1061-1064,1066,1069-1074,1076-1078,1080-1116,1118-1119,1121-1128,1131,1137,1145-1146,1155-1156,1165,1167-1170,1176-1192,1194-1196,1198-1211,1214,1219-1226,1228-1238,1240-1242,1296-1846
+vllm_ascend/distributed/kv_transfer/kv_pool/kv_offload/native/cpu_npu.py
+  s_70fb834a8f513b::t_dbf19ffbe1577e 372,374-375
+vllm_ascend/distributed/kv_transfer/kv_pool/kv_offload/native/npu.py
+  s_70fb834a8f513b::t_eeefa80c7289b0 76-77
+vllm_ascend/distributed/kv_transfer/kv_pool/kv_offload/native/offloading_connector.py
+  s_70fb834a8f513b::t_0d528582721f38 17-19,166-173,176,237,313
+vllm_ascend/distributed/kv_transfer/sparse_kv_offload/sparse_kv_offload_manager.py
+  s_70fb834a8f513b::t_c6168f1d6e4849 33
+vllm_ascend/distributed/kv_transfer/utils/mooncake_transfer_engine.py
+  s_70fb834a8f513b::t_9a9979e2b4f122 66
+vllm_ascend/distributed/weight_transfer/__init__.py
+  s_70fb834a8f513b::t_f02db19dd4d434 26-35
+vllm_ascend/distributed/weight_transfer/hccl_engine.py
+  s_70fb834a8f513b::t_3a2272c543e34e 42,298-368
+vllm_ascend/distributed/weight_transfer/npu_ipc_engine.py
+  s_70fb834a8f513b::t_a923476717a740 25,31-32,123-132,170,284-285,287
+vllm_ascend/distributed/weight_transfer/packed_tensor.py
+  s_70fb834a8f513b::t_3bb2e6466bac82 12,373-388,397,418-420,451-453
+vllm_ascend/distributed/weight_transfer/sparse_hccl_engine.py
+  s_70fb834a8f513b::t_abd5dc211d4a21 1-196
+vllm_ascend/ec_manager/score_ec_manager.py
+  s_70fb834a8f513b::t_a7ac5f70116edb 111-113,306-310,418-422,427-436,438-439,444-447,541
+vllm_ascend/envs.py
+  s_70fb834a8f513b::t_8b17601e54a982 25-44,64,76
+vllm_ascend/eplb/adaptor/vllm_adaptor.py
+  s_70fb834a8f513b::t_90b910bdf0523a 24,63-74,81-97,161-165
+vllm_ascend/lora/quant_moe.py
+  s_70fb834a8f513b::t_41997bcb3235e4 181-182
+vllm_ascend/model_executor/warmup/kernel_warmup.py
+  s_70fb834a8f513b::t_235bd61e0f8d2c 117-167,199-209
+vllm_ascend/model_loader/rfork/config.py
+  s_70fb834a8f513b::t_798d1ae599b6fc 17-51,101-102,108,111,114-124,133-141,144-145
+vllm_ascend/model_loader/rfork/identity.py
+  s_70fb834a8f513b::t_2f6e1e603011d3 22,58-63,65-69
+vllm_ascend/model_loader/rfork/local_weights.py
+  s_70fb834a8f513b::t_cfcf01853f8bab 1-3,5-7,11-97
+vllm_ascend/model_loader/rfork/manifest.py
+  s_70fb834a8f513b::t_1d36b3b3dad33f 64
+vllm_ascend/model_loader/rfork/planner_client.py
+  s_70fb834a8f513b::t_3649f2e2db6a91 10,16,23,46,48,56-58,90,121-136,138-143,148,162,169,171,173,175-176,183-191,194-204,224,257-258,263-270,289,294,299,301-303,310,315,317,319-320,322,325-341,346,348-349,351,360,371-379
+vllm_ascend/model_loader/rfork/rfork_loader.py
+  s_70fb834a8f513b::t_04db005d86490d 18-19,25,29,48-52,57-61,82-142,184,187-189,250-290,319-376,651-656,682,684-700,702-713,770,787,790-802,809-821,823-824,828-863,865,867,870-875,877-879,886,890-891,901-904,906-912,916-938,940-947,949-950,953-959
+vllm_ascend/model_loader/rfork/seed_client.py
+  s_70fb834a8f513b::t_37ec358e5b98fb 68
+vllm_ascend/model_loader/rfork/seed_server.py
+  s_70fb834a8f513b::t_e36dcdb8235031 141-147,153-154,190-191,202-206,208-210,215,218-222
+vllm_ascend/model_loader/rfork/session.py
+  s_70fb834a8f513b::t_8792410d525581 13,33,59-66,77,81,97,107-112,131,160-165,184-185,205,207,239-242,278-279,282,320-324,328,330-334,344-358,381-382,495-496,527-528,530-531,553-555,565-566,581-586,715,730,752,754-784,798-810,815,823-827,830-831,833-835,839-846,851
+vllm_ascend/model_loader/rfork/tensor_layout.py
+  s_70fb834a8f513b::t_da0f9bc9ccd3dd 8,12-13,16,21,30-36,48-51,53-54,61-63,260-316,318-326,328-386,389-425,429-435,437-441,446,449,454-457
+vllm_ascend/model_loader/rfork/transfer_backend.py
+  s_70fb834a8f513b::t_84782fc685d0f9 27-28,214,287,306,311-313,321,323,336,441-442,537,793-803
+vllm_ascend/model_loader/rfork/types.py
+  s_70fb834a8f513b::t_d25e5269075c8f 31-43,104-105
+vllm_ascend/models/__init__.py
+  s_70fb834a8f513b::t_e70b90bd3875f1 23,29,33-37,41,45,102-109
+vllm_ascend/models/clef_flash.py
+  s_70fb834a8f513b::t_bfea7fbd295446 2,5-7,9-13,16-25
+vllm_ascend/models/d3.py
+  s_70fb834a8f513b::t_8e1c95994d7025 1-43
+vllm_ascend/models/deepseek_v4/compressor.py
+  s_70fb834a8f513b::t_c5c4b9ae7cde3a 31-33
+vllm_ascend/models/deepseek_v4/dspark.py
+  s_70fb834a8f513b::t_2b307b800272a9 388,395,442,510
+vllm_ascend/models/deepseek_v4/indexer.py
+  s_70fb834a8f513b::t_368939636b19c4 34-36
+vllm_ascend/models/deepseek_v4/mm_preprocess.py
+  s_70fb834a8f513b::t_9c4d10ac565001 32-34
+vllm_ascend/models/deepseek_v4/model.py
+  s_70fb834a8f513b::t_0a8dce044dbcb2 35-39,86,339,699-709,768
+vllm_ascend/models/deepseek_v41/cache_config.py
+  s_70fb834a8f513b::t_f5c7afc7846a1a 9-11
+vllm_ascend/models/deepseek_v41/decoder_replay_layers.py
+  s_70fb834a8f513b::t_6b9e4645a3b622 11,13,27-28,33-34,52-55,94-143,181-204,207,214-216
+vllm_ascend/models/deepseek_v41/decoder_replay_state.py
+  s_70fb834a8f513b::t_85abb0910024fe 77,188-198,402-421
+vllm_ascend/models/deepseek_v41/engram/common.py
+  s_70fb834a8f513b::t_d97ad5eecd9e0d 21,24-33
+vllm_ascend/models/deepseek_v41/engram/model_state.py
+  s_70fb834a8f513b::t_0e1d603c8a028e 122-124
+vllm_ascend/models/deepseek_v41/model.py
+  s_70fb834a8f513b::t_6d40d5b1f00635 569,766-769,791,883-896,1148-1156,1651-1662,1664
+vllm_ascend/models/glm5_dspark.py
+  s_70fb834a8f513b::t_e79359f7cb36a8 163-169,171
+vllm_ascend/models/glm5next/attention.py
+  s_70fb834a8f513b::t_0a583e60c92e3b 52-61,111-112,115
+vllm_ascend/models/glm5next/cache_config.py
+  s_70fb834a8f513b::t_f40eace3874879 12,16-22,33-38,122-133,185
+vllm_ascend/models/glm5next/cache_views.py
+  s_70fb834a8f513b::t_cf21ba7a779ecc 47,59,80-106
+vllm_ascend/models/glm5next/kda.py
+  s_70fb834a8f513b::t_48f8b62a8169f4 12,26,96,104-107,203-205,223-226,244-251,364,405,407-410,431-440,468,484-485,491,493,498-521,523,769-770,772-775,779-801,805
+vllm_ascend/models/glm5next/kv_cache.py
+  s_70fb834a8f513b::t_05970f4de9294b 93-94,115-116,152-153,169-170
+vllm_ascend/models/glm5next/model.py
+  s_70fb834a8f513b::t_0c3278e5ca6f7e 14,27,53,81,386,429-431,435-437,442-443,445-448,450-456,794-797,890,912-927,954-956,975-980,1089
+vllm_ascend/models/glm5next/mtp.py
+  s_70fb834a8f513b::t_c143e47e16e600 349-352
+vllm_ascend/models/glm5next/multimodal.py
+  s_70fb834a8f513b::t_7ae750cb19d875 22,378,381,576
+vllm_ascend/models/glm5next/ops/kda.py
+  s_70fb834a8f513b::t_b63be8b16e8b4c 85
+vllm_ascend/models/glm5next/recoverssm_config.py
+  s_70fb834a8f513b::t_47dcb983f5811c 35-36,40-44
+vllm_ascend/models/glm5next/recoverssm_metadata.py
+  s_70fb834a8f513b::t_c94c9df2a93a32 65
+vllm_ascend/models/kimi_k3/__init__.py
+  s_70fb834a8f513b::t_b6d94b9972f6ed 1-3
+vllm_ascend/models/kimi_k3/cache_config.py
+  s_70fb834a8f513b::t_d53c6c825cc241 1-138
+vllm_ascend/models/kimi_k3/kimi_k3.py
+  s_70fb834a8f513b::t_04eab03bcc9c07 19,33,43-44,94-97,99-101,103,114-187,206,213-217,228-231,242-259,520-529,545-555,633-666,676,694-695,800-802,899-901,945,988-998,1005,1073,1075,1077-1078,1088-1099,1112,1115,1322-1325,1328-1330,1332,1370-1371,1373-1378,1380,1422-1425
+vllm_ascend/models/kimi_k3/kimi_k3_dspark.py
+  s_70fb834a8f513b::t_34b6e91a1a6f0d 40
+vllm_ascend/models/kimi_k3/kimi_k3_mtp.py
+  s_70fb834a8f513b::t_0524b59826435e 30,121-122,129-142,144
+vllm_ascend/models/kimi_k3/paired_sfa_cache.py
+  s_70fb834a8f513b::t_7fc28e2e3a24fe 1-229
+vllm_ascend/models/minimax_m3/msa_m3.py
+  s_70fb834a8f513b::t_2d276b858a1add 7-9,46-50,52-56,59,62,71-97,103-118,545,548-586,779-782,819-926,1003-1008,1010-1011,1077-1084,1104-1106
+vllm_ascend/models/minimax_m3/ops/msa_m3_npu.py
+  s_70fb834a8f513b::t_e5d2d5d3b8a3ac 7,16,26-30,35,69,134-391,514,534,551,554,560-564,566,645,668,686,712-714,716,721-728,732,738-742,744-747
+vllm_ascend/models/qwen3_dflash2.py
+  s_70fb834a8f513b::t_3c3268854593d1 182-183,256-257
+vllm_ascend/models/qwen3_dspark.py
+  s_70fb834a8f513b::t_41ab7a5b6628fd 88-91
+vllm_ascend/models/qwen4_exp/attention_dispatch.py
+  s_70fb834a8f513b::t_80edf55fdd53d9 110-111,145-147
+vllm_ascend/models/qwen4_exp/cpu_length_sync.py
+  s_70fb834a8f513b::t_3d4618596fdab8 12-13,24-36,80,82,86
+vllm_ascend/models/qwen4_exp/model.py
+  s_70fb834a8f513b::t_30b5c377626507 18,22,24-28,95-106
+vllm_ascend/models/qwen4_exp/ple.py
+  s_70fb834a8f513b::t_d6ac384cef899b 30-34,40-41,43,218-229,233-238,244-303
+vllm_ascend/models/qwen4_exp/qsa.py
+  s_70fb834a8f513b::t_c923e0b3307fc5 18,48,54-71,112,117-121,192,199,201,269-305,307-310,312,314,316-363,388-389,397,429,453-487,502-570,574-575,577,583,596,608-610,613-614,669-672,719-724,727,730,733-735,787-804,816-818,820-847
+vllm_ascend/mrv2_utils.py
+  s_70fb834a8f513b::t_4afa3922c0cc8f 20,32-35,38-40,42-52,56-57,59-66,74-77,79-83,87-89
+vllm_ascend/observability/ms_metrics/config/base_metrics.yaml
+  s_70fb834a8f513b::t_ab4f2f75271d3a 13,16,21
+vllm_ascend/observability/runtime_config/config.py
+  s_70fb834a8f513b::t_4f7f8715d86965 804,806-807,815-816,857,890-891,894-895
+vllm_ascend/observability/runtime_guard/detector/manager.py
+  s_70fb834a8f513b::t_ce4112499203c1 149,155-156,172,208,221-223
+vllm_ascend/observability/runtime_guard/detector/token_repeat.py
+  s_70fb834a8f513b::t_c7da8ce1b49e79 200
+vllm_ascend/observability/runtime_guard/hooks.py
+  s_70fb834a8f513b::t_737ea1c749952f 44,63,81-82,88,106,348-350
+vllm_ascend/observability/runtime_guard/io.py
+  s_70fb834a8f513b::t_47162bb346cd85 202,204,227-228
+vllm_ascend/observability/runtime_guard/processor.py
+  s_70fb834a8f513b::t_89b4a71aaf6479 236,256,289-290,297,299-304,311,314-329,334-335,341,343,345,359-362,410,500-505,508,548
+vllm_ascend/observability/runtime_guard/processor_dump.py
+  s_70fb834a8f513b::t_4bc8e74eed354c 133,140,158
+vllm_ascend/observability/runtime_guard/processor_report.py
+  s_70fb834a8f513b::t_e07db20556d72f 58,66
+vllm_ascend/observability/runtime_guard/state.py
+  s_70fb834a8f513b::t_1e9f5dc57fb599 165-166,233-234
+vllm_ascend/ops/fused_moe/dataclass/fused_experts.py
+  s_70fb834a8f513b::t_4374fbb3cf8ddd 31-65,80-87
+vllm_ascend/ops/fused_moe/dataclass/shared_experts.py
+  s_70fb834a8f513b::t_889f0fc9801a22 43-46
+vllm_ascend/ops/fused_moe/fused_moe.py
+  s_70fb834a8f513b::t_f3c2bc4fd71512 134-139,190-199,230-239,256-263,325-339,583-589
+vllm_ascend/ops/fused_moe/moe_comm_method.py
+  s_70fb834a8f513b::t_f93753b8973f7a 179-181,292-303,422-427,429,431-437,439,442-456,471-476,486,553-613,617,628,666-670,682
+vllm_ascend/ops/fused_moe/moe_utils.py
+  s_70fb834a8f513b::t_8206978afbc5d8 438-455
+vllm_ascend/ops/fused_moe/prepare_finalize.py
+  s_70fb834a8f513b::t_1007ba6c228368 35,296-310
+vllm_ascend/ops/fused_moe/routed_experts.py
+  s_70fb834a8f513b::t_12ba60bb608271 65,407,730-733
+vllm_ascend/ops/fused_moe/router/fused_topk_router.py
+  s_70fb834a8f513b::t_f647b81002d287 20,227,238
+vllm_ascend/ops/fused_moe/router/router_factory.py
+  s_70fb834a8f513b::t_3bf160d41b4daa 101
+vllm_ascend/ops/fused_moe/shared_experts.py
+  s_70fb834a8f513b::t_8181bb832429fb 25,28-33,37,41-42,50,122-125,146-156,172-545,1071-1072
+vllm_ascend/ops/fused_moe/token_dispatcher.py
+  s_70fb834a8f513b::t_c409859fea5f2a 54,146-150
+vllm_ascend/ops/fused_rms_norm_gated.py
+  s_70fb834a8f513b::t_31f0019c5ff92e 25
+vllm_ascend/ops/gdn.py
+  s_70fb834a8f513b::t_021fe32fb6384d 34,49,53,93-98,189-194,473-475,517-523,535-540,637-642,735-772,829-832,849-865,915-928,935,942-946
+vllm_ascend/ops/gdn_attn_builder.py
+  s_70fb834a8f513b::t_4da14d5b3df3ca 33,35,42,65-66,79,89-94,97,174-175,177-181,360-361,381-390,399-406,564-576,578-583,592-599,601,780,810-816,834,845-846,888-890,896-899,954-957,971-972,988-1010,1016,1031-1032,1062,1066,1108-1113,1208-1216
+vllm_ascend/ops/gdn_checkpoint.py
+  s_70fb834a8f513b::t_b7a181685c2954 1-112
+vllm_ascend/ops/kda.py
+  s_70fb834a8f513b::t_dba13ff7b2c2c3 73,82-88,90-91,104
+vllm_ascend/ops/kda_parallel.py
+  s_70fb834a8f513b::t_19ae53d78db313 1-96
+vllm_ascend/ops/kda_pcp.py
+  s_70fb834a8f513b::t_5441cd688df7ad 1-127
+vllm_ascend/ops/kda_state_copy_plan.py
+  s_70fb834a8f513b::t_5cbf352e6a89c1 5-7,15,17,21,24,40-87,134,140-141,152-153,158,162-163,169-193,197,199-200,235-236,240,277,281,291-292,297,315-325,362-363,366,389
+vllm_ascend/ops/kimi_kda.py
+  s_70fb834a8f513b::t_29fb01843cb9de 3,13,16,19-20,24,34,39-47,51,55-56,81,84-103,209,222-229,237,252,289-352,354,361-368,414-415,443-445,452,455-465,491,558-563,842-870
+vllm_ascend/ops/kimi_mla.py
+  s_70fb834a8f513b::t_53a6407e85bc47 8,17-22
+vllm_ascend/ops/layernorm.py
+  s_70fb834a8f513b::t_a9099c13c83397 113
+vllm_ascend/ops/linear.py
+  s_70fb834a8f513b::t_3ee2341950116d 27,45,118,440-446,529-559
+vllm_ascend/ops/linear_op.py
+  s_70fb834a8f513b::t_1bdd98a347b885 115-132,426-428
+vllm_ascend/ops/mla.py
+  s_70fb834a8f513b::t_4d7dd03639c49c 23-24,102-110,115,218-219,236,266-268
+vllm_ascend/ops/mm_encoder_attention.py
+  s_70fb834a8f513b::t_88c3632522bcfc 28,33,51-70
+vllm_ascend/ops/rotary_embedding.py
+  s_70fb834a8f513b::t_927ce196953cdc 95,102-105,289,702-703,712-713,716,719-747,749-753
+vllm_ascend/ops/triton/README.md
+  s_70fb834a8f513b::t_8e49c0700546ac 1-157
+vllm_ascend/ops/triton/apply_grammar_bitmask.py
+  s_70fb834a8f513b::t_c9f0d00c5554f1 77-81,105-106
+vllm_ascend/ops/triton/dcp/dcp_a2a.py
+  s_70fb834a8f513b::t_8f03d53c63f439 12-13,17,26,33-34,45,74-76,83,292,294-295,298-304,312-324,326,329,333,336-338,341,346-347,355,357-358,360-363,366,371-372,380,383,413,438-451,453-455,457,460-463,467-480,483-486,493-497,499-502,521-531,543,551,554,561,592,636,649
+vllm_ascend/ops/triton/dcp/dcp_a2a_batched.py
+  s_70fb834a8f513b::t_b509d07331f4e2 10-34,40,47-48,59,62,68-80,82-85,87-102,111-115,119,166-167,169,181-192,196-199,201-207,212-216,221,224,228-231,233-239,244-248,251-253,257-264
+vllm_ascend/ops/triton/dcp/dcp_jit.py
+  s_70fb834a8f513b::t_b3c88c7f0f0301 1-64
+vllm_ascend/ops/triton/dcp/dcp_warmup.py
+  s_70fb834a8f513b::t_5df36bd7c7f2f7 2-4,7-8,10-32,35-48,50-79,81-89,91-93,96-105,107-214
+vllm_ascend/ops/triton/dcp/sfa_dcp_exchange.py
+  s_70fb834a8f513b::t_960727fc00faf1 8,18-26,39-40,52,58-59,64,81-100,107,113-114,119,151-154,186,200-201,218,220-223,226,236-237,242-297,300-310,312-314,317,319,323,328
+vllm_ascend/ops/triton/dcp/sfa_dcp_merge.py
+  s_70fb834a8f513b::t_739886e321ee43 11,17,31,50,52,87-96,100-103
+vllm_ascend/ops/triton/docs/apply_grammar_bitmask.md
+  s_70fb834a8f513b::t_ecfbcf5b68b4bf 137
+vllm_ascend/ops/triton/docs/dcp_a2a_fused.md
+  s_70fb834a8f513b::t_d3eba8c30984c0 26,82,127-184
+vllm_ascend/ops/triton/docs/entropy_verify.md
+  s_70fb834a8f513b::t_5b443533cdc8f7 1-138
+vllm_ascend/ops/triton/docs/fill_logprob_token_ids.md
+  s_70fb834a8f513b::t_1eb944e1a5f1ca 128
+vllm_ascend/ops/triton/docs/fused_dcp_lse_combine.md
+  s_70fb834a8f513b::t_f173a75bebd883 13-14,31-33,39,44
+vllm_ascend/ops/triton/docs/glm5_next_cann_keypool.md
+  s_70fb834a8f513b::t_db0a1cebf8ba14 7,10-12,56,58,78-79,93
+vllm_ascend/ops/triton/docs/kda_state_copy.md
+  s_70fb834a8f513b::t_4dfac00ee6924b 13-21,43,51-58,60,62-64,148-150
+vllm_ascend/ops/triton/docs/local_candidate_output.md
+  s_70fb834a8f513b::t_42ed38bf41546a 1-22
+vllm_ascend/ops/triton/docs/mamba_postprocess.md
+  s_70fb834a8f513b::t_d1c94d0eb583cb 6
+vllm_ascend/ops/triton/docs/msa_m3_index_postprocess.md
+  s_70fb834a8f513b::t_306ceaa87c02a9 19-21,26-27,38,59-62,64-68,77-78,80-82,86-90,103-105,107-108,116-155
+vllm_ascend/ops/triton/docs/msa_m3_index_topk.md
+  s_70fb834a8f513b::t_c90d4e2a90e8b4 1-88
+vllm_ascend/ops/triton/docs/num_nans.md
+  s_70fb834a8f513b::t_725944b98f22d3 67
+vllm_ascend/ops/triton/docs/pack_dcp_output_lse.md
+  s_70fb834a8f513b::t_d65c30291a386c 13-15,22-23,32,39,44
+vllm_ascend/ops/triton/docs/pcp_kv_cache.md
+  s_70fb834a8f513b::t_7dea007c94cd9b 6,62
+vllm_ascend/ops/triton/docs/ple_conv_prefill.md
+  s_70fb834a8f513b::t_9427d308c55735 1-55
+vllm_ascend/ops/triton/docs/ple_decode.md
+  s_70fb834a8f513b::t_77187ac3bc2ef6 1-46
+vllm_ascend/ops/triton/docs/ple_spec.md
+  s_70fb834a8f513b::t_3dfd8dff593980 1-54
+vllm_ascend/ops/triton/docs/prepare_dflash_inputs.md
+  s_70fb834a8f513b::t_538e5a6933c603 6,9,12,100,121
+vllm_ascend/ops/triton/docs/qsa_rmsnorm_mrope.md
+  s_70fb834a8f513b::t_ef9f8e16f811be 1-76
+vllm_ascend/ops/triton/docs/query_gather_prep.md
+  s_70fb834a8f513b::t_f948d23c0cc4ff 1,5-8,14-16,20-24,28-29,33,36
+vllm_ascend/ops/triton/docs/sampling_mask.md
+  s_70fb834a8f513b::t_e00c59401a877b 8
+vllm_ascend/ops/triton/docs/selected_token_ranks.md
+  s_70fb834a8f513b::t_590f2df6061107 1-3,7-13,15-22,26-27,30-39,43-50,54,56-58,62-71,74
+vllm_ascend/ops/triton/docs/sfa_dcp_exchange.md
+  s_70fb834a8f513b::t_c30f9ea4e7d01b 16,27,40
+vllm_ascend/ops/triton/docs/sfa_dcp_merge.md
+  s_70fb834a8f513b::t_b9da256e1edfa9 24
+vllm_ascend/ops/triton/docs/sharded_indexer.md
+  s_70fb834a8f513b::t_6232d845e4a354 1-48
+vllm_ascend/ops/triton/docs/sparse_index_remap.md
+  s_70fb834a8f513b::t_4ba9b5f7a63ed1 5,13-17,24-26,32-39,46,50,54
+vllm_ascend/ops/triton/docs/thinking_budget.md
+  s_70fb834a8f513b::t_9cf5a7deb768ba 14
+vllm_ascend/ops/triton/docs/triton_description_specification.md
+  s_70fb834a8f513b::t_bfec85c3239bbb 4-14
+vllm_ascend/ops/triton/fla/chunk.py
+  s_70fb834a8f513b::t_ca6adf272dff76 41-44,101-120,122-123,125-163,242-243,284-336
+vllm_ascend/ops/triton/fla/chunk_delta_h.py
+  s_70fb834a8f513b::t_0fc317bcad4d41 41-42,54-55,99-101,106-119,211-214,217-223,262-265
+vllm_ascend/ops/triton/flash_attention_output.py
+  s_70fb834a8f513b::t_8c98852d5cdf65 9,13-29,31-70,74-100,102-119,121-127,130,132-147,153-158,160-168,173,176-177,179-181,183-218,220
+vllm_ascend/ops/triton/glm5_next_cann_keypool.py
+  s_70fb834a8f513b::t_0b12b09830ff5b 3,9-10,16,32,37,61-66,71,80,96,101
+vllm_ascend/ops/triton/indexer_quant_cache_int8.py
+  s_70fb834a8f513b::t_406026003a9007 3,10,14-65,67-101,103-152,155-157,161-171,173,176-204,206-208,210-231,236,238-254,258,261-269,273-280,282-299
+vllm_ascend/ops/triton/kda/kda.py
+  s_70fb834a8f513b::t_ff57bd00a992f9 199,212,217,286-293,434,439,492-497,499-514,537-538,547-548,560,572,577,591-592,616-620
+vllm_ascend/ops/triton/kda/recoverssm.py
+  s_70fb834a8f513b::t_6dfad01abaa4f2 11,1195,1197-1204
+vllm_ascend/ops/triton/kda_state_copy_kernel.py
+  s_70fb834a8f513b::t_82f1c0e61c1f90 4-5,125-127
+vllm_ascend/ops/triton/linearnorm/qsa_rmsnorm_mrope.py
+  s_70fb834a8f513b::t_64a435bd18bbdd 27-28,43-51,54-55,109
+vllm_ascend/ops/triton/mamba/causal_conv1d.py
+  s_70fb834a8f513b::t_bc80ebe4282a10 4-5,11-89
+vllm_ascend/ops/triton/msa/msa_m3_index_postprocess.py
+  s_70fb834a8f513b::t_d62ff0674a3400 3,10-14,18-20,91-92,106-115,118,121-153,164-165,167-172,186-188,237-255,269-271
+vllm_ascend/ops/triton/msa/msa_m3_index_topk.py
+  s_70fb834a8f513b::t_8e219aa7a5282c 26-27,42-44,423-473,787-819,835-836,844-845,857-877,941-943
+vllm_ascend/ops/triton/query_gather_prep.py
+  s_70fb834a8f513b::t_cf8b1bd506c337 40-43,46,49,52,63-65,69-77,81-90,96,106-108,112,118-119,129-130,133-134,147,150-153
+vllm_ascend/ops/triton/sample/categorical_sample.py
+  s_70fb834a8f513b::t_f143bb41ecffa6 425-426,428-434
+vllm_ascend/ops/triton/sharded_indexer.py
+  s_70fb834a8f513b::t_f9ea9ab029a2de 1-3,5-101,105-160,162-209,211,213-316,318-363,365-464,467-477,480-549,551-734,736-754,756-768,772-780,782-795,797-823,825
+vllm_ascend/ops/triton/sparse_index_remap.py
+  s_70fb834a8f513b::t_72afe3bd673469 20,23-213,228-229,247-248,298,321-324,328,336-383,401-402,415
+vllm_ascend/ops/triton/spec_decode/entropy_verify.py
+  s_70fb834a8f513b::t_acf4457809ccc4 1-95
+vllm_ascend/ops/triton_ple.py
+  s_70fb834a8f513b::t_04a3d9cc2b406d 4,10,14-50,140-198,201-211,213-226,295-545,568,570,572,629-681
+vllm_ascend/patch/__init__.py
+  s_70fb834a8f513b::t_a9f4a3178a1d3d 220,261-262,287-288,290-291,293-297,710,795-796,798-800,848-850,880-896,962,1008-1017,1019,1021-1022,1024-1025,1027-1029,1031,1049-1051,1184,1557-1558,1603-1607,1611-1612,1619,1621-1623,1627,1768-1773
+vllm_ascend/patch/platform/__init__.py
+  s_70fb834a8f513b::t_e775ed2d18dfd5 21,83,98-102
+vllm_ascend/patch/platform/patch_balance_schedule.py
+  s_70fb834a8f513b::t_0f84cd5c16ff11 195-196,350-355,460,464,489-491,672-678,704-706,852
+vllm_ascend/patch/platform/patch_eplb.py
+  s_70fb834a8f513b::t_b4b91bbc893807 610-612,666-703
+vllm_ascend/patch/platform/patch_kimi_k31_config.py
+  s_70fb834a8f513b::t_550c77eced5d8d 1-51
+vllm_ascend/patch/platform/patch_kv_cache_coordinator.py
+  s_70fb834a8f513b::t_973e733bb5c287 119,140,158,175-177,187-189,217,220-223,226-232,263-268,279,533,554,591-592
+vllm_ascend/patch/platform/patch_kv_cache_dtype.py
+  s_70fb834a8f513b::t_b54e4c2e6b2a2f 18-28,32,34-40,49-52,78-93,96-105
+vllm_ascend/patch/platform/patch_kv_cache_utils.py
+  s_70fb834a8f513b::t_a3b06443769287 7-8,11,39-45,364-365,367,370,477-478,495,499-511,513-526,533-534,563-565,589,592-595,597
+vllm_ascend/patch/platform/patch_mamba_block_aligned_split.py
+  s_70fb834a8f513b::t_0208737e93ee16 152,159-176
+vllm_ascend/patch/platform/patch_mamba_manager.py
+  s_70fb834a8f513b::t_e15055507690dd 67-74
+vllm_ascend/patch/platform/patch_pp_mtp.py
+  s_70fb834a8f513b::t_b33bdf600f314a 33-34,231-235
+vllm_ascend/patch/platform/patch_speculative_config.py
+  s_70fb834a8f513b::t_6ec4457509f5c3 5,86-95
+vllm_ascend/patch/platform/patch_structured_output.py
+  s_70fb834a8f513b::t_aa0f8914a9c893 166,201
+vllm_ascend/patch/platform/patch_use_v2_model_runner.py
+  s_70fb834a8f513b::t_21965b48c723d8 3-6
+vllm_ascend/patch/worker/__init__.py
+  s_70fb834a8f513b::t_c154d350178ed1 21,51-53,59-60,75-78
+vllm_ascend/patch/worker/patch_adaptive_verification.py
+  s_70fb834a8f513b::t_b46f4bab1caa30 3-4
+vllm_ascend/patch/worker/patch_attn_utils.py
+  s_70fb834a8f513b::t_6442e0f0a6ea09 1-3,6,15,29-79,98-101
+vllm_ascend/patch/worker/patch_deepseek_v2.py
+  s_70fb834a8f513b::t_6e64c5bb197ce1 25,36,40-41,137-138,144,152,311-323
+vllm_ascend/patch/worker/patch_distributed.py
+  s_70fb834a8f513b::t_2d6f0e65c12f51 26,122-124
+vllm_ascend/patch/worker/patch_dspark.py
+  s_70fb834a8f513b::t_e4072af561a7ac 34-35,49,89
+vllm_ascend/patch/worker/patch_kimi_k25.py
+  s_70fb834a8f513b::t_85d61387354322 27-34,50-55
+vllm_ascend/patch/worker/patch_kv_cache_dtype.py
+  s_70fb834a8f513b::t_769125ee279e25 22-25,34-37,49-52,64-67,93-106,108,111-114
+vllm_ascend/patch/worker/patch_mamba_utils.py
+  s_70fb834a8f513b::t_528b31964aa87e 3,5,8,18-22,30-41,43-44,46-63
+vllm_ascend/patch/worker/patch_model_runner.py
+  s_70fb834a8f513b::t_5745e9032fdbea 11,218-231
+vllm_ascend/patch/worker/patch_qwen3_5.py
+  s_70fb834a8f513b::t_4faa3a278f4630 38,223
+vllm_ascend/patch/worker/patch_step3p5.py
+  s_70fb834a8f513b::t_ed6dd6b8f71c85 57-60,230-252,261
+vllm_ascend/patch/worker/patch_triton.py
+  s_70fb834a8f513b::t_8734fd93db8d01 16,108-114,118,149
+vllm_ascend/patch/worker/patch_uva.py
+  s_70fb834a8f513b::t_7c043cdfb128e8 22,29-30,87,90,95-100,115,118,123-128,171,185-188,191-195,199-203,206-214,216-222,234-235,246-256,259-271
+vllm_ascend/platform.py
+  s_70fb834a8f513b::t_24db589865f35e 35-41,44,122-125,140-144,472-490,505-519,594-595,624-638,1146-1152,1492,1636-1660,1665,1673-1678,1747,1750,1757,1772-1773,1775,1777,1947-1948,2008-2019
+vllm_ascend/profiling_config.py
+  s_70fb834a8f513b::t_f21c2c0d7d62dd 75,197
+vllm_ascend/quantization/configs/compressed_tensors_config.py
+  s_70fb834a8f513b::t_bf3e9685bccb0f 176,345-355,395-399,406
+vllm_ascend/quantization/configs/fp8_config.py
+  s_70fb834a8f513b::t_3e4542bfcd4135 61-92,112,115,163
+vllm_ascend/quantization/configs/modelopt_mxfp8_config.py
+  s_70fb834a8f513b::t_fe1fd9ce0e03e9 64
+vllm_ascend/quantization/configs/modelslim_config.py
+  s_70fb834a8f513b::t_3441beb8c7f98b 662-671,787-789,799,834-846,850,914
+vllm_ascend/quantization/method_adapters.py
+  s_70fb834a8f513b::t_fe57725b16c726 100-103,277,299-300
+vllm_ascend/quantization/methods/base.py
+  s_70fb834a8f513b::t_9298a6d6311f2e 84-94,268-271
+vllm_ascend/quantization/methods/kv_cache/turboquant/cache.py
+  s_70fb834a8f513b::t_f5641d21363490 14-16
+vllm_ascend/quantization/methods/w4a4/w4a4_mxfp4.py
+  s_70fb834a8f513b::t_969c3545e7c9ad 80,294-295,303-306
+vllm_ascend/quantization/methods/w4a8/w4a8.py
+  s_70fb834a8f513b::t_814614a6b59f93 34,314-317,528-535
+vllm_ascend/quantization/methods/w4a8/w4a8_mxfp4.py
+  s_70fb834a8f513b::t_bf1c0643138639 52-56,170,180-182,227,244-255,257-260,263-266,268-291,298,302-304,316-339,341,348,350-359,395-396,412-426,438-443,446-447,459,462,464,514,517-518,539,549,551
+vllm_ascend/quantization/methods/w8a8/fp8_block.py
+  s_70fb834a8f513b::t_28bc7d660e2e47 41,139-143,189-224,330-341
+vllm_ascend/quantization/methods/w8a8/w8a8_mxfp8.py
+  s_70fb834a8f513b::t_7214e1e0aff165 36-43,64,168-219,275-286,289,295-298,338-350,352-354,376,451,455-456,464-467,469-476,479-493,495-498,530-534,536-545,547-569,571,573-574,576-578,581-634,667-707,712-717,743,745,766-767,799-800
+vllm_ascend/utils.py
+  s_70fb834a8f513b::t_0df88a081b5821 196-202,247-259,992-1002
+vllm_ascend/worker/dcp_utils.py
+  s_70fb834a8f513b::t_140c47d19e8960 32,361,480,668
+vllm_ascend/worker/spec_decode_utils.py
+  s_70fb834a8f513b::t_71bdf366af9d18 30
+vllm_ascend/worker/utils.py
+  s_70fb834a8f513b::t_299258de342bdd 19-20,40-42,54-62,64,70-103
+vllm_ascend/worker/v2/aclgraph_utils.py
+  s_70fb834a8f513b::t_ca772b3d6eb1e0 161-162
+vllm_ascend/worker/v2/attn_utils.py
+  s_70fb834a8f513b::t_265faea3a4ca42 71,134-142,190,192-195,237-238,241,263,276-280,335-339,344,382,386-388,397-401,591,675-680,686-687,729-732,1048,1068-1069,1318,1321-1327,1441,1911-1912,1914-1920,1929,1937,1946-1980,1982-1983,2150
+vllm_ascend/worker/v2/block_table.py
+  s_70fb834a8f513b::t_e3d3ce6233331f 24
+vllm_ascend/worker/v2/model_runner.py
+  s_70fb834a8f513b::t_2a34d24c436f85 21,54,105,111,114,152,342-343,345,362-363,365,457-459,483-491,495-496,499-504,649-655,657,681,687,749-750,754,767-771,871,904-909,911-919,923-929,1018,1101-1109,1118,1142-1152,1161-1174,1221-1241,1323-1327,1329-1335,1346-1349,1365,1378-1395,1516-1560
+vllm_ascend/worker/v2/model_states/__init__.py
+  s_70fb834a8f513b::t_4214935ef1f536 22-24,30-37,44-58,61,66-67,70-81,87,91,95-98,105-111,114-115,118
+vllm_ascend/worker/v2/model_states/default.py
+  s_70fb834a8f513b::t_9a48d636d67d2d 63,517,530,567-569
+vllm_ascend/worker/v2/model_states/encoder_only.py
+  s_70fb834a8f513b::t_60c6ddfbddb245 1-4,23,25-51,54-131
+vllm_ascend/worker/v2/model_states/hybrid_encoder.py
+  s_70fb834a8f513b::t_c8d470f641a4c0 1,18,21-24,26-28,31-32,34-39,41-47,49-51,53,55-78,80-84
+vllm_ascend/worker/v2/model_states/mamba_hybrid.py
+  s_70fb834a8f513b::t_5f4fe9249b8f7c 43,263-266,349-356,358-396,402,405,408-416,418-419,471-487,489-496,504-508,518,531
+vllm_ascend/worker/v2/pcp_manager.py
+  s_70fb834a8f513b::t_f58ea781fc2a81 22,27,35,38,45-47,66-67,81-91,121,147-152,155-170,172-177,319-325,375-391,502,504-506,508-510,515-519,524-525,530,545,567,569-571,574-577,586,588,591-594,596-641,720,745,777
+vllm_ascend/worker/v2/pp_transport.py
+  s_70fb834a8f513b::t_d7afed1e397378 61
+vllm_ascend/worker/v2/sample/apply_top_k_top_p.py
+  s_70fb834a8f513b::t_5426394b95ad50 2-3,5,8-12,14-19,21,24-31,34-38
+vllm_ascend/worker/v2/sample/logprob.py
+  s_70fb834a8f513b::t_06be1b8a990289 116
+vllm_ascend/worker/v2/sample/penalties.py
+  s_70fb834a8f513b::t_9d79f3892c142a 32-33,50-51,55-59,62-131,146-152,166-167,169
+vllm_ascend/worker/v2/sample/rejection_greedy.py
+  s_70fb834a8f513b::t_83e61d9e60f671 6-8,23-24,52,73
+vllm_ascend/worker/v2/spec_decode/dflash/speculator.py
+  s_70fb834a8f513b::t_ad003976655ca5 18-19,129-134,141-146
+vllm_ascend/worker/v2/spec_decode/dflash2/speculator.py
+  s_70fb834a8f513b::t_0702fe2cdb7e6e 111,115-116,119-122
+vllm_ascend/worker/v2/spec_decode/dspark/speculator.py
+  s_70fb834a8f513b::t_7613d9af88341b 19,26,31,44,54,62,68-73,75,79,81,121,261-270,285-286,301-312,316-319,322,343,440-443,451-456,463,466,476,495-505
+vllm_ascend/worker/v2/spec_decode/lilicorr/speculator.py
+  s_70fb834a8f513b::t_3650fdc700419c 5,19-25
+vllm_ascend/worker/v2/spec_decode/lmhead_tp_utils.py
+  s_70fb834a8f513b::t_856a9b4742e25c 5-6,10-13,17-21,25-27,33-35,41-63,81,83-85,87-96
+vllm_ascend/worker/v2/spec_decode/multi_module_mtp/speculator.py
+  s_70fb834a8f513b::t_3f10d0c1cff49e 29,54-59
+vllm_ascend/worker/v2/spec_decode/pcp_utils.py
+  s_70fb834a8f513b::t_19f7c0e396e192 5-6,9,89,91-99,101,124-128,130-131
+vllm_ascend/worker/v2/spec_decode/rejection_sampler_utils.py
+  s_70fb834a8f513b::t_dd6a0884ed3ffe 20-21,24,37-42,45-46,100-101,107-109,153,171,230,252,259-271,345-348,350-352,355-376,391-401,406-407,430-433,438-443,447-465,470-477,479-502,504-505,507,509-562,566-622,666,672-674
+vllm_ascend/worker/v2/spec_decode/standalone_ar/speculator.py
+  s_70fb834a8f513b::t_ac684a455b65bb 14,22-27
+vllm_ascend/worker/v2/spec_decode/target_dependent_ar/aclgraph.py
+  s_70fb834a8f513b::t_39e73dd2983c18 4,42-57,69,71-74,81,111,113-119,131,144,146-149,191-192
+vllm_ascend/worker/v2/spec_decode/target_dependent_ar/speculator.py
+  s_70fb834a8f513b::t_1b2006b997cf09 42,48,57,85-90,151,192,274-278,284-287,309-332,390,394,397,435-444,497,536-539,587
+vllm_ascend/worker/v2/utils.py
+  s_70fb834a8f513b::t_87216358be3d88 225-227,230,236-238
+vllm_ascend/worker/worker.py
+  s_70fb834a8f513b::t_fb58fd2c07a996 53,60-61,66,123-128,591-592,594,596-597,599-600,683-686,1103-1134,1219-1221,1223-1228,1362-1363,1369-1377,1396-1401
+vllm_ascend/xlite/utils.py
+  s_70fb834a8f513b::t_1bca19ff1d39f2 52-68
+vllm_ascend/xlite/xlite.py
+  s_70fb834a8f513b::t_05e54234940f5a 23-24,37,49,54,57,93,121-122,246-247,368-387,489-495,498-499,749,770-771,810-855,879-881,887,898-904,906-908,910-929,934-938,940,942,945,947,950,955-957,964,971
+vllm_ascend/xlite/xlite_model_runner.py
+  s_70fb834a8f513b::t_f89abfc9472eef 152,156-157,159-165,168
+vllm_ascend/xlite/xlite_worker.py
+  s_70fb834a8f513b::t_babb51183543a8 36-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "344e91c6f04d2fa4c283834bff029e74c1bec2d1",
+  "prompts": {},
+  "sessions": {
+    "s_70fb834a8f513b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a187a5-6f72-79f1-ace7-ba82e7e303a4",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

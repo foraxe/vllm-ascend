@@ -1,0 +1,25 @@
+tests/ut/models/test_deepseek_v41/test_cann_shared_slots.py
+  s_e7a51dcf069eaf::t_bac95adee036ed 135-172,197-198,200-207,209-221,226-231,233-235,237-244
+  s_e7a51dcf069eaf::t_2d5140d4276f19 173-196
+  s_e7a51dcf069eaf::t_abb8f76ccee66c 208
+  s_e7a51dcf069eaf::t_8bd859bb56e261 199,222-225,232,236
+vllm_ascend/models/deepseek_v41/engram/cann_shared_experimental.py
+  s_e7a51dcf069eaf::t_1adbd67fee4e51 149-151
+  s_e7a51dcf069eaf::t_ec02309a325ac5 5,64-66,104,107-111,116-119,123-124,132-148,152-156,159-176
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "8a754707b6b831b13859521e59606062d98ad1fa",
+  "prompts": {},
+  "sessions": {
+    "s_e7a51dcf069eaf": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a19a2f-aa6b-7033-8dd6-6934cca25f9b",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

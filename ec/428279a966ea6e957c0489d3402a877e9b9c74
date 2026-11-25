@@ -1,0 +1,24 @@
+vllm_ascend/distributed/kv_transfer/kv_p2p/mooncake_hybrid_connector.py
+  s_d6485b3d09302c::t_4cd2ff3b75b0a9 1331-1334
+docs/source/user_guide/feature_guide/engram_local_vmm.md
+  s_d6485b3d09302c::t_4cd2ff3b75b0a9 19-21
+tests/ut/distributed/kv_transfer/kv_p2p/test_mooncake_receiver_drain.py
+  s_d6485b3d09302c::t_683ac62ec76097 264-283
+  s_d6485b3d09302c::t_4cd2ff3b75b0a9 249-263
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ec428279a966ea6e957c0489d3402a877e9b9c74",
+  "prompts": {},
+  "sessions": {
+    "s_d6485b3d09302c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c4b6-d8aa-7320-9579-f20711e7bf1b",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

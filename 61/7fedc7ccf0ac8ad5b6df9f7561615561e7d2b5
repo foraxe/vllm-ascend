@@ -1,0 +1,14 @@
+vllm_ascend/ops/triton/README.md
+  h_02e4646417b93d 9,99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "617fedc7ccf0ac8ad5b6df9f7561615561e7d2b5",
+  "prompts": {},
+  "humans": {
+    "h_02e4646417b93d": {
+      "author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}
