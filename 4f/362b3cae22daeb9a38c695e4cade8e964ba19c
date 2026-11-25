@@ -17,6 +17,7 @@ vllm_ascend/models/qwen4_exp/ple_embedding.py
   s_2c7c0a259eff1f::t_ccd9ec964b2114 157-159
   s_2c7c0a259eff1f::t_b2ef7e9af96f7f 475
   s_963f283fefd5c9::t_bded4d4ae8e3c8 238-240,487-497,499,503-505
+  s_963f283fefd5c9::t_02dd934bbdc3bc 370-375
 tests/ut/models/test_ple_shared_reuse.py
   s_2c7c0a259eff1f::t_7c82fc6c05c11c 1-13,15-34,40-88,90-121,123-124,126-132,134-139,150-151,153
   s_2c7c0a259eff1f::t_5cde1a49268ad3 307-310,312-315,316-381,383-386,388-400
