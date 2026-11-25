@@ -1,0 +1,42 @@
+vllm_ascend/ops/fused_moe/routed_experts.py
+  s_1ca3cc9a501d06::t_54eb90f29e977f 462-468
+  s_1ca3cc9a501d06::t_eec3a203c48c2f 392,400-414
+  s_1ca3cc9a501d06::t_ff580687a8f3ed 918-919
+  s_1ca3cc9a501d06::t_fdf3d6e48311b6 601-738
+  s_1ca3cc9a501d06::t_3fcedb379c9c71 17-18
+  s_1ca3cc9a501d06::t_19d18fc54c31df 393-399
+vllm_ascend/ops/fused_moe/token_dispatcher.py
+  s_1ca3cc9a501d06::t_829475847b4cf7 23
+  s_1ca3cc9a501d06::t_6b3bce1565870f 79-86,88-114
+  s_1ca3cc9a501d06::t_a8610974b4e510 69-78,87
+  s_1ca3cc9a501d06::t_9de2ce6d31fbf3 468-474,477,483
+tests/ut/ops/test_per_layer_placement.py
+  s_1ca3cc9a501d06::t_657b9853177b5d 209,211-219
+  s_1ca3cc9a501d06::t_41e0b74ee0501f 1-16,18-54,56-57,59-60,62-123,130-177,189-208,210,220-255
+  s_1ca3cc9a501d06::t_3dc524a4fa7094 17
+  s_1ca3cc9a501d06::t_2be2c64f8b2fd8 55,58,61
+  s_1ca3cc9a501d06::t_7dafdc85b7d057 124-129
+  s_1ca3cc9a501d06::t_5fda5a81241e0f 178-188
+tools/build_per_layer_map.py
+  s_1ca3cc9a501d06::t_37ce489fe07a4a 1-127
+vllm_ascend/ascend_forward_context.py
+  s_1ca3cc9a501d06::t_5d0de4c9d73f60 436-441
+  s_1ca3cc9a501d06::t_f0b756aa5c41b5 2
+  s_1ca3cc9a501d06::t_9afc552018f84b 31-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "474797603639e672c798c3ba0c565372cbf20850",
+  "prompts": {},
+  "sessions": {
+    "s_1ca3cc9a501d06": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "eae451be-048d-4614-8afa-c18fb31ff5ac",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}
