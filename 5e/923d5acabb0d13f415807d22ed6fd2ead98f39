@@ -1,0 +1,22 @@
+vllm_ascend/models/deepseek_v41/decoder_replay_state.py
+  s_b4d3bfe9c28898::t_8415d8bbc491e6 109
+  s_b4d3bfe9c28898::t_0122aea3087579 100-101,104-108,110-111
+tests/ut/models/test_deepseek_v41_decoder_replay_state.py
+  s_b4d3bfe9c28898::t_db6f9fb58a20e4 191-226
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "5e923d5acabb0d13f415807d22ed6fd2ead98f39",
+  "prompts": {},
+  "sessions": {
+    "s_b4d3bfe9c28898": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "9c5e86c0-26a8-438d-a20f-fd4f831fe050",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}
