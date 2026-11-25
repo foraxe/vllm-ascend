@@ -17,6 +17,8 @@ vllm_ascend/worker/v2/spec_decode/dspark/speculator.py
   s_480f842b4b95f0::t_e5067a5478430b 43-46
   s_480f842b4b95f0::t_440662dedb221a 27
   s_480f842b4b95f0::t_883ef75d5e2046 144
+  s_480f842b4b95f0::t_4a95b1d5cc86c6 516-517
+  s_480f842b4b95f0::t_4963520ba58f6e 47
 vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/timing.py
   s_480f842b4b95f0::t_ce14fc9b14ac80 1-19,21-24,36-59
   s_480f842b4b95f0::t_0a22524c50f9af 20
@@ -34,6 +36,7 @@ vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/pool_scheduler.py
   s_480f842b4b95f0::t_8f338b1767505e 46-49
   s_480f842b4b95f0::t_366db4f192ca66 100
   s_480f842b4b95f0::t_ce4d1b6b759ef6 391,393-402
+  s_480f842b4b95f0::t_4a95b1d5cc86c6 99
 vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/kv_transfer.py
   s_480f842b4b95f0::t_4c682a351a55ad 580-588
   s_480f842b4b95f0::t_be80e25bea38a4 1088-1100,1105-1125
