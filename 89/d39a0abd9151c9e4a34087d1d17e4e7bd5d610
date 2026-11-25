@@ -1,0 +1,28 @@
+tests/ut/distributed/kv_transfer/test_owner_p2p_stage.py
+  s_480f842b4b95f0::t_9816bf46f459bc 143-157
+vllm_ascend/attention/context_parallel/pcp_owner_kv.py
+  s_480f842b4b95f0::t_0c6bb9d7b39bca 34,38-44
+release_notes/fragments/23232.yaml
+  s_480f842b4b95f0::t_0eca53f815d9ff 5-12
+tests/ut/attention/test_pcp_owner_kv.py
+  s_480f842b4b95f0::t_cca4e15ffd578c 88,91,93,98,102,104-115,120,124-126,130-133,142
+vllm_ascend/distributed/kv_transfer/utils/owner_transfer.py
+  s_480f842b4b95f0::t_aa7fdaf60eb503 70-71,73,77-80
+  s_480f842b4b95f0::t_532ac495be0c5a 33-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "89d39a0abd9151c9e4a34087d1d17e4e7bd5d610",
+  "prompts": {},
+  "sessions": {
+    "s_480f842b4b95f0": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "7f96548e-9703-4091-aab9-2de7749a032e",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}
