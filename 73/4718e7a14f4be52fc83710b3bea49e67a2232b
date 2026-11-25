@@ -1,0 +1,26 @@
+vllm_ascend/attention/context_parallel/dsa_v41_cp.py
+  s_480f842b4b95f0::t_aaede64344d241 832
+  s_480f842b4b95f0::t_6bb1af08060580 808
+  s_480f842b4b95f0::t_1ba69a6840a642 713-737
+tests/ut/attention/test_dsa_v41_cp.py
+  s_480f842b4b95f0::t_1c0d6f37d149b9 1784,1787-1809
+  s_480f842b4b95f0::t_8858aa8b116d3d 1740-1744
+  s_480f842b4b95f0::t_03ba0ead30f441 1767-1768,1771
+  s_480f842b4b95f0::t_6445e145ec823e 1810
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "734718e7a14f4be52fc83710b3bea49e67a2232b",
+  "prompts": {},
+  "sessions": {
+    "s_480f842b4b95f0": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "7f96548e-9703-4091-aab9-2de7749a032e",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}
