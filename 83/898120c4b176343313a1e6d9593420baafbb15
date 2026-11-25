@@ -1,0 +1,71 @@
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/pool_worker.py
+  s_480f842b4b95f0::t_b918f855f02686 80
+  s_480f842b4b95f0::t_ca26a289a809ae 1748-1754
+  s_480f842b4b95f0::t_a57008a695ce29 874-881,883-889,897-901,1872
+  s_480f842b4b95f0::t_8ccbdbf1c58fa6 1877
+  s_480f842b4b95f0::t_9b24c30f38f2b4 1653-1663,1669-1683,1686,1688
+  s_480f842b4b95f0::t_4d99de749b7a5d 137
+  s_480f842b4b95f0::t_ca851216bbbd7c 1524
+  s_480f842b4b95f0::t_5bee792eabcf49 77-79,81
+  s_480f842b4b95f0::t_044cf680eb93ca 1504-1505
+  s_480f842b4b95f0::t_8117e717ec68da 1565-1574
+  s_480f842b4b95f0::t_0a9dc10e151c1f 484-486,1689,1746-1747,1866,1875
+vllm_ascend/worker/v2/spec_decode/dspark/speculator.py
+  s_480f842b4b95f0::t_7f653358f4141c 64-65
+  s_480f842b4b95f0::t_9beb24b829c9de 82-87,97-143
+  s_480f842b4b95f0::t_c5b79754fa1674 518-519
+  s_480f842b4b95f0::t_e5067a5478430b 43-46
+  s_480f842b4b95f0::t_440662dedb221a 27
+  s_480f842b4b95f0::t_883ef75d5e2046 144
+  s_480f842b4b95f0::t_4a95b1d5cc86c6 516-517
+  s_480f842b4b95f0::t_4963520ba58f6e 47
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/timing.py
+  s_480f842b4b95f0::t_ce14fc9b14ac80 1-19,21-24,36-59
+  s_480f842b4b95f0::t_0a22524c50f9af 20
+  s_480f842b4b95f0::t_a0e927acd725f7 25-35
+vllm_ascend/worker/v2/model_runner.py
+  s_480f842b4b95f0::t_2952af2a7dcdb8 263-267
+  s_480f842b4b95f0::t_f0fcd30bea79d9 1296
+  s_480f842b4b95f0::t_09bb11caa12266 1267,1269-1271
+  s_480f842b4b95f0::t_83e14f04f009d4 1338
+  s_480f842b4b95f0::t_4b7d8ee15e3016 1268,1272-1289,1295,1297
+  s_480f842b4b95f0::t_e34ddff13b6e51 1337,1339
+  s_480f842b4b95f0::t_828392fc3859a4 96-100
+  s_480f842b4b95f0::t_a80861b4beed9c 1266
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/pool_scheduler.py
+  s_480f842b4b95f0::t_8f338b1767505e 46-49
+  s_480f842b4b95f0::t_366db4f192ca66 100
+  s_480f842b4b95f0::t_ce4d1b6b759ef6 391,393-402
+  s_480f842b4b95f0::t_4a95b1d5cc86c6 99
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/kv_transfer.py
+  s_480f842b4b95f0::t_4c682a351a55ad 580-588
+  s_480f842b4b95f0::t_be80e25bea38a4 1088-1100,1105-1125
+  s_480f842b4b95f0::t_b31938820b76f3 26-29
+  s_480f842b4b95f0::t_c33f0c98c66a9d 475-476,482-483
+  s_480f842b4b95f0::t_5b423aa0b3bf57 1266-1276,1281-1292,1296,1298
+  s_480f842b4b95f0::t_1365d53d89d6ba 1162,1164,1181,1261-1265,1299
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/metrics.py
+  s_480f842b4b95f0::t_3e50f1d87fc257 63-70,81-94,97-105,107-111
+  s_480f842b4b95f0::t_1e3ab94b83ef55 34-49
+  s_480f842b4b95f0::t_ae046edad682e5 166-216,226-246
+tests/ut/distributed/ascend_store/test_timing.py
+  s_480f842b4b95f0::t_b2768caf4e8805 1-54
+tests/ut/distributed/ascend_store/test_metrics.py
+  s_480f842b4b95f0::t_865e5f52b6651b 41-42,45,54,56-64,79-84,92-97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "83898120c4b176343313a1e6d9593420baafbb15",
+  "prompts": {},
+  "sessions": {
+    "s_480f842b4b95f0": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "7f96548e-9703-4091-aab9-2de7749a032e",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}
