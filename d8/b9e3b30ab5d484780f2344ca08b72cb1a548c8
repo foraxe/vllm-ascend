@@ -1,0 +1,83 @@
+vllm_ascend/models/deepseek_v41/cache_config.py
+  s_480f842b4b95f0::t_74b83ad97d46d4 422-429,431-432,434-436,443
+  s_480f842b4b95f0::t_8638d54dbe704c 381,383-384
+  s_480f842b4b95f0::t_c5a0f31f9717ba 87
+  s_480f842b4b95f0::t_7300b1e796d80c 276-300
+  s_480f842b4b95f0::t_ab91b8ae55b6bf 250-259
+  s_480f842b4b95f0::t_3f460f1d9a466f 395-397,399-421,433,437-442,444-448,450-474
+  s_480f842b4b95f0::t_b1ce2c1139d94a 10
+  s_480f842b4b95f0::t_66137bf333b0da 47-86,88-109
+  s_480f842b4b95f0::t_e52d9379d6f3a4 323-324
+  s_480f842b4b95f0::t_aad5ecbd1d0c0b 382
+vllm_ascend/core/kv_cache_config_builder.py
+  s_480f842b4b95f0::t_588d34414ff7e7 182
+vllm_ascend/attention/dsa_v41.py
+  s_480f842b4b95f0::t_a4eb9e1e14fcd8 33-34,354-475,477-484,486-493,495-738,1069,1078,1148,1160,1162,1244,1271,1891,1893
+  s_480f842b4b95f0::t_ffcf2df68dc5e9 476,485,494,1166-1243,1892
+  s_480f842b4b95f0::t_ca069fb65b25c2 1136-1147
+  s_480f842b4b95f0::t_e93ffd41fd008e 1063-1068
+tests/ut/models/test_deepseek_v41_owner_capacity.py
+  s_480f842b4b95f0::t_7268fff61483a4 1-97
+vllm_ascend/envs.py
+  s_480f842b4b95f0::t_25968a3ddcc6cd 95-155
+tests/ut/attention/test_pcp_owner_stage.py
+  s_480f842b4b95f0::t_817a5c47823fcf 1-118
+vllm_ascend/worker/v2/attn_utils.py
+  s_480f842b4b95f0::t_1e0a9e1b3bd39c 775-824,831-864
+  s_480f842b4b95f0::t_050f7025223cf4 825-830
+tests/ut/attention/test_pcp_owner_kv.py
+  s_480f842b4b95f0::t_497ed892212fa2 1-582
+vllm_ascend/attention/context_parallel/pcp_owner_vmm.py
+  s_480f842b4b95f0::t_3b86101cac92ca 1-1327
+vllm_ascend/attention/context_parallel/dsa_v41_cp.py
+  s_480f842b4b95f0::t_5b9e37ad619afb 807-808,811,817-821,827-829
+  s_49ee41f9671192::t_b47f02e4006237 27
+  s_480f842b4b95f0::t_663d18374e4bfa 6,14,21-26
+  s_480f842b4b95f0::t_75690c361ec71e 676-712
+  s_480f842b4b95f0::t_98b50c5cc32429 279-297
+  s_480f842b4b95f0::t_1b2144eb1cdbf6 783-788
+vllm_ascend/attention/context_parallel/pcp_owner_kv.py
+  s_480f842b4b95f0::t_bb76a1522e796e 1-931
+tests/ut/attention/test_dsa_v41_cp.py
+  s_480f842b4b95f0::t_c2da207afae88f 1596-1597,1731-1800
+  s_480f842b4b95f0::t_e73133be642c87 1729-1730
+vllm_ascend/attention/context_parallel/pcp_owner_timing.py
+  s_480f842b4b95f0::t_f8ee1bfe543b57 1-76
+vllm_ascend/attention/context_parallel/pcp_owner_stage.py
+  s_480f842b4b95f0::t_ab4d04e91b192e 1-671
+tests/ut/attention/test_pcp_owner_vmm.py
+  s_480f842b4b95f0::t_138f8586806eeb 1-77,83-85,87-95,97-98,100,102-105,117-118,120,145,151-157,159,161-162,164,198-212
+  s_480f842b4b95f0::t_df816bdffee621 78-82,86,96,99,101,106-116,119,121-144,146-150,158,160,163,165-197,213
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d8b9e3b30ab5d484780f2344ca08b72cb1a548c8",
+  "prompts": {},
+  "sessions": {
+    "s_480f842b4b95f0": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "7f96548e-9703-4091-aab9-2de7749a032e",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": null
+    },
+    "s_49ee41f9671192": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "db62c5da-f91e-4be2-89d6-c6718ea49876",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    },
+    "s_5dc4d9a875683a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a15831-a776-76c3-ba05-9c9bcb0da04d",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}
