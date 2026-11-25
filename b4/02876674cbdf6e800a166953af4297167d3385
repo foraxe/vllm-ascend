@@ -1,0 +1,21 @@
+csrc/moe/hc_pre/op_host/hc_pre_tiling.cpp
+  s_1ca3cc9a501d06::t_faeedb363e5101 16,67-74,218-223
+csrc/moe/hc_pre/op_kernel/hc_pre_m_k_split_core.h
+  s_1ca3cc9a501d06::t_4258ea441ac552 265-266,313-314,316,706-726,732-733,1057-1058,1085,1087
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b402876674cbdf6e800a166953af4297167d3385",
+  "prompts": {},
+  "sessions": {
+    "s_1ca3cc9a501d06": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "eae451be-048d-4614-8afa-c18fb31ff5ac",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}
