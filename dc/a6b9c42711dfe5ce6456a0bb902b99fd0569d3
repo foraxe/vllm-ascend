@@ -1,0 +1,35 @@
+docs/source/user_guide/configuration/additional_config.md
+  s_480f842b4b95f0::t_a7a5024a7aa68f 348-393
+tests/ut/attention/test_pcp_owner_kv.py
+  s_480f842b4b95f0::t_3f5a33734f215c 578,580-581,583-595,606-642,644-656
+tests/ut/distributed/kv_transfer/test_mooncake_transfer_engine.py
+  s_480f842b4b95f0::t_b8b06a510e2ef1 171-211
+tests/ut/distributed/kv_transfer/test_owner_p2p_stage.py
+  s_480f842b4b95f0::t_b1313e7ad1f984 1-142
+vllm_ascend/attention/context_parallel/pcp_owner_kv.py
+  s_480f842b4b95f0::t_ec8ea8abf13a38 49-54,57-61,939-954,973-977,985
+vllm_ascend/distributed/kv_transfer/kv_p2p/mooncake_connector.py
+  s_480f842b4b95f0::t_dbd3249610c1b6 63-72,129-135,292,308,398-409,414-417,442,516-518,552,933-968,1106-1110,1584-1596,1609-1644,2822-2875,2877-2887,2889-2890,2892-2904,2918-2921,2938
+vllm_ascend/distributed/kv_transfer/kv_p2p/mooncake_hybrid_connector.py
+  s_480f842b4b95f0::t_91878635706a1f 62-71,112-117,317,333,421-432,437-438,463,525-528,553,790-797,799-800,862-884,906-911,914-918,995-1004,1019-1027,1035-1040,1043-1047,1225-1236,1248-1282,2041-2094,2096,2107-2110,2127
+vllm_ascend/distributed/kv_transfer/utils/mooncake_transfer_engine.py
+  s_480f842b4b95f0::t_fdb80813bcf851 48-62,64-70,72-77
+vllm_ascend/distributed/kv_transfer/utils/owner_transfer.py
+  s_480f842b4b95f0::t_72f9b808abde29 34-47,63-80,125,241-470
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "dca6b9c42711dfe5ce6456a0bb902b99fd0569d3",
+  "prompts": {},
+  "sessions": {
+    "s_480f842b4b95f0": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "7f96548e-9703-4091-aab9-2de7749a032e",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}
