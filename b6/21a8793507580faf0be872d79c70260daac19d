@@ -1,0 +1,19 @@
+image/nightly/image_a5_api.aci.yml
+  s_eecf565659df1e::t_a6a18f51ca3359 1-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b621a8793507580faf0be872d79c70260daac19d",
+  "prompts": {},
+  "sessions": {
+    "s_eecf565659df1e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c5e9-0fdd-7262-a59c-9af0e9b01f9c",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "zhengchao <zhengchao@U-T60N2XX7-1836.local>"
+    }
+  }
+}
