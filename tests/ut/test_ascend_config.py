@@ -61,7 +61,7 @@ from vllm_ascend.utils import clear_enable_sp, enable_sp, shared_expert_dp_enabl
 
 def test_shared_engram_requires_v2_runner():
     config = AscendConfig(
-        shared_engram={"backend": "a3", "endpoint": "127.0.0.1:29500"},
+        shared_engram={"backend": "a3", "endpoints": ["127.0.0.1:29500"]},
         sparse_kv_offload_config=SparseKVOffloadConfig(),
     )
     vc = SimpleNamespace(use_v2_model_runner=False, engram_config=SimpleNamespace(cpu_offload=True))
@@ -77,14 +77,18 @@ def test_shared_engram_config_schema():
     import pytest
     from pydantic import TypeAdapter
 
-    config = SharedEngramConfig(backend="a3", endpoint="owner:29500")
-    assert config.backend == "a3" and config.endpoint == "owner:29500"
+    config = SharedEngramConfig(backend="a3", endpoints=["owner:29500"])
+    assert config.backend == "a3" and config.endpoints == ["owner:29500"]
+    # `endpoint` remains accepted as the legacy single-owner spelling.
+    assert SharedEngramConfig(backend="a3", endpoint="owner:29500").endpoints == ["owner:29500"]
     for values in (
         {"endpoint": "owner:29500"},
         {"backend": "a3"},
-        {"backend": "unknown", "endpoint": "owner:29500"},
-        {"backend": "a3", "endpoint": "owner:0"},
-        {"backend": "a3", "endpoint": "owner:29500", "unexpected": True},
+        {"backend": "unknown", "endpoints": ["owner:29500"]},
+        {"backend": "a3", "endpoints": ["owner:0"]},
+        {"backend": "a3", "endpoints": []},
+        {"backend": "a3", "endpoints": ["owner:29500"], "endpoint": "other:29500"},
+        {"backend": "a3", "endpoints": ["owner:29500"], "unexpected": True},
     ):
         with pytest.raises(ValueError):
             TypeAdapter(SharedEngramConfig).validate_python(values)
