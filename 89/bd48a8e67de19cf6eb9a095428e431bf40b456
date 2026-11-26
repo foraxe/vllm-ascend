@@ -1,0 +1,21 @@
+vllm_ascend/models/deepseek_v41/model.py
+  s_963f283fefd5c9::t_e899cf81e415fa 1273
+  s_963f283fefd5c9::t_bcad13b951b591 17
+  s_963f283fefd5c9::t_802a8757b0da34 136-138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "89bd48a8e67de19cf6eb9a095428e431bf40b456",
+  "prompts": {},
+  "sessions": {
+    "s_963f283fefd5c9": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "4f0e41ed-8473-449d-9d40-f2162b1aba7d",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}
