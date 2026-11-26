@@ -1,0 +1,71 @@
+tests/ut/models/test_engram_shared_pool.py
+  s_2c7c0a259eff1f::t_361ab01766ef27 861-862,875-876
+  s_2c7c0a259eff1f::t_52ed329b96e2d3 905-919
+  s_2c7c0a259eff1f::t_c0e2f10db5c95a 279-292,838-843,845,850-851,853-860,863-864,867,870,874,877,892,897,900
+  s_2c7c0a259eff1f::t_037eafcb848374 833-837,844,846-849,852,865-866,868-869,871-873,878-891,893-896,898-899,901-904
+  s_2c7c0a259eff1f::t_7b7516617b3f84 920-956
+vllm_ascend/models/deepseek_v41/engram/shared_host.py
+  s_2c7c0a259eff1f::t_52ed329b96e2d3 97-102,151-152
+  s_2c7c0a259eff1f::t_0cee30cd8edfb0 96,111,122,149-150,153,157
+vllm_ascend/ops/triton/engram_lookup.py
+  s_2c7c0a259eff1f::t_b9b1e2c1fa4bf5 119,134
+tests/ut/models/test_engram_shared_rdma.py
+  s_2c7c0a259eff1f::t_695515302fee29 585-652,654-694,697-704
+  s_2c7c0a259eff1f::t_408c55c8cf72df 441,653,695-696,705-706
+vllm_ascend/models/deepseek_v41/engram/npu.py
+  s_2c7c0a259eff1f::t_b9b1e2c1fa4bf5 284
+docs/source/user_guide/feature_guide/shared_engram_rdma.md
+  s_2c7c0a259eff1f::t_c0e2f10db5c95a 87-104
+vllm_ascend/ascend_config.py
+  s_2c7c0a259eff1f::t_cc66b53de2c345 491-492,511-519
+release_notes/fragments/00000.yaml
+  s_2c7c0a259eff1f::t_c0e2f10db5c95a 1-5
+vllm_ascend/shared_engram.py
+  s_2c7c0a259eff1f::t_361ab01766ef27 48-53
+  s_2c7c0a259eff1f::t_24ceb3dc33385e 18
+  s_2c7c0a259eff1f::t_87217c95604886 45,60,63-65,77-79,91-94
+  s_2c7c0a259eff1f::t_c0e2f10db5c95a 17,19-23
+  s_2c7c0a259eff1f::t_0cee30cd8edfb0 46-47
+vllm_ascend/shared_engram_rdma.py
+  s_2c7c0a259eff1f::t_cc66b53de2c345 20-21,47-48,63
+vllm_ascend/models/deepseek_v41/engram/embedding.py
+  s_2c7c0a259eff1f::t_b9b1e2c1fa4bf5 119,250-251,256-257
+  s_2c7c0a259eff1f::t_c0e2f10db5c95a 252-255
+  s_2c7c0a259eff1f::t_0fff5ddd2c462a 246
+docs/source/user_guide/feature_guide/shared_engram.md
+  s_2c7c0a259eff1f::t_361ab01766ef27 213
+  s_2c7c0a259eff1f::t_c0e2f10db5c95a 190-212,214-217
+vllm_ascend/models/deepseek_v41/engram/shared_rdma.py
+  s_2c7c0a259eff1f::t_c0e2f10db5c95a 233-235
+  s_2c7c0a259eff1f::t_40876aed21a76f 264,270-276,284-286,293-294,422-426,428-438,441-447,450-510,513-567,625-630,651-653,795
+  s_2c7c0a259eff1f::t_df3f6db9226833 277-283,287,647-648,676-677,682-686
+  s_2c7c0a259eff1f::t_cc66b53de2c345 427,439-440
+  s_2c7c0a259eff1f::t_11504211eb979b 448-449,511-512
+vllm_ascend/models/deepseek_v41/engram/shared_pool.py
+  s_2c7c0a259eff1f::t_c0e2f10db5c95a 91-102,214-220,438-440
+  s_2c7c0a259eff1f::t_0cee30cd8edfb0 195,208,221,365-366,381,391,393-394,407-415,424-428,430-431,436
+  s_2c7c0a259eff1f::t_87217c95604886 16,83-89,105-110,113-114,144,204
+  s_2c7c0a259eff1f::t_52ed329b96e2d3 363,369-376,384-387,446-449
+  s_2c7c0a259eff1f::t_361ab01766ef27 416-423
+  s_2c7c0a259eff1f::t_b9b1e2c1fa4bf5 333-362,364,367-368,377-380,382-383,388-390,392,395-406,429,432-435,437,441-445
+vllm_ascend/models/deepseek_v41/model.py
+  s_2c7c0a259eff1f::t_c0e2f10db5c95a 1305-1306
+  s_2c7c0a259eff1f::t_cc66b53de2c345 1279,1290-1291,1293,1299-1301
+  s_2c7c0a259eff1f::t_b9b1e2c1fa4bf5 1304
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "525a80387028c828d81fafc86a1ede6af546ab4b",
+  "prompts": {},
+  "sessions": {
+    "s_2c7c0a259eff1f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1cb69-b458-77a2-a7f7-ef64f39725f8",
+        "model": "gpt-6.1-terra"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

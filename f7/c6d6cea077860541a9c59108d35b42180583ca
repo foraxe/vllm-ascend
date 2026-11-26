@@ -1,0 +1,49 @@
+vllm_ascend/models/deepseek_v41/model.py
+  s_963f283fefd5c9::t_44fcea568a6c05 1297,2453-2455
+  s_963f283fefd5c9::t_1aa1d1a98ec2d0 1290,1296,1298-1302,1305
+vllm_ascend/models/deepseek_v41/engram/embedding.py
+  s_963f283fefd5c9::t_ba522794756979 119
+  s_963f283fefd5c9::t_a93c4e100986b5 251,254-257
+tests/ut/models/test_engram_shared_pool.py
+  s_963f283fefd5c9::t_514436f5759d33 1040-1045
+  s_963f283fefd5c9::t_4c3b9b41e8b865 452
+  s_963f283fefd5c9::t_db57c42a15fa02 1029
+  s_963f283fefd5c9::t_44fcea568a6c05 1038
+tests/ut/test_ascend_config.py
+  s_963f283fefd5c9::t_4e2ca61ca39255 66-69,73-77
+docs/source/user_guide/feature_guide/shared_engram.md
+  s_963f283fefd5c9::t_1f5ad12c873314 222-223
+  s_963f283fefd5c9::t_473ae947dce678 64
+tests/ut/models/test_engram_defaults.py
+  s_963f283fefd5c9::t_88e996e988b7c2 34,90
+  s_963f283fefd5c9::t_e1fe3e8094e2e0 55,59
+  s_963f283fefd5c9::t_aa693a8fb79410 28
+  s_963f283fefd5c9::t_772333eaa13ab0 40
+  s_963f283fefd5c9::t_1e192c5fcd32f4 45
+  s_963f283fefd5c9::t_0ac7239fe09742 65,71,77,82
+  s_963f283fefd5c9::t_b3b2e493c708d0 50
+docs/source/user_guide/feature_guide/shared_engram_rdma.md
+  s_963f283fefd5c9::t_13fc48d002e1b2 56
+  s_963f283fefd5c9::t_5581e9dabe3567 106-107
+tests/ut/models/test_engram_unified_dispatch.py
+  s_963f283fefd5c9::t_be330844c45df5 65
+  s_963f283fefd5c9::t_cd772ca3722f35 109
+vllm_ascend/ascend_config.py
+  s_963f283fefd5c9::t_d23b31c5abf3ef 491,501-515,520-522,524
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f7c6d6cea077860541a9c59108d35b42180583ca",
+  "prompts": {},
+  "sessions": {
+    "s_963f283fefd5c9": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "4f0e41ed-8473-449d-9d40-f2162b1aba7d",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}
