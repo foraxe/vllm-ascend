@@ -1,0 +1,28 @@
+vllm_ascend/distributed/kv_transfer/utils/mooncake_transfer_engine.py
+  s_480f842b4b95f0::t_3f6e927244dc5d 3-4,6-68
+  s_480f842b4b95f0::t_6674eedae8475e 1,5
+vllm_ascend/distributed/kv_transfer/kv_p2p/mooncake_hybrid_connector.py
+  s_480f842b4b95f0::t_b25d1f94eb4870 927,1056
+  s_480f842b4b95f0::t_0e4107b06bb7e3 61-64
+vllm_ascend/distributed/kv_transfer/kv_p2p/mooncake_connector.py
+  s_480f842b4b95f0::t_9ed5e97861381b 62-65
+  s_480f842b4b95f0::t_e1377d4e00a19b 1141
+tests/ut/distributed/kv_transfer/test_mooncake_transfer_engine.py
+  s_480f842b4b95f0::t_05103e1299bab4 33-77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f3147e48a5d19df8356f10d28a17f4d4e27b0fb1",
+  "prompts": {},
+  "sessions": {
+    "s_480f842b4b95f0": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "7f96548e-9703-4091-aab9-2de7749a032e",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}

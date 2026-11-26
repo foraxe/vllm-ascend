@@ -1,0 +1,21 @@
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/pool_scheduler.py
+  s_480f842b4b95f0::t_76fa0a9e8300b9 888-913,920
+  s_480f842b4b95f0::t_03da814c6705f6 928
+  s_480f842b4b95f0::t_2559e91ef44973 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "4e2d1fad1c3119dfc026f60b1042bfd783adc64b",
+  "prompts": {},
+  "sessions": {
+    "s_480f842b4b95f0": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "7f96548e-9703-4091-aab9-2de7749a032e",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}
