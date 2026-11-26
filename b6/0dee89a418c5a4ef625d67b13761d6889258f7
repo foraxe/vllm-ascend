@@ -1,0 +1,25 @@
+image/dev-v0.30.0.1013/api/image_arm64_a5_api.aci.yml
+  s_eecf565659df1e::t_fe2e5eb02ebbfc 1-113
+image/dev-v0.32.0.1111/api/image_arm64_a5_api.aci.yml
+  s_eecf565659df1e::t_fe2e5eb02ebbfc 1-113
+image/dev-v0.32.0.1111/api/image_arm64_a5_py312_api.aci.yml
+  s_eecf565659df1e::t_fe2e5eb02ebbfc 1-114
+image/dev-v0.30.0.1013/api/image_arm64_a5_rc2_api.aci.yml
+  s_eecf565659df1e::t_fe2e5eb02ebbfc 1-113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b60dee89a418c5a4ef625d67b13761d6889258f7",
+  "prompts": {},
+  "sessions": {
+    "s_eecf565659df1e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c5e9-0fdd-7262-a59c-9af0e9b01f9c",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "zhengchao <zhengchao@U-T60N2XX7-1836.local>"
+    }
+  }
+}
