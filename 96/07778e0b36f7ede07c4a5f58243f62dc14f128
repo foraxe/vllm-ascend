@@ -1,0 +1,23 @@
+vllm_ascend/ops/triton/docs/ple_lookup.md
+  s_963f283fefd5c9::t_48a90cd8440a9a 1-89
+vllm_ascend/ops/triton/README.md
+  s_963f283fefd5c9::t_50d7c811098802 157
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_ple_host_lookup.py
+  s_963f283fefd5c9::t_91a85c3bbbf606 55-91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9607778e0b36f7ede07c4a5f58243f62dc14f128",
+  "prompts": {},
+  "sessions": {
+    "s_963f283fefd5c9": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "4f0e41ed-8473-449d-9d40-f2162b1aba7d",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}
