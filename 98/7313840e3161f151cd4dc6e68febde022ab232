@@ -1,0 +1,362 @@
+.github/workflows/scripts/test_ai_review.py
+  s_480f842b4b95f0::t_3879ab5ce9189e 55,102-105,185,187,189,201-202,207-209,211-212,216-226,255,258,265,310,317,331,367,389-391,437,448,455,468-469,471-475,495-496,564,609-610
+benchmarks/README.md
+  s_480f842b4b95f0::t_3879ab5ce9189e 9
+.github/workflows/scripts/ai_review.py
+  s_480f842b4b95f0::t_3879ab5ce9189e 8,62,311,318,321-322,331,341,355,366,396,405,430,450-451,458-460,464,507,509,513,532,541-542,601-603,642,795-805
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/pool_worker.py
+  s_480f842b4b95f0::t_ad431db1762f9c 1824,1917-1921,1924-1926,2004-2009,2034
+  s_480f842b4b95f0::t_de96aedc117532 1730
+  s_480f842b4b95f0::t_1d12bd8106235b 764,930-938,1057
+  s_480f842b4b95f0::t_ac010d572bdc8b 36,41-46,129,251,253-255,275-288,383-385,395,429-434,449,456-460,517-519,521-523,526,538-540,546,556,592-593,653,668,672,685,706,708-709,745-750,754-763,766,769-773,781,787,789,850-851,854,924-929,939,990-993,1050-1051,1054-1056,1058-1067,1222-1223,1635-1637,1652-1653,1659,1675,1677-1685,1703,1720,1753
+.github/agent-review/instructions.md
+  s_480f842b4b95f0::t_3879ab5ce9189e 12-13,15,47-56,62-66,70-87
+csrc/attention/qsa_union_inputs/qsa_union_inputs_torch_adpt.h
+  s_480f842b4b95f0::t_3879ab5ce9189e 1-63
+.github/workflows/ai_review.yml
+  s_480f842b4b95f0::t_3879ab5ce9189e 76-78
+csrc/attention/qsa_union_inputs/CMakeLists.txt
+  s_480f842b4b95f0::t_3879ab5ce9189e 1-9
+.github/workflows/pr_test.yaml
+  s_480f842b4b95f0::t_3879ab5ce9189e 891-894,939,1120
+.github/workflows/slash_command_dispatch.yml
+  s_480f842b4b95f0::t_3879ab5ce9189e 46-47,107-116
+csrc/aclnn_torch_adapter/op_api_common.h
+  s_480f842b4b95f0::t_3879ab5ce9189e 149
+.github/workflows/pr_ignore_owner_command.yml
+  s_480f842b4b95f0::t_3879ab5ce9189e 1-285
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/kv_transfer.py
+  s_480f842b4b95f0::t_4c3aa092bf5a99 1400
+  s_480f842b4b95f0::t_f535830eaf26bc 1159-1160,1175-1177,1183-1188
+  s_480f842b4b95f0::t_76451155d4122b 1158
+  s_480f842b4b95f0::t_de460bf9658af1 1179-1182
+  s_480f842b4b95f0::t_f7a1cbbb19f66b 1178,1335,1412,1416-1422,1424-1431,1440,1448
+  s_480f842b4b95f0::t_4e8960a34bcb34 16-18,20,35-70,117-119,148,361,365-370,403-405,504-516,537,540-547,552,1004-1005,1236,1252,1265,1272-1313,1334,1336,1343-1344,1377-1380,1384-1391,1396-1398,1452-1456,1458-1464,1469-1470
+.github/workflows/scripts/codeowner_gate.py
+  s_480f842b4b95f0::t_3879ab5ce9189e 27-30,54,61-77,271-370,372-378,381-382,389-393,398-399,401-403,431,510,532-542,555-558,563-566
+csrc/attention/qsa_union_inputs/op_host/qsa_union_inputs_tiling.cpp
+  s_480f842b4b95f0::t_3879ab5ce9189e 1-118
+csrc/attention/qsa_union_inputs/op_host/qsa_union_inputs_tiling.h
+  s_480f842b4b95f0::t_3879ab5ce9189e 1-24
+.github/workflows/scripts/test_codeowner_gate.py
+  s_480f842b4b95f0::t_3879ab5ce9189e 74,80,86,92-97,104,111,152-157,164-166,170-172,205-210,215,225,235-240,245-250,255-260,265-270,276,314-317,326-329,348,353,363,371-376,381-386,391-396,402,515-520,523-801
+csrc/attention/qsa_union_inputs/op_kernel/qsa_union_inputs_tiling_data.h
+  s_480f842b4b95f0::t_3879ab5ce9189e 1-23
+csrc/attention/qsa_union_inputs/op_host/qsa_union_inputs_def.cpp
+  s_480f842b4b95f0::t_3879ab5ce9189e 1-49
+csrc/build_aclnn.sh
+  s_480f842b4b95f0::t_3879ab5ce9189e 147,226
+.github/workflows/bot_ci_gate_comment.yaml
+  s_480f842b4b95f0::t_3879ab5ce9189e 292-302
+csrc/attention/qsa_union_inputs/op_host/CMakeLists.txt
+  s_480f842b4b95f0::t_3879ab5ce9189e 1-18
+csrc/attention/qsa_union_inputs/op_kernel/qsa_union_inputs.cpp
+  s_480f842b4b95f0::t_3879ab5ce9189e 1-809
+vllm_ascend/distributed/kv_transfer/utils/mooncake_transfer_engine.py
+  s_480f842b4b95f0::t_570544b59abb1e 51-59,63,68-69
+  s_1ca3cc9a501d06::t_7b33e23a2c3fe9 9-11,89,93-94,97-98,102,106,111-112,118
+csrc/attention/qsa_union_inputs/op_host/qsa_union_inputs_infershape.cpp
+  s_480f842b4b95f0::t_3879ab5ce9189e 1-46
+.github/agent-review/prompt_template.md
+  s_480f842b4b95f0::t_3879ab5ce9189e 3-9,20
+csrc/torch_binding.cpp
+  s_480f842b4b95f0::t_369d608068eddf 36,85-117,3354-3361
+csrc/torch_binding_meta.cpp
+  s_480f842b4b95f0::t_ece51a7ffe8006 9,556-575,1892
+docs/source/developer_guide/Design_Documents/ModelRunner_prepare_inputs.md
+  s_480f842b4b95f0::t_9ad6905dc0e6fd 119,126,149,198,204,225,235,264,274-275
+docs/source/developer_guide/Design_Documents/model_runner_v2_eplb.md
+  s_480f842b4b95f0::t_b55461b78ebcae 87-89
+docs/source/developer_guide/contribution/testing.md
+  s_480f842b4b95f0::t_c72a21f3554166 452-463
+docs/source/locale/zh_CN/LC_MESSAGES/developer_guide/Design_Documents/ModelRunner_prepare_inputs.po
+  s_480f842b4b95f0::t_964a9456fda364 194,196,226-227,229-230,289-290,297,306,341,344,371-372,386-388
+docs/source/locale/zh_CN/LC_MESSAGES/developer_guide/Design_Documents/model_runner_v2_eplb.po
+  s_480f842b4b95f0::t_c69360ca9c71d3 101-103,108
+docs/source/locale/zh_CN/LC_MESSAGES/tutorials/models/GLM5.3-Flash.po
+  s_480f842b4b95f0::t_49fcd17ccb6bb0 1865-1867,1877-1880,1889-1891,1923-1928,1937-1939,1949-1952,1961-1963,1971-1972
+docs/source/tutorials/models/DeepSeek-V4-Pro.md
+  s_480f842b4b95f0::t_9b2dccaf7a4b07 1261,1268,1275,1282,2472,2475,2478,2481
+docs/source/tutorials/models/Kimi-K3.1-Pro.md
+  s_480f842b4b95f0::t_34483e9801f828 23
+docs/source/tutorials/models/Qwen3.5-397B-A17B.md
+  s_480f842b4b95f0::t_d8e4a8c9667d95 1300
+docs/source/tutorials/models/Qwen3.8-Flash-Next.md
+  s_480f842b4b95f0::t_bbebfc690da92c 298-308
+docs/source/user_guide/feature_guide/flash_attention.md
+  s_480f842b4b95f0::t_b831610f2dfde9 166
+docs/source/user_guide/feature_guide/hisparse.md
+  s_480f842b4b95f0::t_ddbd44c7b4db1d 30-34,92-137,147-153,156,163-176
+docs/source/user_guide/feature_guide/layerwise_and_sparse_kv_cache_offloading.md
+  s_480f842b4b95f0::t_9e04ea59ca731d 117-124,128
+release_notes/fragments/20311.yaml
+  s_480f842b4b95f0::t_8ed1606461c292 1,3,5-8
+release_notes/fragments/20949.yaml
+  s_480f842b4b95f0::t_19bff769722e33 1-8
+release_notes/fragments/21924.yaml
+  s_480f842b4b95f0::t_814ca8ce578753 1-13
+release_notes/fragments/22488.yaml
+  s_480f842b4b95f0::t_2ca0aba09a3806 1-6
+release_notes/fragments/22919.yaml
+  s_480f842b4b95f0::t_71ce298d133839 1-10
+release_notes/fragments/23138.yaml
+  s_480f842b4b95f0::t_5fceb9fdd3197d 1-17
+tests/e2e/nightly/single_node/ops/singlecard_ops/test_hisparse_arch22_ops.py
+  s_480f842b4b95f0::t_9d978febc72076 5,7,14,17,19-20,31-49,109,112,270-272,275,337,344,459-460,1016,1020
+tests/e2e/nightly/single_node/ops/singlecard_ops/test_qsa_union_inputs.py
+  s_480f842b4b95f0::t_22c2e224f2079c 6-75,77-86
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_prepare_qsa_visible_lengths.py
+  s_480f842b4b95f0::t_804a5fde2f1e45 1-35
+tests/e2e/nightly/single_node/ops/singlecard_ops/triton/test_qwen4_exp_qsa.py
+  s_480f842b4b95f0::t_11bfaca1ede3ef 1-3,10,15-16,19,45,65,91-231
+tests/e2e/pull_request/one_card/test_gdn_layerwise_kv.py
+  s_480f842b4b95f0::t_07e9f199df0ec7 46
+tests/ut/_310p/test_model_runner_v2_310p.py
+  s_480f842b4b95f0::t_24794b834fc630 1299,1352
+tests/ut/attention/test_dsa_v1.py
+  s_480f842b4b95f0::t_8003b3d64d8341 202,205,207-208,218,248,284-285,288
+tests/ut/attention/test_dsa_v41_cp.py
+  s_480f842b4b95f0::t_fefb586b462232 346,894
+tests/ut/core/test_hisparse_admission.py
+  s_480f842b4b95f0::t_2ffa9c517f1c75 1-340
+tests/ut/core/test_kv_cache_config_builder.py
+  s_480f842b4b95f0::t_8e00a5f1ef0f57 142
+tests/ut/core/test_kv_cache_interface.py
+  s_480f842b4b95f0::t_68c48c1c6fcbdf 130,133,136,145,147,158
+tests/ut/core/test_paired_sfa_cache.py
+  s_480f842b4b95f0::t_d65b54ebbe6cf1 57
+tests/ut/core/test_qsa_kv_cache_grouping.py
+  s_480f842b4b95f0::t_6bcb5e0e2ddfc8 28
+tests/ut/distributed/ascend_store/_mock_deps.py
+  s_480f842b4b95f0::t_aa544c8742d827 326-335,454
+tests/ut/distributed/ascend_store/test_ascend_store_connector.py
+  s_480f842b4b95f0::t_a62143e5c824a1 285,322-338
+tests/ut/distributed/ascend_store/test_backend.py
+  s_480f842b4b95f0::t_430a76065946f8 63,71-86,526-543,666,1006,1050-1052,1061,1077,1441,1459,1465,1474,1490,1496-1497,1658,1800-1852,1855,1949-1952
+tests/ut/distributed/ascend_store/test_hisparse_memcache_registration.py
+  s_480f842b4b95f0::t_3ff704d5f9848b 1-880
+tests/ut/distributed/ascend_store/test_kv_transfer.py
+  s_480f842b4b95f0::t_69a5e810a89522 18,21,26,40,45,49-51,56,63,111-136,606-640,1295-1323,1397-1703,1770-1787,1815-1832,2045-2095
+tests/ut/distributed/ascend_store/test_mooncake_hybrid.py
+  s_480f842b4b95f0::t_8f4d0d51949cad 57-58
+tests/ut/distributed/ascend_store/test_pool_scheduler.py
+  s_480f842b4b95f0::t_64825eb70ea5b8 23,30,32,35,43,56,76,963-976,1224,1236,1247,1296,1403,1716-1842,1995
+tests/ut/distributed/ascend_store/test_pool_worker.py
+  s_480f842b4b95f0::t_e28db6787e2888 21-22,26,39-44,50-53,55,65-67,71-72,153-154,222-229,285-286,293,295-299,315-317,985-1020,1207-1208,1731-1733,1754,1764-1801,1805,1808,1811-1813,1815-1842,1844,1855-1888,1890-1892,2016-2225,2240-2243,2245,2389-2390,2399-2401,2404,2407,3215-3268,3284,3287-3288,3292,3294,3296-3297,3300-3327,3350,3370-3371,3391,3393,3412-3413,3416,3418-3419,3422,3507-3508,3567,3574,3576-3577,3595-3596,3605,3622,3794-3796,4216,4418-4438,4644-4662,4822,4828-4830,4835-4837,4844-4847,4879-4907
+tests/ut/distributed/ascend_store/test_request_lifecycle.py
+  s_480f842b4b95f0::t_6a85c82361feda 64-66,76,83
+tests/ut/distributed/ascend_store/test_reuse_publication_fence.py
+  s_480f842b4b95f0::t_05fb48da38b703 27-33,36-38,44,49-50,52-59,63
+tests/ut/distributed/ascend_store/test_shared_source_layerwise.py
+  s_480f842b4b95f0::t_fd824d64209c5c 3,13,23,129-131,138,166,177,199,202-203,217-218,260-506
+tests/ut/distributed/kv_transfer/test_mooncake_transfer_engine.py
+  s_480f842b4b95f0::t_d8f418f904c430 221,234,247-340
+tests/ut/distributed/test_ec_memcache_connector.py
+  s_480f842b4b95f0::t_8246796e0b3b0e 226,228
+tests/ut/distributed/test_yuanrong_backend.py
+  s_480f842b4b95f0::t_a58b50e9ded1cf 27,45-46,52-53,247,255,265
+tests/ut/kv_offload/test_ascend_multi_connector.py
+  s_480f842b4b95f0::t_3be10a6e0a38d4 3,12-14,21-207,245,291
+tests/ut/kv_offload/test_sfa_pd_rd2h_lifecycle.py
+  s_480f842b4b95f0::t_f20f4cf14d762f 53
+tests/ut/lora/test_punica_npu.py
+  s_480f842b4b95f0::t_f1dc1f9efee194 16-17,340-427
+tests/ut/models/qwen4_exp/test_cache_reuse.py
+  s_480f842b4b95f0::t_b2a66d28ea9bca 1-234
+tests/ut/models/qwen4_exp/test_fia_dispatch.py
+  s_480f842b4b95f0::t_998ca7fa677b22 5,25,211-231,235-240,270,278-336,347,349,402
+tests/ut/models/qwen4_exp/test_gbsa_adapter.py
+  s_480f842b4b95f0::t_be31a25fe8f249 257
+tests/ut/models/test_deepseek_v41_cache.py
+  s_480f842b4b95f0::t_0a0da7b616724a 193-194,269-270,280-281,528,908-910,920,1223,1382
+tests/ut/models/test_deepseek_v41_decoder_replay_state.py
+  s_480f842b4b95f0::t_fe0ebe8d23c862 191-303
+tests/ut/models/test_deepseek_v41_preprocess.py
+  s_480f842b4b95f0::t_2b212976a73f1c 4,16-48,234
+tests/ut/models/test_glm5next_kv_cache.py
+  s_480f842b4b95f0::t_0e33439bb192bb 90,320
+tests/ut/models/test_qwen4_exp_cache_config.py
+  s_480f842b4b95f0::t_1f47283303559f 829-860
+tests/ut/models/test_qwen4_exp_source_regression.py
+  s_480f842b4b95f0::t_0c1e0255094f29 28-64
+tests/ut/ops/test_fused_moe.py
+  s_480f842b4b95f0::t_a10d9886ec89b0 18,288-317
+tests/ut/ops/test_gdn_layerwise_kv.py
+  s_480f842b4b95f0::t_c1841000f49d9a 367-368
+tests/ut/patch/platform/test_patch_torch_utils.py
+  s_480f842b4b95f0::t_61c1de5e59867f 1-38
+tests/ut/test_compressed_prefix_cache.py
+  s_480f842b4b95f0::t_359e73b1558ebf 33,70,113,252
+tests/ut/test_platform.py
+  s_480f842b4b95f0::t_e17ba48474f8a3 347,392,429,509-512,1058,1065-1071,1073-1127,1794,1833,1894,2605-2608
+tests/ut/test_utils.py
+  s_480f842b4b95f0::t_a339e8a73c7bde 254-265
+tests/ut/worker/test_attn_utils_v2.py
+  s_480f842b4b95f0::t_bca105944a13d6 108,1484,1487,1552,1895,1903,1931
+tests/ut/worker/test_model_runner_v2.py
+  s_480f842b4b95f0::t_5eb03cf0895194 2026-2027,2036-2037
+tests/ut/worker/test_model_runner_v2_kv_cache.py
+  s_480f842b4b95f0::t_49c22bcb3a7985 5,10,18-181
+tests/ut/worker/test_worker_v1.py
+  s_480f842b4b95f0::t_f86b58ce6e384f 184-203
+vllm_ascend/_310p/worker/v2/model_runner.py
+  s_480f842b4b95f0::t_d582e0ffc3cd55 986-987
+vllm_ascend/attention/context_parallel/dsa_v41_cp.py
+  s_480f842b4b95f0::t_caed7f1d4d91b9 43,420
+vllm_ascend/attention/dsa_v1.py
+  s_480f842b4b95f0::t_96e4371d8256d3 50,805-806
+vllm_ascend/attention/dsa_v41.py
+  s_1ca3cc9a501d06::t_186cfb4f79b820 13,1235-1240,1277-1286,1388-1389,1813,2034
+vllm_ascend/attention/gdn.py
+  s_480f842b4b95f0::t_bdffbeff8fd32f 1115
+vllm_ascend/core/kv_cache_config_builder.py
+  s_480f842b4b95f0::t_d07e619a3e2bbf 13,129-149
+vllm_ascend/core/kv_cache_interface.py
+  s_480f842b4b95f0::t_16d083f2a94e6f 19,29-36,249,422-427
+vllm_ascend/distributed/ec_transfer/ec_memcache_connector.py
+  s_480f842b4b95f0::t_d983864c65931e 42,144,539-541
+vllm_ascend/distributed/kv_transfer/ascend_multi_connector.py
+  s_480f842b4b95f0::t_c765b9773cf0ce 11-14,23-26,30-70,89-100,117-135,179-185
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/ascend_store_connector.py
+  s_480f842b4b95f0::t_029e2b9e3285fa 39,183,186-210,214,516-523
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/backend/base.py
+  s_480f842b4b95f0::t_4fe66a9ffcd579 13-14,96-101,145-146,216-223,228-229,234-246
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/backend/memcache_backend.py
+  s_480f842b4b95f0::t_be2cde5cf5f235 19,22-26,29-30,32,36,43-59,64-71,96-122,219,224-225,236,267-273,283-293,316-359,369-371,377-413,565-566,568-569,610-611,613-615,619-622
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/backend/mooncake_backend.py
+  s_480f842b4b95f0::t_acfcf333d56ea2 30-34,498-504,599-611,614-615,620,626,742-751,785-794
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/backend/session_tracker.py
+  s_480f842b4b95f0::t_f153c7087b2535 34-49,60,64-67,83
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/backend/yuanrong_backend.py
+  s_480f842b4b95f0::t_58af09ae1b6567 12-16,120-123,149-158,183-192
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/buffer.py
+  s_480f842b4b95f0::t_a98e4caccb4d57 1-39
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/hisparse/__init__.py
+  s_480f842b4b95f0::t_e3add17e3ce8b8 1-3
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/hisparse/admission.py
+  s_480f842b4b95f0::t_f08b0751f42439 3,5,7-9,11-14,16-18,21-22,24-42,44-53,56-58,60-64,66-70
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/hisparse/draft_host_mirror.py
+  s_480f842b4b95f0::t_e2e6e3e2087887 3,5,7-8,10,12-13,16-17,20-23,25-30,33-36,38-63
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/hisparse/layout.py
+  s_480f842b4b95f0::t_a9e259c27d1bbe 1-228
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/layerwise/cache_planner.py
+  s_480f842b4b95f0::t_2401a556ddc7ac 32-33,299-304
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/layerwise/kv_transfer.py
+  s_480f842b4b95f0::t_15f09c8bd45179 465-467,933-947,951-952,996-997
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/layerwise/metadata.py
+  s_480f842b4b95f0::t_1e76a37d396639 7,177
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/layerwise/planes/block_key.py
+  s_480f842b4b95f0::t_fb57162d189c67 22,24,49-75,264-269,283,292-308,310-313
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/layerwise/planes/gva.py
+  s_480f842b4b95f0::t_1d6f79d210c4d8 9-10,47-58,97-98,108,122,131-133,239,269,272-273,337-338,340,344-348,350-367,369-405,407-533,535-537,539-545,547-550,552-554,556-575,577-591,593-610
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/layerwise/pool_scheduler.py
+  s_480f842b4b95f0::t_ca1cf15fb556ff 19,83-96,140-146
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/layerwise/pool_worker.py
+  s_480f842b4b95f0::t_8d8c4f0648d525 12,115,665-669,727,1213-1215,1217,1221-1222,1571,1575,1592,1605-1608,1622-1623,1672-1679,1700-1717
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/metadata.py
+  s_480f842b4b95f0::t_0f7a253032dfbc 482-485,1031-1033,1103,1112,1346-1347,1352
+vllm_ascend/distributed/kv_transfer/kv_pool/ascend_store/pool_scheduler.py
+  s_480f842b4b95f0::t_544a1eb8b5e266 28,137,139-141,609,616-618,679,681-685,699,908,912-916,922-927,1069-1072
+vllm_ascend/distributed/kv_transfer/kv_pool/kv_offload/native/offloading_connector.py
+  s_480f842b4b95f0::t_ce7031525ea519 276-277,279
+vllm_ascend/hisparse/backend.py
+  s_480f842b4b95f0::t_59849c479378c8 211,213
+vllm_ascend/hisparse/binding.py
+  s_480f842b4b95f0::t_04ce86d654602a 6,19-76,130-138,227,236,249,251-252
+vllm_ascend/lora/lora_ops.py
+  s_480f842b4b95f0::t_dd24b8dc4bfe6f 17-18,458,475-480
+vllm_ascend/models/deepseek_v4/indexer.py
+  s_480f842b4b95f0::t_5dabb2886a1728 144,146,156
+vllm_ascend/models/deepseek_v41/decoder_replay_state.py
+  s_480f842b4b95f0::t_e968713be70958 100-101,104-115
+vllm_ascend/models/deepseek_v41/indexer.py
+  s_480f842b4b95f0::t_03eebd65c358da 5-7,34,40-41,59-60,92-103,131-143,213-227
+vllm_ascend/models/deepseek_v41/mixed_quant_attention.py
+  s_480f842b4b95f0::t_60cf00d22f2981 34
+vllm_ascend/models/deepseek_v41/model.py
+  s_480f842b4b95f0::t_dfb25e7d41dda3 945
+vllm_ascend/models/glm5next/cache_config.py
+  s_480f842b4b95f0::t_44f14bacd326d5 123
+vllm_ascend/models/glm5next/cache_views.py
+  s_480f842b4b95f0::t_785c0636428435 68,121
+vllm_ascend/models/glm5next/kv_cache.py
+  s_480f842b4b95f0::t_1e8eec537f2acd 119
+vllm_ascend/models/layer/attention/layer.py
+  s_480f842b4b95f0::t_b61384ddbb8c2c 224,227-228,235
+vllm_ascend/models/qwen4_exp/attention_dispatch.py
+  s_480f842b4b95f0::t_8ed784dfd7d231 4,10,55-74,81-83,119-120,125-131,133-205,270-304
+vllm_ascend/models/qwen4_exp/cache_config.py
+  s_480f842b4b95f0::t_c220307b5a7001 205-209,235,303-315,317
+vllm_ascend/models/qwen4_exp/cache_reuse.py
+  s_480f842b4b95f0::t_f4e48c1ead85d1 1-32
+vllm_ascend/models/qwen4_exp/gbsa_union.py
+  s_480f842b4b95f0::t_3ba761cb82b9ce 1-250
+vllm_ascend/models/qwen4_exp/model.py
+  s_480f842b4b95f0::t_a29b4f1b717565 20,23,25,27,29-33,71,76-83,168-196,205-206,249-250
+vllm_ascend/models/qwen4_exp/mtp.py
+  s_480f842b4b95f0::t_17174a438f7979 28-29,189-193,214-217,234-240
+vllm_ascend/models/qwen4_exp/qsa.py
+  s_480f842b4b95f0::t_65985a7726e24d 614-667
+vllm_ascend/ops/cv_linear.py
+  s_480f842b4b95f0::t_6520881a7bb301 72-82
+vllm_ascend/ops/fused_moe/routed_experts.py
+  s_480f842b4b95f0::t_2ec1e788996b8b 50,107-108,112,117-119
+vllm_ascend/ops/gbsa.py
+  s_480f842b4b95f0::t_aea970c9cf0f07 121-125
+vllm_ascend/ops/triton/README.md
+  s_480f842b4b95f0::t_4312c8217e8665 94
+vllm_ascend/ops/triton/docs/entropy_verify.md
+  s_480f842b4b95f0::t_8545a45a05950a 75
+vllm_ascend/ops/triton/docs/gdn_prepare.md
+  s_480f842b4b95f0::t_4670f6823897b8 5
+vllm_ascend/ops/triton/docs/prepare_qsa_visible_lengths.md
+  s_480f842b4b95f0::t_b5c162f688a128 1,5-8,12,14-18,22-26,30-32,36-38,40,42-43
+vllm_ascend/ops/triton/docs/qwen4_exp_qsa_dispatch.md
+  s_480f842b4b95f0::t_e35f027f69c72e 5-10,13-16
+vllm_ascend/ops/triton/eplb.py
+  s_480f842b4b95f0::t_021b644ec526f6 8,15,21-22,25-27,47,62-85,97,104
+vllm_ascend/ops/triton/qwen4_exp/prepare_qsa_visible_lengths_triton.py
+  s_480f842b4b95f0::t_417fdba5726723 1-53
+vllm_ascend/patch/__init__.py
+  s_480f842b4b95f0::t_ff0b8700663ef4 244,563-578
+vllm_ascend/patch/platform/__init__.py
+  s_480f842b4b95f0::t_e3a68d4f5e607f 34
+vllm_ascend/patch/platform/patch_torch_utils.py
+  s_480f842b4b95f0::t_ae13338b57cc29 1-18
+vllm_ascend/patch/worker/patch_model_runner.py
+  s_480f842b4b95f0::t_028efbb8284575 6,11-12,20-21,25-34
+vllm_ascend/platform.py
+  s_480f842b4b95f0::t_4abad74296dc67 67,1642-1649,1652,1654-1664,1666-1677
+vllm_ascend/utils.py
+  s_480f842b4b95f0::t_a0d01d31b64281 1125-1136
+vllm_ascend/worker/v2/attn_utils.py
+  s_480f842b4b95f0::t_ff5afa09ca978a 436,465-472,536-537,635-639,1804-1810,1834-1838,1878-1879,1881,2176
+vllm_ascend/worker/v2/model_runner.py
+  s_480f842b4b95f0::t_ccdfcb107c520c 93-96,536-538,540,1182-1184
+vllm_ascend/worker/worker.py
+  s_480f842b4b95f0::t_2d79d620965675 101,874-878
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "987313840e3161f151cd4dc6e68febde022ab232",
+  "prompts": {},
+  "sessions": {
+    "s_1ca3cc9a501d06": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "eae451be-048d-4614-8afa-c18fb31ff5ac",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    },
+    "s_480f842b4b95f0": {
+      "agent_id": {
+        "tool": "antcc",
+        "id": "7f96548e-9703-4091-aab9-2de7749a032e",
+        "model": "antchat/DeepSeek-V4.1-Flash-1017"
+      },
+      "human_author": "yunzhi <ningyunxiao.nyx@antgroup.com>"
+    }
+  }
+}
