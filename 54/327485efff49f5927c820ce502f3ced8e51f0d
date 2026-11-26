@@ -1,0 +1,28 @@
+image/nightly/image.aci.yml
+  s_eecf565659df1e::t_13863dbf0f42e1 13-16,45-57,81-86,228-295
+image/nightly/image_api.aci.yml
+  s_eecf565659df1e::t_13863dbf0f42e1 18-21,38,47,51,56,66-69,85-88,117-129,138,275-342
+skills/image-pipeline/scripts/trigger_image_pipeline.py
+  s_eecf565659df1e::t_13863dbf0f42e1 6,96,103-104,109,111
+  s_eecf565659df1e::t_1a982443c28f2b 28
+skills/image-pipeline/tests/test_triarch_templates.py
+  s_eecf565659df1e::t_1a982443c28f2b 1-94
+skills/image-pipeline/SKILL.md
+  s_eecf565659df1e::t_1a982443c28f2b 8,30,36,38,40,46-47,49-51,55,71,75-76,137,139,172
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "54327485efff49f5927c820ce502f3ced8e51f0d",
+  "prompts": {},
+  "sessions": {
+    "s_eecf565659df1e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c5e9-0fdd-7262-a59c-9af0e9b01f9c",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "zhengchao <zhengchao@U-T60N2XX7-1836.local>"
+    }
+  }
+}
